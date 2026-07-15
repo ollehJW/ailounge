@@ -155,7 +155,7 @@
     body.dx-discovery-page .compare-tray { display: none !important; }
     body.intro-page .compare-tray { display: none !important; }
 
-    /* AX COMMUNITY pages: hide studio sections */
+    /* AX COMMUNITY pages: hide studio/ds/cs sections */
     body.tech-news-page .content > section[data-studio-page],
     body.ai-blog-page .content > section[data-studio-page],
     body.gen-ai-proposal-page .content > section[data-studio-page] { display: none !important; }
@@ -163,17 +163,24 @@
     body.tech-news-page .content > section[data-ax-page]:not([data-ax-page="tech-news"]) { display: none !important; }
     body.ai-blog-page .content > section[data-ax-page]:not([data-ax-page="ai-blog"]) { display: none !important; }
     body.gen-ai-proposal-page .content > section[data-ax-page]:not([data-ax-page="gen-ai-proposal"]) { display: none !important; }
-    /* Studio pages: hide ax + ds sections */
+    /* Studio pages: hide ax + ds + cs sections */
     body.intro-page .content > section[data-ax-page],
     body.explore-page .content > section[data-ax-page],
     body.intro-page .content > section[data-ds-page],
     body.explore-page .content > section[data-ds-page],
     body.registry-page .content > section[data-ax-page],
     body.registry-page .content > section[data-ds-page] { display: none !important; }
-    /* AX COMMUNITY pages: hide ds sections */
+    body.intro-page .content > section[data-cs-page],
+    body.explore-page .content > section[data-cs-page],
+    body.dx-discovery-page .content > section[data-cs-page],
+    body.registry-page .content > section[data-cs-page] { display: none !important; }
+    /* AX COMMUNITY pages: hide ds + cs sections */
     body.tech-news-page .content > section[data-ds-page],
     body.ai-blog-page .content > section[data-ds-page],
     body.gen-ai-proposal-page .content > section[data-ds-page] { display: none !important; }
+    body.tech-news-page .content > section[data-cs-page],
+    body.ai-blog-page .content > section[data-cs-page],
+    body.gen-ai-proposal-page .content > section[data-cs-page] { display: none !important; }
     /* AX COMMUNITY pages: hide compare tray */
     body.tech-news-page .compare-tray,
     body.ai-blog-page .compare-tray,
@@ -186,8 +193,33 @@
     body.data-load-page .content > section[data-studio-page],
     body.data-load-page .content > section[data-ax-page],
     body.data-load-page .content > section[data-ds-page]:not([data-ds-page="data-load"]) { display: none !important; }
+    body.data-explore-page .content > section[data-cs-page],
+    body.data-load-page .content > section[data-cs-page] { display: none !important; }
     body.data-explore-page .compare-tray,
     body.data-load-page .compare-tray { display: none !important; }
+
+    /* CODE STUDIO pages: show only active, hide others */
+    body.code-intro-page .content > section[data-cs-page]:not([data-cs-page="code-intro"]) { display: none !important; }
+    body.code-workspace-page .content > section[data-cs-page]:not([data-cs-page="code-workspace"]) { display: none !important; }
+    body.code-team-page .content > section[data-cs-page]:not([data-cs-page="code-team"]) { display: none !important; }
+    body.code-openlab-page .content > section[data-cs-page]:not([data-cs-page="code-openlab"]) { display: none !important; }
+    /* CODE STUDIO pages: hide studio/ax/ds sections */
+    body.code-intro-page .content > section[data-studio-page],
+    body.code-workspace-page .content > section[data-studio-page],
+    body.code-team-page .content > section[data-studio-page],
+    body.code-openlab-page .content > section[data-studio-page] { display: none !important; }
+    body.code-intro-page .content > section[data-ax-page],
+    body.code-workspace-page .content > section[data-ax-page],
+    body.code-team-page .content > section[data-ax-page],
+    body.code-openlab-page .content > section[data-ax-page] { display: none !important; }
+    body.code-intro-page .content > section[data-ds-page],
+    body.code-workspace-page .content > section[data-ds-page],
+    body.code-team-page .content > section[data-ds-page],
+    body.code-openlab-page .content > section[data-ds-page] { display: none !important; }
+    body.code-intro-page .compare-tray,
+    body.code-workspace-page .compare-tray,
+    body.code-team-page .compare-tray,
+    body.code-openlab-page .compare-tray { display: none !important; }
 
     /* HOME page: hide everything except #home-landing */
     body.home-page .content > section:not([data-home-page]) { display: none !important; }
@@ -2388,6 +2420,9 @@
       background: rgba(6,41,131,.07);
     }
     .impact-kpi small { color: var(--wia-blue); font-weight: 900; font-size: 11px; }
+    .kpi-delta { display: block; margin-top: 6px; font-size: 11px; font-weight: 700; }
+    .kpi-delta.up { color: #16a34a; }
+    .kpi-delta.down { color: var(--wia-red); }
     .impact-kpi b { display: block; margin-top: 10px; font-size: 30px; font-weight: 950; letter-spacing: -.065em; }
     .impact-kpi span { display: block; margin-top: 8px; color: #657082; font-size: 12.5px; line-height: 1.45; }
     .chart-layout {
@@ -2403,7 +2438,7 @@
       background: #fff;
       box-shadow: 0 8px 18px rgba(13,32,72,.045);
     }
-    .impact-card.wide { min-height: 300px; }
+    .impact-card.wide { min-height: 300px; grid-column: 1 / -1; }
     .chart-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 18px; }
     .chart-head h3 { margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -.04em; }
     .chart-head span { color: #7d8797; font-size: 12px; font-weight: 700; }
@@ -4396,6 +4431,280 @@
     }
     .dx-rec-card:hover .dx-rec-card-go { color: var(--wia-blue); }
     /* ── End DX ─────────────────────────────────────────────────── */
+
+    /* ── CODE STUDIO ─────────────────────────────────────────────── */
+    .cs-wrap { padding: 0 32px 60px; max-width: 1200px; margin: 0 auto; }
+    .cs-hero { padding: 40px 0 28px; }
+    .cs-hero h2 { font-size: 28px; font-weight: 800; letter-spacing: -.05em; margin: 0 0 8px; }
+    .cs-hero p { font-size: 14px; color: var(--body); margin: 0; line-height: 1.6; }
+
+    /* 소개 */
+    .cs-feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .cs-feature-card {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+      padding: 24px 22px; display: flex; flex-direction: column; gap: 10px;
+      box-shadow: var(--shadow-soft); transition: transform .18s, box-shadow .18s;
+    }
+    .cs-feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+    .cs-feature-icon { font-size: 28px; line-height: 1; }
+    .cs-feature-title { font-size: 15px; font-weight: 800; letter-spacing: -.04em; }
+    .cs-feature-desc { font-size: 13px; color: var(--body); line-height: 1.65; }
+    .cs-stat-row { display: flex; gap: 16px; margin-bottom: 32px; }
+    .cs-stat-box {
+      flex: 1; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-md);
+      padding: 18px 20px; box-shadow: var(--shadow-soft);
+    }
+    .cs-stat-box b { display: block; font-size: 32px; font-weight: 900; letter-spacing: -.05em; color: var(--wia-blue); line-height: 1.1; }
+    .cs-stat-box span { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .cs-intro-cta { display: flex; gap: 10px; }
+
+    /* 워크스페이스 페이지: viewport 꽉 채우기 (내부 스크롤) */
+    body.code-workspace-page,
+    body.code-workspace-page .portal-shell {
+      height: 100vh;
+      overflow: hidden;
+    }
+    body.code-workspace-page .main {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    body.code-workspace-page .content {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 20px;
+    }
+    body.code-workspace-page #code-workspace {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 워크스페이스 3-panel */
+    .cs-workspace-shell {
+      display: grid;
+      grid-template-columns: 220px 1fr 280px;
+      grid-template-rows: 1fr;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    /* Left: file tree */
+    .cs-filetree {
+      border-right: 1px solid var(--line);
+      display: flex; flex-direction: column;
+      background: var(--soft);
+      min-height: 0;
+    }
+    .cs-filetree-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .cs-filetree-head span { font-size: 11.5px; font-weight: 800; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; }
+    .cs-new-btn {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: var(--wia-blue); color: #fff; border: none;
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: var(--transition);
+    }
+    .cs-new-btn:hover { background: var(--wia-blue-2); }
+    .cs-file-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cs-file-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px; cursor: pointer; transition: background .12s;
+      border-left: 3px solid transparent;
+    }
+    .cs-file-item:hover { background: rgba(6,41,131,.04); }
+    .cs-file-item.active { background: rgba(6,41,131,.07); border-left-color: var(--wia-blue); }
+    .cs-file-ico { font-size: 13px; flex-shrink: 0; }
+    .cs-file-info { flex: 1; min-width: 0; }
+    .cs-file-name { font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cs-file-meta { font-size: 10.5px; color: var(--muted); }
+    .cs-runtime-badge {
+      font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 20px; flex-shrink: 0;
+    }
+    .cs-runtime-badge.on { background: rgba(34,197,94,.12); color: #16a34a; }
+    .cs-runtime-badge.off { background: var(--line); color: var(--muted); }
+
+    /* Center: notebook editor */
+    .cs-editor {
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--line);
+      overflow: hidden;
+      min-height: 0;
+    }
+    .cs-editor-toolbar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+    .cs-nb-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-right: auto; }
+    .cs-toolbar-btn {
+      display: flex; align-items: center; gap: 4px;
+      background: #fff; border: 1px solid var(--line); border-radius: 6px;
+      padding: 4px 10px; font-size: 11.5px; font-weight: 600; color: var(--body);
+      cursor: pointer; transition: var(--transition);
+    }
+    .cs-toolbar-btn:hover { border-color: var(--wia-blue); color: var(--wia-blue); }
+    .cs-toolbar-btn.run { background: var(--wia-blue); color: #fff; border-color: var(--wia-blue); }
+    .cs-toolbar-btn.run:hover { background: var(--wia-blue-2); }
+    .cs-cells { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+    .cs-cell { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .cs-cell:focus-within, .cs-cell.active { border-color: var(--wia-blue); box-shadow: 0 0 0 2px rgba(6,41,131,.08); }
+    .cs-cell-gutter {
+      display: flex; align-items: flex-start; gap: 0;
+    }
+    .cs-cell-run {
+      width: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      padding-top: 10px; background: var(--soft); border-right: 1px solid var(--line);
+    }
+    .cs-run-ico {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--wia-blue); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 8px; cursor: pointer; transition: var(--transition);
+    }
+    .cs-run-ico:hover { background: var(--wia-blue-2); transform: scale(1.1); }
+    .cs-run-ico.done { background: #16a34a; }
+    .cs-cell-body { flex: 1; }
+    .cs-cell-code {
+      padding: 10px 14px;
+      font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+      font-size: 12.5px; line-height: 1.7; color: #1e293b;
+      background: #fafbff;
+      white-space: pre;
+    }
+    .cs-cell-md { padding: 12px 16px; font-size: 14px; font-weight: 700; color: var(--ink); background: #fff; }
+    .cs-cell-md h3 { margin: 0; font-size: 14px; font-weight: 800; }
+    .cs-cell-md p { margin: 4px 0 0; font-size: 12.5px; color: var(--body); font-weight: 400; }
+    .cs-cell-output {
+      padding: 8px 14px;
+      background: #f8fafd;
+      border-top: 1px solid var(--line);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11.5px; color: #334155; line-height: 1.6;
+    }
+    .cs-output-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .cs-output-table th { background: #f0f4fa; font-weight: 700; padding: 4px 8px; border: 1px solid var(--line); }
+    .cs-output-table td { padding: 3px 8px; border: 1px solid var(--line); color: #475569; }
+    .cs-kw { color: #7c3aed; } .cs-fn { color: #0284c7; } .cs-str { color: #16a34a; }
+    .cs-cm { color: #94a3b8; font-style: italic; } .cs-num { color: #c67a00; }
+
+    /* Right: Vibe Coding panel */
+    .cs-vibe-panel { display: flex; flex-direction: column; min-height: 0; }
+    .cs-vibe-head {
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(135deg, var(--wia-blue) 0%, #1a3dbe 100%);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .cs-vibe-head-title { font-size: 13px; font-weight: 800; color: #fff; }
+    .cs-vibe-head-badge {
+      margin-left: auto; font-size: 10px; font-weight: 700;
+      background: rgba(255,255,255,.18); color: #fff;
+      padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(255,255,255,.25);
+    }
+    .cs-vibe-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .cs-vibe-msg { display: flex; flex-direction: column; gap: 4px; }
+    .cs-vibe-label { font-size: 10.5px; font-weight: 700; color: var(--muted); padding: 0 2px; }
+    .cs-vibe-bubble {
+      padding: 10px 12px; border-radius: 10px;
+      font-size: 12.5px; line-height: 1.6;
+    }
+    .cs-vibe-bubble.user { background: var(--wia-blue); color: #fff; border-radius: 10px 10px 4px 10px; }
+    .cs-vibe-bubble.agent { background: var(--soft); border: 1px solid var(--line); color: var(--ink); border-radius: 10px 10px 10px 4px; }
+    .cs-vibe-code {
+      background: #0f172a; color: #e2e8f0;
+      border-radius: 8px; padding: 10px 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; line-height: 1.7; white-space: pre;
+      margin-top: 6px;
+    }
+    .cs-vibe-insert-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(6,41,131,.07); border: 1px solid rgba(6,41,131,.15);
+      border-radius: 7px; padding: 6px 11px;
+      font-size: 11.5px; font-weight: 700; color: var(--wia-blue);
+      cursor: pointer; transition: var(--transition); width: fit-content; margin-top: 6px;
+    }
+    .cs-vibe-insert-btn:hover { background: rgba(6,41,131,.13); }
+    .cs-vibe-input-bar {
+      padding: 10px 12px; border-top: 1px solid var(--line); background: var(--soft);
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .cs-vibe-input {
+      flex: 1; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 11px; font-size: 12.5px; resize: none; height: 38px;
+      background: #fff; outline: none; line-height: 1.4;
+    }
+    .cs-vibe-input::placeholder { color: var(--muted); }
+    .cs-vibe-send {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: var(--wia-blue); color: #fff; border: none;
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: var(--transition);
+    }
+    .cs-vibe-send:hover { background: var(--wia-blue-2); }
+
+    /* 팀 노트북 / 오픈랩 */
+    .cs-list-head { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+    .cs-search {
+      flex: 1; min-width: 220px; border: 1px solid var(--line); border-radius: 10px;
+      padding: 9px 14px; font-size: 13px; outline: none; background: #fff;
+    }
+    .cs-search:focus { border-color: var(--wia-blue); box-shadow: 0 0 0 3px rgba(6,41,131,.08); }
+    .cs-dept-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .cs-dept-tab {
+      padding: 5px 13px; border-radius: 20px; border: 1px solid var(--line);
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      background: #fff; cursor: pointer; transition: var(--transition);
+    }
+    .cs-dept-tab.active, .cs-dept-tab:hover { background: var(--wia-blue); color: #fff; border-color: var(--wia-blue); }
+    .cs-nb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .cs-nb-card {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+      padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 10px;
+      box-shadow: var(--shadow-soft); transition: transform .18s, box-shadow .18s; cursor: pointer;
+    }
+    .cs-nb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--wia-blue); }
+    .cs-nb-card-top { display: flex; align-items: flex-start; gap: 10px; }
+    .cs-nb-ico { font-size: 24px; flex-shrink: 0; }
+    .cs-nb-info { flex: 1; min-width: 0; }
+    .cs-nb-name { font-size: 13.5px; font-weight: 800; color: var(--ink); line-height: 1.35; margin-bottom: 4px; }
+    .cs-nb-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .cs-nb-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .cs-nb-tag {
+      font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      background: rgba(6,41,131,.07); color: var(--wia-blue);
+    }
+    .cs-nb-tag.team { background: rgba(124,58,237,.08); color: #7c3aed; }
+    .cs-nb-tag.open { background: rgba(10,114,64,.08); color: #0a7240; }
+    .cs-nb-footer { display: flex; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+    .cs-nb-author { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); flex: 1; }
+    .cs-nb-avatar { width: 20px; height: 20px; border-radius: 50%; background: var(--wia-blue); color: #fff; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+    .cs-nb-stat { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); }
+    .cs-fork-btn {
+      display: flex; align-items: center; gap: 4px;
+      background: none; border: 1px solid var(--line); border-radius: 7px;
+      padding: 4px 10px; font-size: 11.5px; font-weight: 700; color: var(--body);
+      cursor: pointer; transition: var(--transition);
+    }
+    .cs-fork-btn:hover { border-color: var(--wia-blue); color: var(--wia-blue); }
+    .cs-featured-label {
+      font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--muted); margin: 24px 0 12px;
+    }
+    /* ── End CODE STUDIO ─────────────────────────────────────────── */
   </style>
 </head>
 <body class="home-page">
@@ -4418,6 +4727,13 @@
           <button class="side-sub" data-page="dx-discovery">DX 과제 발굴</button>
           <button class="side-sub" data-page="explore">AI 자산 탐색</button>
           <button class="side-sub" data-page="registry" data-requires-registry="true">AI 자산 등록</button>
+        </div>
+        <button class="side-group-btn" data-page="code-intro"><span class="side-ico">⌨</span><span class="side-name">CODE STUDIO</span><span class="chev">⌄</span></button>
+        <div class="sub-box" id="code-studio-sub">
+          <button class="side-sub" data-page="code-intro">소개</button>
+          <button class="side-sub" data-page="code-workspace">내 워크스페이스</button>
+          <button class="side-sub" data-page="code-team">팀 노트북</button>
+          <button class="side-sub" data-page="code-openlab">오픈랩</button>
         </div>
         <button class="side-group-btn" data-page="tech-news"><span class="side-ico">⌘</span><span class="side-name">AX COMMUNITY</span><span class="chev">⌄</span></button>
         <div class="sub-box ax-sub-box">
@@ -4862,6 +5178,609 @@
 
           </div><!-- /.dx-wrap -->
         </section>
+
+        <!-- ══ CODE STUDIO ══════════════════════════════════════════ -->
+
+        <!-- 소개 -->
+        <!-- CODE STUDIO 소개 · 히어로 -->
+        <section id="code-intro-hero" class="hero-zone" data-cs-page="code-intro" aria-label="CODE STUDIO 메인 히어로">
+          <div class="hero-banner">
+            <div class="hero-copy">
+              <div>
+                <p class="kicker">CODE STUDIO</p>
+                <h1>설치 없이, AI와 함께<br/>코딩하세요.</h1>
+                <p>브라우저에서 바로 노트북 환경을 열고,<br/>Vibe Coding AI로 코드를 즉시 생성·수정합니다.</p>
+              </div>
+            </div>
+            <div class="hero-pager" aria-hidden="true">
+              <span class="pager-bar active"></span><span class="pager-bar"></span><span class="pager-bar"></span><span class="pager-play">▶ Ⅱ</span>
+            </div>
+          </div>
+          <div class="hot-zone">
+            <article class="service-card" data-page="code-workspace">
+              <small>CODE STUDIO</small>
+              <h3>내 워크스페이스</h3>
+              <p>노트북을 만들고 Vibe Coding AI와 함께 개발합니다. GPU/CPU 런타임을 선택하고 셀 단위로 실행합니다.</p>
+              <button class="service-go">바로가기</button>
+              <div class="service-illust monitor"><span class="screen"></span><span class="stand"></span><span class="base"></span></div>
+            </article>
+            <article class="service-card" data-page="code-openlab">
+              <small>CODE STUDIO</small>
+              <h3>오픈랩</h3>
+              <p>전사 공개 노트북을 탐색하고 포크해서 내 워크스페이스에서 바로 활용합니다.</p>
+              <button class="service-go">바로가기</button>
+              <div class="service-illust registry-illust"><span class="file-main"></span><span class="file-line fl1"></span><span class="file-line fl2"></span><span class="upload-arrow"></span><span class="plus-mark"></span></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- CODE STUDIO 소개 · WHY -->
+        <section id="code-intro-why" class="studio-value-section" data-cs-page="code-intro" aria-label="WHY CODE STUDIO">
+          <div class="section-head">
+            <div class="eyebrow">WHY CODE STUDIO</div>
+            <h2>CODE STUDIO가 만드는 변화<span class="red-dot">·</span></h2>
+            <p>개인의 노트북이 팀의 지식 자산이 되고, 팀의 지식 자산이 전사의 개발 역량이 됩니다. 개발·공유·재활용의 선순환 구조가 현대위아의 코딩 문화를 바꿉니다.</p>
+          </div>
+          <div class="sv-grid">
+
+            <div class="sv-card sv-card--blue">
+              <div class="sv-card-icon">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="20" cy="20" r="18" fill="#e8f0ff"/>
+                  <path d="M13 22l4-5 3 4 2-3 5 6" stroke="#2c4be4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <rect x="11" y="13" width="18" height="14" rx="2" stroke="#2c4be4" stroke-width="2" fill="none"/>
+                </svg>
+              </div>
+              <div class="sv-card-kpi">즉시</div>
+              <div class="sv-card-title">환경 없는 개발</div>
+              <div class="sv-card-desc">패키지 설치·환경 설정 없이 브라우저에서 바로 Python·R 노트북을 실행합니다. GPU/CPU 런타임은 클릭 한 번으로 선택합니다.</div>
+            </div>
+
+            <div class="sv-card sv-card--orange">
+              <div class="sv-card-icon">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="20" cy="20" r="18" fill="#fff4e5"/>
+                  <path d="M14 26l2-6 2 4 2-3 2 3 2-6" stroke="#c67a00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="28" cy="13" r="3" fill="#c67a00" opacity=".3"/>
+                  <circle cx="28" cy="13" r="1.5" fill="#c67a00"/>
+                </svg>
+              </div>
+              <div class="sv-card-kpi">AI</div>
+              <div class="sv-card-title">Vibe Coding</div>
+              <div class="sv-card-desc">자연어로 코드를 요청하면 AI가 즉시 생성·수정합니다. 생성된 코드는 클릭 한 번으로 현재 셀에 삽입되어 개발 속도를 획기적으로 높입니다.</div>
+            </div>
+
+            <div class="sv-card sv-card--teal">
+              <div class="sv-card-icon">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="20" cy="20" r="18" fill="#e4f7f0"/>
+                  <circle cx="14" cy="17" r="4" stroke="#0a7240" stroke-width="2"/>
+                  <circle cx="26" cy="17" r="4" stroke="#0a7240" stroke-width="2"/>
+                  <path d="M8 30c0-4 2.7-6 6-6h12c3.3 0 6 2 6 6" stroke="#0a7240" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="sv-card-kpi">공유</div>
+              <div class="sv-card-title">팀·전사 협업</div>
+              <div class="sv-card-desc">완성된 노트북을 팀 노트북 또는 오픈랩에 공개하고, 동료의 노트북을 포크해 바로 활용합니다. 중복 개발을 없애고 협업을 가속합니다.</div>
+            </div>
+
+            <div class="sv-card sv-card--purple">
+              <div class="sv-card-icon">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="20" cy="20" r="18" fill="#f3edff"/>
+                  <path d="M20 12v16M13 19l7-7 7 7" stroke="#7c3aed" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="sv-card-kpi">자산</div>
+              <div class="sv-card-title">지식 내재화</div>
+              <div class="sv-card-desc">개인의 노트북이 조직의 지식 자산으로 축적됩니다. 담당자 이동·퇴사에도 개발 노하우가 플랫폼에 남아 전사 역량으로 이어집니다.</div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- CODE STUDIO 소개 · 노트북 대시보드 -->
+        <section id="code-intro-dashboard" class="dashboard-section" data-cs-page="code-intro" aria-label="노트북 현황 대시보드">
+          <div class="section-head">
+            <div class="eyebrow">NOTEBOOK DASHBOARD</div>
+            <h2>노트북 현황 대시보드<span class="red-dot">·</span></h2>
+            <p>전사 노트북 개발·공유·재활용 현황을 한눈에 파악합니다. 월별 생성 추이, 부서별 현황, 인기 노트북을 함께 추적합니다.</p>
+          </div>
+
+          <div class="impact-kpis">
+            <div class="impact-kpi"><b>84</b><span>등록 노트북</span><small class="kpi-delta up">▲ 12 이번 달</small></div>
+            <div class="impact-kpi"><b>12</b><span>활성 런타임</span><small class="kpi-delta up">▲ 3 이번 달</small></div>
+            <div class="impact-kpi"><b>37</b><span>팀 공유 노트북</span><small class="kpi-delta up">▲ 7 이번 달</small></div>
+            <div class="impact-kpi"><b>214</b><span>누적 포크 수</span><small class="kpi-delta up">▲ 41 이번 달</small></div>
+          </div>
+
+          <div class="chart-layout">
+            <article class="impact-card">
+              <div class="chart-head">
+                <div><h3>월별 노트북 생성 · 공유 추이</h3><span>생성된 노트북과 팀·전사 공개 노트북의 누적 추이</span></div>
+                <div class="legend-line"><span><i style="background:var(--wia-blue)"></i>생성</span><span><i style="background:#58bce5"></i>공유</span></div>
+              </div>
+              <div style="padding:16px 0 8px;display:flex;align-items:flex-end;gap:10px;height:160px">
+                <!-- Mock bar chart -->
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:var(--wia-blue);border-radius:4px 4px 0 0;height:40px"></div><div style="width:100%;background:#58bce5;border-radius:4px 4px 0 0;height:15px"></div><span style="font-size:10px;color:var(--muted)">1월</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:var(--wia-blue);border-radius:4px 4px 0 0;height:52px"></div><div style="width:100%;background:#58bce5;border-radius:4px 4px 0 0;height:18px"></div><span style="font-size:10px;color:var(--muted)">2월</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:var(--wia-blue);border-radius:4px 4px 0 0;height:48px"></div><div style="width:100%;background:#58bce5;border-radius:4px 4px 0 0;height:20px"></div><span style="font-size:10px;color:var(--muted)">3월</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:var(--wia-blue);border-radius:4px 4px 0 0;height:64px"></div><div style="width:100%;background:#58bce5;border-radius:4px 4px 0 0;height:24px"></div><span style="font-size:10px;color:var(--muted)">4월</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:var(--wia-blue);border-radius:4px 4px 0 0;height:72px"></div><div style="width:100%;background:#58bce5;border-radius:4px 4px 0 0;height:28px"></div><span style="font-size:10px;color:var(--muted)">5월</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:var(--wia-blue);border-radius:4px 4px 0 0;height:88px"></div><div style="width:100%;background:#58bce5;border-radius:4px 4px 0 0;height:34px"></div><span style="font-size:10px;color:var(--muted)">6월</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:var(--wia-blue);border-radius:4px 4px 0 0;height:100px"></div><div style="width:100%;background:#58bce5;border-radius:4px 4px 0 0;height:40px"></div><span style="font-size:10px;color:var(--muted)">7월</span></div>
+              </div>
+            </article>
+
+            <article class="impact-card">
+              <div class="chart-head"><div><h3>부서별 노트북 현황</h3><span>생성 노트북 수 기준</span></div></div>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;font-weight:700;width:68px;color:var(--ink);flex-shrink:0">DX추진랩</span>
+                  <div style="flex:1;background:var(--line);border-radius:4px;height:8px"><div style="width:75%;background:var(--wia-blue);border-radius:4px;height:100%"></div></div>
+                  <span style="font-size:11px;color:var(--muted);flex-shrink:0">24개</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;font-weight:700;width:68px;color:var(--ink);flex-shrink:0">생산기술</span>
+                  <div style="flex:1;background:var(--line);border-radius:4px;height:8px"><div style="width:56%;background:#2c4be4;border-radius:4px;height:100%"></div></div>
+                  <span style="font-size:11px;color:var(--muted);flex-shrink:0">18개</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;font-weight:700;width:68px;color:var(--ink);flex-shrink:0">품질</span>
+                  <div style="flex:1;background:var(--line);border-radius:4px;height:8px"><div style="width:44%;background:#0a7240;border-radius:4px;height:100%"></div></div>
+                  <span style="font-size:11px;color:var(--muted);flex-shrink:0">14개</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;font-weight:700;width:68px;color:var(--ink);flex-shrink:0">R&amp;D·설계</span>
+                  <div style="flex:1;background:var(--line);border-radius:4px;height:8px"><div style="width:28%;background:#7c3aed;border-radius:4px;height:100%"></div></div>
+                  <span style="font-size:11px;color:var(--muted);flex-shrink:0">9개</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;font-weight:700;width:68px;color:var(--ink);flex-shrink:0">SCM·구매</span>
+                  <div style="flex:1;background:var(--line);border-radius:4px;height:8px"><div style="width:22%;background:#c67a00;border-radius:4px;height:100%"></div></div>
+                  <span style="font-size:11px;color:var(--muted);flex-shrink:0">7개</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;font-weight:700;width:68px;color:var(--ink);flex-shrink:0">기타</span>
+                  <div style="flex:1;background:var(--line);border-radius:4px;height:8px"><div style="width:38%;background:#94a3b8;border-radius:4px;height:100%"></div></div>
+                  <span style="font-size:11px;color:var(--muted);flex-shrink:0">12개</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="impact-card wide">
+              <div class="chart-head"><div><h3>인기 노트북 TOP 5</h3><span>포크 수 기준</span></div></div>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+                <div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;font-weight:900;color:var(--wia-blue);width:20px">1</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">제조 데이터 EDA 완전 정복 가이드</div><div style="font-size:11px;color:var(--muted)">DX추진랩 · 이승훈</div></div><span style="font-size:12px;font-weight:700;color:var(--wia-blue);flex-shrink:0">🍴 58</span></div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;font-weight:900;color:#2c4be4;width:20px">2</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">XGBoost로 불량 예측하기 (입문)</div><div style="font-size:11px;color:var(--muted)">DX추진랩 · 김현우</div></div><span style="font-size:12px;font-weight:700;color:var(--wia-blue);flex-shrink:0">🍴 44</span></div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;font-weight:900;color:#0a7240;width:20px">3</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">YOLO v8 커스텀 학습 템플릿</div><div style="font-size:11px;color:var(--muted)">R&amp;D팀 · 박서연</div></div><span style="font-size:12px;font-weight:700;color:var(--wia-blue);flex-shrink:0">🍴 37</span></div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;font-weight:900;color:#7c3aed;width:20px">4</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">수요 예측 LSTM 시계열 모델</div><div style="font-size:11px;color:var(--muted)">SCM팀 · 박지훈</div></div><span style="font-size:12px;font-weight:700;color:var(--wia-blue);flex-shrink:0">🍴 15</span></div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;font-weight:900;color:#c67a00;width:20px">5</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CNC 진동 이상 탐지 파이프라인</div><div style="font-size:11px;color:var(--muted)">생산기술팀 · 김민준</div></div><span style="font-size:12px;font-weight:700;color:var(--wia-blue);flex-shrink:0">🍴 12</span></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- 내 워크스페이스 -->
+        <section id="code-workspace" data-cs-page="code-workspace" aria-label="내 워크스페이스" style="padding:0">
+          <div class="cs-workspace-shell">
+
+            <!-- Left: file tree -->
+            <div class="cs-filetree">
+              <div class="cs-filetree-head">
+                <span>내 노트북</span>
+                <button class="cs-new-btn" title="새 노트북">+</button>
+              </div>
+              <div class="cs-file-list">
+                <div class="cs-file-item active">
+                  <span class="cs-file-ico">📓</span>
+                  <div class="cs-file-info">
+                    <div class="cs-file-name">CNC 불량 예측 모델.ipynb</div>
+                    <div class="cs-file-meta">오늘 14:22</div>
+                  </div>
+                  <span class="cs-runtime-badge on">실행 중</span>
+                </div>
+                <div class="cs-file-item">
+                  <span class="cs-file-ico">📓</span>
+                  <div class="cs-file-info">
+                    <div class="cs-file-name">센서 데이터 EDA.ipynb</div>
+                    <div class="cs-file-meta">어제 09:41</div>
+                  </div>
+                  <span class="cs-runtime-badge off">중지됨</span>
+                </div>
+                <div class="cs-file-item">
+                  <span class="cs-file-ico">📓</span>
+                  <div class="cs-file-info">
+                    <div class="cs-file-name">품질 데이터 전처리.ipynb</div>
+                    <div class="cs-file-meta">3일 전</div>
+                  </div>
+                  <span class="cs-runtime-badge off">중지됨</span>
+                </div>
+                <div class="cs-file-item">
+                  <span class="cs-file-ico">📓</span>
+                  <div class="cs-file-info">
+                    <div class="cs-file-name">LSTM 시계열 예측.ipynb</div>
+                    <div class="cs-file-meta">1주일 전</div>
+                  </div>
+                  <span class="cs-runtime-badge off">중지됨</span>
+                </div>
+                <div class="cs-file-item">
+                  <span class="cs-file-ico">📓</span>
+                  <div class="cs-file-info">
+                    <div class="cs-file-name">XGBoost 파이프라인.ipynb</div>
+                    <div class="cs-file-meta">2주일 전</div>
+                  </div>
+                  <span class="cs-runtime-badge off">중지됨</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Center: notebook editor -->
+            <div class="cs-editor">
+              <div class="cs-editor-toolbar">
+                <span class="cs-nb-title">📓 CNC 불량 예측 모델.ipynb</span>
+                <button class="cs-toolbar-btn run">▶ 실행</button>
+                <button class="cs-toolbar-btn">+ 셀 추가</button>
+                <button class="cs-toolbar-btn">↑ 커널 재시작</button>
+                <button class="cs-toolbar-btn">공유</button>
+              </div>
+              <div class="cs-cells">
+
+                <div class="cs-cell">
+                  <div class="cs-cell-md">
+                    <h3>1. 라이브러리 및 데이터 로드</h3>
+                    <p>CNC 센서 데이터를 불러오고 기본 구조를 확인합니다.</p>
+                  </div>
+                </div>
+
+                <div class="cs-cell active">
+                  <div class="cs-cell-gutter">
+                    <div class="cs-cell-run"><div class="cs-run-ico done">✓</div></div>
+                    <div class="cs-cell-body">
+                      <div class="cs-cell-code"><span class="cs-kw">import</span> pandas <span class="cs-kw">as</span> pd
+<span class="cs-kw">import</span> numpy <span class="cs-kw">as</span> np
+<span class="cs-kw">import</span> matplotlib.pyplot <span class="cs-kw">as</span> plt
+
+<span class="cs-cm"># CNC 센서 로그 데이터 로드</span>
+df = pd.<span class="cs-fn">read_csv</span>(<span class="cs-str">'cnc_sensor_log.csv'</span>)
+<span class="cs-fn">print</span>(df.<span class="cs-fn">shape</span>)
+df.<span class="cs-fn">head</span>()</div>
+                      <div class="cs-cell-output">
+                        <div style="margin-bottom:6px;color:#64748b">(48320, 16)</div>
+                        <table class="cs-output-table">
+                          <tr><th>idx</th><th>timestamp</th><th>vibration</th><th>temp</th><th>cutting_force</th><th>defect</th></tr>
+                          <tr><td>0</td><td>2024-01-02 08:01</td><td>0.42</td><td>62.1</td><td>318.4</td><td>0</td></tr>
+                          <tr><td>1</td><td>2024-01-02 08:02</td><td>0.45</td><td>62.4</td><td>321.0</td><td>0</td></tr>
+                          <tr><td>2</td><td>2024-01-02 08:03</td><td>0.89</td><td>63.8</td><td>389.2</td><td>1</td></tr>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="cs-cell">
+                  <div class="cs-cell-gutter">
+                    <div class="cs-cell-run"><div class="cs-run-ico done">✓</div></div>
+                    <div class="cs-cell-body">
+                      <div class="cs-cell-code"><span class="cs-cm"># 결측치 처리 및 피처 엔지니어링</span>
+df = df.<span class="cs-fn">dropna</span>()
+df[<span class="cs-str">'vib_rolling_mean'</span>] = df[<span class="cs-str">'vibration'</span>].<span class="cs-fn">rolling</span>(<span class="cs-num">5</span>).<span class="cs-fn">mean</span>()
+df[<span class="cs-str">'temp_diff'</span>] = df[<span class="cs-str">'temp'</span>].<span class="cs-fn">diff</span>()
+df = df.<span class="cs-fn">dropna</span>()
+<span class="cs-fn">print</span>(<span class="cs-str">f"처리 후 샘플 수: </span>{<span class="cs-fn">len</span>(df)}<span class="cs-str">"</span>)</div>
+                      <div class="cs-cell-output">처리 후 샘플 수: 48274</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="cs-cell">
+                  <div class="cs-cell-md"><h3>2. 모델 학습</h3></div>
+                </div>
+
+                <div class="cs-cell">
+                  <div class="cs-cell-gutter">
+                    <div class="cs-cell-run"><div class="cs-run-ico">▶</div></div>
+                    <div class="cs-cell-body">
+                      <div class="cs-cell-code"><span class="cs-kw">from</span> sklearn.ensemble <span class="cs-kw">import</span> GradientBoostingClassifier
+<span class="cs-kw">from</span> sklearn.model_selection <span class="cs-kw">import</span> train_test_split
+<span class="cs-kw">from</span> sklearn.metrics <span class="cs-kw">import</span> classification_report
+
+features = [<span class="cs-str">'vibration'</span>, <span class="cs-str">'temp'</span>, <span class="cs-str">'cutting_force'</span>, <span class="cs-str">'vib_rolling_mean'</span>, <span class="cs-str">'temp_diff'</span>]
+X = df[features]
+y = df[<span class="cs-str">'defect'</span>]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=<span class="cs-num">0.2</span>, random_state=<span class="cs-num">42</span>)
+model = GradientBoostingClassifier(n_estimators=<span class="cs-num">200</span>, max_depth=<span class="cs-num">4</span>)
+model.<span class="cs-fn">fit</span>(X_train, y_train)</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div><!-- /.cs-cells -->
+            </div><!-- /.cs-editor -->
+
+            <!-- Right: Vibe Coding -->
+            <div class="cs-vibe-panel">
+              <div class="cs-vibe-head">
+                <span style="font-size:16px">✦</span>
+                <span class="cs-vibe-head-title">Vibe Coding</span>
+                <span class="cs-vibe-head-badge">AI 코딩 어시스턴트</span>
+              </div>
+              <div class="cs-vibe-body">
+                <div class="cs-vibe-msg">
+                  <span class="cs-vibe-label">나</span>
+                  <div class="cs-vibe-bubble user">이 데이터에서 불량 비율을 시각화해줘. 시간대별로 보고 싶어.</div>
+                </div>
+                <div class="cs-vibe-msg">
+                  <span class="cs-vibe-label">✦ Vibe Coding</span>
+                  <div class="cs-vibe-bubble agent">시간대별 불량 비율을 막대 그래프로 시각화하는 코드를 생성했습니다.</div>
+                  <div class="cs-vibe-code">df[<span style="color:#86efac">'hour'</span>] = pd.to_datetime(
+    df[<span style="color:#86efac">'timestamp'</span>]).<span style="color:#93c5fd">dt</span>.hour
+
+hourly = df.<span style="color:#93c5fd">groupby</span>(<span style="color:#86efac">'hour'</span>)[<span style="color:#86efac">'defect'</span>]
+rate = hourly.<span style="color:#93c5fd">mean</span>() * <span style="color:#fcd34d">100</span>
+
+fig, ax = plt.<span style="color:#93c5fd">subplots</span>(figsize=(<span style="color:#fcd34d">10</span>, <span style="color:#fcd34d">4</span>))
+rate.<span style="color:#93c5fd">plot</span>(kind=<span style="color:#86efac">'bar'</span>, ax=ax,
+         color=<span style="color:#86efac">'#e60012'</span>, alpha=<span style="color:#fcd34d">0.8</span>)
+ax.<span style="color:#93c5fd">set_xlabel</span>(<span style="color:#86efac">'시간대'</span>)
+ax.<span style="color:#93c5fd">set_ylabel</span>(<span style="color:#86efac">'불량률 (%)'</span>)
+ax.<span style="color:#93c5fd">set_title</span>(<span style="color:#86efac">'시간대별 불량 발생 비율'</span>)
+plt.<span style="color:#93c5fd">tight_layout</span>()
+plt.<span style="color:#93c5fd">show</span>()</div>
+                  <button class="cs-vibe-insert-btn">↓ 현재 셀에 삽입</button>
+                </div>
+              </div>
+              <div class="cs-vibe-input-bar">
+                <textarea class="cs-vibe-input" placeholder="코드 요청을 입력하세요…"></textarea>
+                <button class="cs-vibe-send">➤</button>
+              </div>
+            </div>
+
+          </div><!-- /.cs-workspace-shell -->
+        </section>
+
+        <!-- 팀 노트북 -->
+        <section id="code-team" data-cs-page="code-team" aria-label="팀 노트북">
+          <div class="cs-wrap">
+            <div class="cs-hero">
+              <div class="eyebrow">CODE STUDIO</div>
+              <h2>팀 노트북<span class="red-dot">·</span></h2>
+              <p>우리 팀·부서가 공유한 노트북을 탐색하고 포크해서 내 워크스페이스에서 바로 활용하세요.</p>
+            </div>
+            <div class="cs-list-head">
+              <input class="cs-search" placeholder="노트북 검색…" />
+              <div class="cs-dept-tabs">
+                <button class="cs-dept-tab active">전체</button>
+                <button class="cs-dept-tab">생산기술</button>
+                <button class="cs-dept-tab">품질</button>
+                <button class="cs-dept-tab">R&amp;D·설계</button>
+                <button class="cs-dept-tab">SCM·구매</button>
+                <button class="cs-dept-tab">DX추진랩</button>
+              </div>
+            </div>
+            <div class="cs-nb-grid">
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">CNC 진동 데이터 이상 탐지 파이프라인</div>
+                    <div class="cs-nb-desc">Isolation Forest 기반 이상 탐지, 실시간 알림 연동까지 포함</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">이상 탐지</span><span class="cs-nb-tag team">생산기술</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">김</div>김민준 · 생산기술팀</div>
+                  <span class="cs-nb-stat">🍴 12</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">품질 검사 이미지 분류 모델 (ResNet50)</div>
+                    <div class="cs-nb-desc">표면 결함 유형 6종 분류, 전이학습 파인튜닝 포함</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">컴퓨터비전</span><span class="cs-nb-tag team">품질</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">이</div>이수연 · 품질팀</div>
+                  <span class="cs-nb-stat">🍴 8</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">수요 예측 LSTM 시계열 모델</div>
+                    <div class="cs-nb-desc">월별 부품 수요량 예측, MAE 기준 기존 대비 23% 개선</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">시계열</span><span class="cs-nb-tag team">SCM·구매</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">박</div>박지훈 · SCM팀</div>
+                  <span class="cs-nb-stat">🍴 15</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">공구 마모 예측 회귀 모델</div>
+                    <div class="cs-nb-desc">절삭력·온도 센서 조합으로 공구 잔여 수명 예측</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">예측 모델</span><span class="cs-nb-tag team">생산기술</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">최</div>최재원 · 생산기술팀</div>
+                  <span class="cs-nb-stat">🍴 6</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">설비 에너지 소비 최적화 분석</div>
+                    <div class="cs-nb-desc">시간대별·공정별 에너지 소비 패턴 분석 및 절감 시뮬레이션</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">데이터 분석</span><span class="cs-nb-tag team">DX추진랩</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">홍</div>홍길동 · DX추진랩</div>
+                  <span class="cs-nb-stat">🍴 9</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">NLP 기반 불량 보고서 자동 분류</div>
+                    <div class="cs-nb-desc">작업자 보고서 텍스트를 분석해 불량 유형·원인 자동 태깅</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">NLP</span><span class="cs-nb-tag team">품질</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">정</div>정유진 · 품질팀</div>
+                  <span class="cs-nb-stat">🍴 11</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 오픈랩 -->
+        <section id="code-openlab" data-cs-page="code-openlab" aria-label="오픈랩">
+          <div class="cs-wrap">
+            <div class="cs-hero">
+              <div class="eyebrow">CODE STUDIO</div>
+              <h2>오픈랩<span class="red-dot">·</span></h2>
+              <p>전사 누구나 열람하고 포크할 수 있는 공개 노트북입니다. 우수 사례를 참고하고 내 과제에 바로 적용해보세요.</p>
+            </div>
+            <div class="cs-list-head">
+              <input class="cs-search" placeholder="공개 노트북 검색…" />
+              <div class="cs-dept-tabs">
+                <button class="cs-dept-tab active">전체</button>
+                <button class="cs-dept-tab">이상 탐지</button>
+                <button class="cs-dept-tab">컴퓨터비전</button>
+                <button class="cs-dept-tab">시계열</button>
+                <button class="cs-dept-tab">NLP</button>
+                <button class="cs-dept-tab">데이터 분석</button>
+              </div>
+            </div>
+            <div class="cs-featured-label">⭐ 이번 달 인기 노트북</div>
+            <div class="cs-nb-grid">
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">제조 데이터 EDA 완전 정복 가이드</div>
+                    <div class="cs-nb-desc">센서·품질·공정 데이터 탐색부터 시각화까지 단계별 실습 노트북</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">데이터 분석</span><span class="cs-nb-tag open">전사 공개</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">이</div>이승훈 · DX추진랩</div>
+                  <span class="cs-nb-stat">👁 342</span>
+                  <span class="cs-nb-stat">🍴 58</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">XGBoost로 불량 예측하기 (입문)</div>
+                    <div class="cs-nb-desc">데이터 전처리부터 모델 학습·평가까지 주석이 풍부한 입문자 노트북</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">예측 모델</span><span class="cs-nb-tag open">전사 공개</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">김</div>김현우 · DX추진랩</div>
+                  <span class="cs-nb-stat">👁 289</span>
+                  <span class="cs-nb-stat">🍴 44</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">YOLO v8 커스텀 학습 템플릿</div>
+                    <div class="cs-nb-desc">사내 이미지 데이터셋으로 YOLO 모델을 파인튜닝하는 전체 파이프라인</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">컴퓨터비전</span><span class="cs-nb-tag open">전사 공개</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">박</div>박서연 · R&amp;D팀</div>
+                  <span class="cs-nb-stat">👁 201</span>
+                  <span class="cs-nb-stat">🍴 37</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="cs-featured-label" style="margin-top:32px">최근 등록</div>
+            <div class="cs-nb-grid">
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">Isolation Forest 이상 탐지 기초</div>
+                    <div class="cs-nb-desc">비지도 학습 기반 이상 탐지 원리와 제조 센서 데이터 적용 예시</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">이상 탐지</span><span class="cs-nb-tag open">전사 공개</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">최</div>최민서 · 생산기술팀</div>
+                  <span class="cs-nb-stat">👁 74</span>
+                  <span class="cs-nb-stat">🍴 9</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">공정 파라미터 최적화 (베이즈 최적화)</div>
+                    <div class="cs-nb-desc">Optuna를 활용한 CNC 가공 파라미터 자동 최적화 실험</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">최적화</span><span class="cs-nb-tag open">전사 공개</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">윤</div>윤재혁 · R&amp;D팀</div>
+                  <span class="cs-nb-stat">👁 61</span>
+                  <span class="cs-nb-stat">🍴 7</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+              <div class="cs-nb-card">
+                <div class="cs-nb-card-top">
+                  <span class="cs-nb-ico">📓</span>
+                  <div class="cs-nb-info">
+                    <div class="cs-nb-name">LLM API 활용 보고서 자동 요약</div>
+                    <div class="cs-nb-desc">Claude API로 품질 보고서·회의록을 자동 요약하는 실습 노트북</div>
+                  </div>
+                </div>
+                <div class="cs-nb-tags"><span class="cs-nb-tag">NLP</span><span class="cs-nb-tag open">전사 공개</span></div>
+                <div class="cs-nb-footer">
+                  <div class="cs-nb-author"><div class="cs-nb-avatar">강</div>강태양 · DX추진랩</div>
+                  <span class="cs-nb-stat">👁 53</span>
+                  <span class="cs-nb-stat">🍴 6</span>
+                  <button class="cs-fork-btn">🍴 포크</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+        <!-- ══ End CODE STUDIO ════════════════════════════════════ -->
 
         <section id="catalog" class="explorer" data-studio-page="explore" aria-label="AI 자산 카탈로그">
           <div class="explorer-head">
@@ -7996,6 +8915,8 @@
       const isDxDiscovery = page === 'dx-discovery';
       const isAxPage = ['tech-news', 'ai-blog', 'gen-ai-proposal'].includes(page);
       const isDsPage = ['data-explore', 'data-load'].includes(page);
+      const isCsPage = ['code-intro', 'code-workspace', 'code-team', 'code-openlab'].includes(page);
+      const csLabels = { 'code-intro': '소개', 'code-workspace': '내 워크스페이스', 'code-team': '팀 노트북', 'code-openlab': '오픈랩' };
       document.body.classList.toggle('home-page', isHome);
       document.body.classList.toggle('admin-page', isAdmin);
       document.body.classList.toggle('registry-page', isRegistry);
@@ -8007,12 +8928,16 @@
       document.body.classList.toggle('gen-ai-proposal-page', page === 'gen-ai-proposal');
       document.body.classList.toggle('data-explore-page', page === 'data-explore');
       document.body.classList.toggle('data-load-page', page === 'data-load');
+      document.body.classList.toggle('code-intro-page', page === 'code-intro');
+      document.body.classList.toggle('code-workspace-page', page === 'code-workspace');
+      document.body.classList.toggle('code-team-page', page === 'code-team');
+      document.body.classList.toggle('code-openlab-page', page === 'code-openlab');
       document.body.classList.remove('portal-page');
       const axLabels = { 'tech-news': 'Tech News', 'ai-blog': 'AI Blog', 'gen-ai-proposal': 'Gen AI Proposal' };
       const dsLabels = { 'data-explore': '데이터 탐색', 'data-load': '데이터 적재 요청' };
       const caption = $('.page-caption');
       if (caption) {
-        caption.textContent = isHome ? 'Home' : isAdmin ? 'Admin 관리자' : isRegistry ? 'AI 자산 등록' : isExplore ? 'AI 자산 탐색' : isDxDiscovery ? 'DX 과제 발굴' : isAxPage ? axLabels[page] : isDsPage ? dsLabels[page] : '소개';
+        caption.textContent = isHome ? 'Home' : isAdmin ? 'Admin 관리자' : isRegistry ? 'AI 자산 등록' : isExplore ? 'AI 자산 탐색' : isDxDiscovery ? 'DX 과제 발굴' : isCsPage ? csLabels[page] : isAxPage ? axLabels[page] : isDsPage ? dsLabels[page] : '소개';
       }
       const breadcrumb = $('.breadcrumb');
       if (breadcrumb) {
@@ -8026,6 +8951,8 @@
                 ? '<span>⌂ Home</span><span>›</span><span>AI STUDIO</span><span>›</span><strong>AI 자산 탐색</strong>'
                 : isDxDiscovery
                   ? '<span>⌂ Home</span><span>›</span><span>AI STUDIO</span><span>›</span><strong>DX 과제 발굴</strong>'
+                : isCsPage
+                  ? `<span>⌂ Home</span><span>›</span><span>CODE STUDIO</span><span>›</span><strong>${csLabels[page]}</strong>`
                 : isAxPage
                   ? `<span>⌂ Home</span><span>›</span><span>AX COMMUNITY</span><span>›</span><strong>${axLabels[page]}</strong>`
                   : isDsPage
@@ -8049,6 +8976,11 @@
         if (portalGroup) portalGroup.classList.add('active');
         const registryMenu = $('[data-page="registry"]');
         if (registryMenu) registryMenu.classList.add('active');
+      } else if (isCsPage) {
+        const csGroup = $('.side-group-btn[data-page="code-intro"]');
+        if (csGroup) csGroup.classList.add('active');
+        const subBtn = $(`#code-studio-sub .side-sub[data-page="${page}"]`);
+        if (subBtn) subBtn.classList.add('active');
       } else if (isAxPage) {
         const axGroup = $('.side-group-btn[data-page="tech-news"]');
         if (axGroup) axGroup.classList.add('active');
