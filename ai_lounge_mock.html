@@ -134,6 +134,8 @@
     body.admin-page .compare-tray { display: none !important; }
     body.admin-page .side-group-btn.active { background: transparent; color: rgba(255,255,255,.72); }
     body.admin-page .side-item.admin-menu { background: rgba(255,255,255,.12); color: #fff; }
+    .side-external-link { text-decoration: none; cursor: pointer; }
+    .side-ext-ico { margin-left: auto; font-size: 11px; opacity: .6; }
 
     body:not(.registry-page) #asset-submit { display: none !important; }
     body.registry-page .content > section:not(#asset-submit) { display: none !important; }
@@ -4741,6 +4743,8 @@
           <button class="side-sub" data-page="ai-blog">AI Blog</button>
           <button class="side-sub" data-page="gen-ai-proposal">Gen AI Proposal</button>
         </div>
+        <a class="side-group-btn side-external-link" href="http://10.217.183.34:9602/" target="_blank" rel="noopener noreferrer"><span class="side-ico">✍</span><span class="side-name">WIA Report</span><span class="side-ext-ico">↗</span></a>
+        <a class="side-group-btn side-external-link" href="http://10.217.183.34:9702/" target="_blank" rel="noopener noreferrer"><span class="side-ico">📝</span><span class="side-name">WIA Meet</span><span class="side-ext-ico">↗</span></a>
       </nav>
     </aside>
 
@@ -10144,15 +10148,15 @@ plt.<span style="color:#93c5fd">show</span>()</div>
     /* ── DX 과제 발굴 Chat Animation ─────────────────────────── */
     (function() {
       const scenario = [
-        { role: 'agent', text: '안녕하세요! 저는 <b>DX 과제 발굴 Agent</b>입니다.<br>해결하고 싶은 업무 과제를 자유롭게 설명해 주시면, 함께 구체화해 드리겠습니다. 어떤 문제를 해결하고 싶으신가요?', typingMs: 1200 },
+        { role: 'agent', text: '안녕하세요! 저는 <b>DX 과제 발굴 Agent</b>입니다.<br>해결하고 싶은 업무 과제를 자유롭게 설명해 주시면, 함께 구체화해 드리겠습니다. 어떤 문제를 해결하고 싶으신가요?', typingMs: 700 },
         { role: 'user',  text: '저희 생산 라인에서 불량품이 너무 많이 발생하고 있어요. 이걸 줄이고 싶은데 어떻게 해야 할지 모르겠어요.', typingMs: 0 },
-        { role: 'agent', text: '불량 발생을 줄이고 싶으시군요! 몇 가지 여쭤볼게요.<br><br>주로 <b>어떤 공정</b>에서 불량이 발생하나요? 그리고 현재 <b>불량률</b>은 얼마나 되나요?', typingMs: 1400 },
+        { role: 'agent', text: '불량 발생을 줄이고 싶으시군요! 몇 가지 여쭤볼게요.<br><br>주로 <b>어떤 공정</b>에서 불량이 발생하나요? 그리고 현재 <b>불량률</b>은 얼마나 되나요?', typingMs: 850 },
         { role: 'user',  text: 'CNC 가공 공정에서 주로 발생해요. 현재 불량률은 약 3.2%이고, 월 평균 손실이 꽤 큽니다.', typingMs: 0 },
-        { role: 'agent', text: '감사합니다. 혹시 현재 어떤 <b>데이터</b>를 수집하고 계신가요?<br>예: 설비 센서 데이터, 작업 조건, 작업자 로그 등', typingMs: 1500 },
+        { role: 'agent', text: '감사합니다. 혹시 현재 어떤 <b>데이터</b>를 수집하고 계신가요?<br>예: 설비 센서 데이터, 작업 조건, 작업자 로그 등', typingMs: 900 },
         { role: 'user',  text: 'CNC 머신에서 진동·온도·절삭력 센서 데이터가 수집되고 있고, 작업 지시서와 검사 결과 데이터도 있어요.', typingMs: 0 },
-        { role: 'agent', text: '완벽합니다! 충분한 데이터가 있네요. 마지막으로, 불량을 <b>사전에 예방</b>하는 것이 목표인가요, 아니면 불량 <b>원인 분석</b>이 더 중요한가요?', typingMs: 1600 },
+        { role: 'agent', text: '완벽합니다! 충분한 데이터가 있네요. 마지막으로, 불량을 <b>사전에 예방</b>하는 것이 목표인가요, 아니면 불량 <b>원인 분석</b>이 더 중요한가요?', typingMs: 950 },
         { role: 'user',  text: '사전 예방이 더 중요해요. 불량이 나기 전에 미리 알 수 있으면 좋겠어요.', typingMs: 0 },
-        { role: 'agent', text: '과제가 충분히 구체화되었습니다! 🎯<br><b>CNC 가공 공정 실시간 불량 예측 시스템</b> 구축 과제로 정리해 드렸습니다.<br>아래에서 과제 정의서와 추천 자산을 확인하세요.', typingMs: 1800, final: true },
+        { role: 'agent', text: '과제가 충분히 구체화되었습니다! 🎯<br><b>CNC 가공 공정 실시간 불량 예측 시스템</b> 구축 과제로 정리해 드렸습니다.<br>아래에서 과제 정의서와 추천 자산을 확인하세요.', typingMs: 1000, final: true },
       ];
 
       const body    = document.getElementById('dxChatBody');
@@ -10191,12 +10195,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
           wrap.appendChild(avatar);
         }
 
-        if (withCta) {
-          const cta = document.createElement('div');
-          cta.className = 'dx-final-cta';
-          cta.innerHTML = '<button class="dx-view-btn" onclick="document.getElementById(\'dxTaskDef\').scrollIntoView({behavior:\'smooth\'})">📋 과제 정의서 보기</button>';
-          wrap.appendChild(cta);
-        }
 
         body.insertBefore(wrap, typing);
         requestAnimationFrame(() => {
@@ -10211,7 +10209,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       }
 
       function runScenario() {
-        let elapsed = 600;
+        let elapsed = 350;
         scenario.forEach((item, i) => {
           if (item.role === 'agent') {
             // Show typing indicator
@@ -10222,15 +10220,15 @@ plt.<span style="color:#93c5fd">show</span>()</div>
               showTyping(false);
               addMessage(item, item.final);
               if (item.final) {
-                timers.push(setTimeout(() => results.classList.add('visible'), 500));
+                timers.push(setTimeout(() => results.classList.add('visible'), 300));
               }
             }, elapsed));
-            elapsed += 600;
+            elapsed += 350;
           } else {
             // User message — no typing indicator, short pause
-            elapsed += 400;
+            elapsed += 250;
             timers.push(setTimeout(() => addMessage(item, false), elapsed));
-            elapsed += 500;
+            elapsed += 300;
           }
         });
       }
