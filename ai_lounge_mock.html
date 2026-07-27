@@ -4706,6 +4706,327 @@
       font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
       color: var(--muted); margin: 24px 0 12px;
     }
+    /* ── 팀 노트북: 워크스페이스 UI ────────────── */
+    .ct-view { padding: 28px 36px; }
+    .ct-page-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+    .ct-page-title { font-size: 22px; font-weight: 900; color: var(--ink); margin: 0 0 4px; }
+    .ct-page-desc { font-size: 13px; color: var(--muted); margin: 0; }
+    .ct-create-btn {
+      flex-shrink: 0; background: var(--wia-blue); color: #fff; border: none;
+      border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 800;
+      cursor: pointer; transition: var(--transition); white-space: nowrap;
+    }
+    .ct-create-btn:hover { background: var(--wia-blue-2); }
+    .ct-join-btn {
+      flex-shrink: 0; background: #fff; color: var(--wia-blue);
+      border: 1.5px solid var(--wia-blue); border-radius: 10px;
+      padding: 10px 18px; font-size: 13px; font-weight: 800;
+      cursor: pointer; transition: var(--transition); white-space: nowrap;
+    }
+    .ct-join-btn:hover { background: rgba(6,41,131,.06); }
+    .ct-token-btn {
+      display: flex; align-items: center; gap: 4px;
+      background: none; border: 1px solid var(--line); border-radius: 7px;
+      padding: 4px 10px; font-size: 11px; font-weight: 700; color: var(--muted);
+      cursor: pointer; transition: var(--transition); flex-shrink: 0;
+    }
+    .ct-token-btn:hover { border-color: var(--wia-blue); color: var(--wia-blue); }
+    .ct-token-btn.copied { border-color: #16a34a; color: #16a34a; }
+    .cs-share-ws-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; border: 1.5px solid var(--line); border-radius: 10px;
+      cursor: pointer; transition: var(--transition); background: #fff;
+    }
+    .cs-share-ws-item:hover { border-color: var(--wia-blue); background: rgba(6,41,131,.03); }
+    .cs-share-ws-item.selected { border-color: var(--wia-blue); background: rgba(6,41,131,.06); }
+    .cs-share-ws-item.selected .cs-share-ws-check { opacity: 1; }
+    .cs-share-ws-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+    .cs-share-ws-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+    .cs-share-ws-check { margin-left: auto; width: 20px; height: 20px; border-radius: 50%; background: var(--wia-blue); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+    .ct-ws-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .ct-ws-card {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+      padding: 20px; display: flex; flex-direction: column; gap: 12px;
+      box-shadow: var(--shadow-soft); cursor: pointer;
+      transition: transform .18s, box-shadow .18s, border-color .18s;
+    }
+    .ct-ws-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--wia-blue); }
+    .ct-ws-card-head { display: flex; align-items: flex-start; gap: 12px; }
+    .ct-ws-ico {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .ct-ws-ico.blue { background: rgba(6,41,131,.1); }
+    .ct-ws-ico.purple { background: rgba(124,58,237,.1); }
+    .ct-ws-ico.green { background: rgba(10,114,64,.1); }
+    .ct-ws-ico.orange { background: rgba(198,122,0,.1); }
+    .ct-ws-card-title { flex: 1; min-width: 0; }
+    .ct-ws-name { font-size: 14px; font-weight: 900; color: var(--ink); margin-bottom: 5px; }
+    .ct-badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+    .ct-badge.admin { background: rgba(6,41,131,.1); color: var(--wia-blue); }
+    .ct-badge.member { background: rgba(22,163,74,.1); color: #16a34a; }
+    .ct-ws-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin: 0; }
+    .ct-ws-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ct-ws-tag { font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: rgba(6,41,131,.06); color: var(--wia-blue); }
+    .ct-ws-footer { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .ct-ws-avatars { display: flex; margin-right: auto; }
+    .ct-ws-avatar {
+      width: 24px; height: 24px; border-radius: 50%; background: var(--wia-blue); color: #fff;
+      font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+      border: 2px solid #fff; margin-left: -6px;
+    }
+    .ct-ws-avatar:first-child { margin-left: 0; }
+    .ct-ws-stat { font-size: 11.5px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 4px; }
+    .ct-ws-stat strong { color: var(--ink); }
+
+    /* 상세 뷰 */
+    .ct-detail-head {
+      display: flex; align-items: center; gap: 12px;
+      padding: 18px 28px; border-bottom: 1px solid var(--line); flex-wrap: wrap;
+      background: #fff; position: sticky; top: 0; z-index: 2;
+    }
+    .ct-back-btn {
+      background: none; border: 1px solid var(--line); border-radius: 8px;
+      padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted);
+      cursor: pointer; transition: var(--transition); flex-shrink: 0;
+    }
+    .ct-back-btn:hover { border-color: var(--wia-blue); color: var(--wia-blue); }
+    .ct-detail-title-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .ct-detail-ws-ico { font-size: 22px; }
+    .ct-detail-title { font-size: 17px; font-weight: 900; color: var(--ink); margin: 0; }
+    .ct-detail-role { font-size: 10px; font-weight: 800; padding: 2px 9px; border-radius: 20px; flex-shrink: 0; }
+    .ct-detail-role.admin { background: rgba(6,41,131,.1); color: var(--wia-blue); }
+    .ct-detail-role.member { background: rgba(22,163,74,.1); color: #16a34a; }
+    .ct-detail-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+    .ct-detail-meta-text { font-size: 12px; color: var(--muted); }
+    .ct-add-nb-btn {
+      background: var(--wia-blue); color: #fff; border: none; border-radius: 8px;
+      padding: 7px 14px; font-size: 12.5px; font-weight: 800; cursor: pointer; transition: var(--transition);
+    }
+    .ct-add-nb-btn:hover { background: var(--wia-blue-2); }
+    .ct-detail-notebooks { padding: 24px 28px; }
+
+    /* 생성 모달 */
+    .ct-modal-overlay {
+      position: fixed; inset: 0; background: rgba(13,32,72,.45);
+      z-index: 200; display: flex; align-items: center; justify-content: center;
+    }
+    .ct-modal {
+      background: #fff; border-radius: 18px; width: 480px; max-width: 92vw;
+      box-shadow: 0 24px 60px rgba(6,41,131,.18); display: flex; flex-direction: column; overflow: hidden;
+    }
+    .ct-modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 16px; border-bottom: 1px solid var(--line);
+    }
+    .ct-modal-title { font-size: 15px; font-weight: 900; color: var(--ink); }
+    .ct-modal-close { background: none; border: none; font-size: 16px; color: var(--muted); cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: var(--transition); }
+    .ct-modal-close:hover { background: #f0f4fa; color: var(--ink); }
+    .ct-modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 10px; }
+    .ct-form-label { font-size: 12px; font-weight: 800; color: var(--ink); }
+    .ct-required { color: var(--wia-red); }
+    .ct-muted-label { color: var(--muted); font-weight: 400; }
+    .ct-form-input, .ct-form-select {
+      width: 100%; border: 1px solid var(--line); border-radius: 9px;
+      padding: 9px 13px; font-size: 13px; outline: none; background: #fff; box-sizing: border-box; transition: var(--transition);
+    }
+    .ct-form-textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 9px;
+      padding: 9px 13px; font-size: 13px; outline: none; background: #fff;
+      box-sizing: border-box; resize: vertical; min-height: 72px; transition: var(--transition);
+    }
+    .ct-form-input:focus, .ct-form-select:focus, .ct-form-textarea:focus { border-color: var(--wia-blue); box-shadow: 0 0 0 3px rgba(6,41,131,.08); }
+    .ct-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px 20px; border-top: 1px solid var(--line); }
+    .ct-modal-cancel { background: none; border: 1px solid var(--line); border-radius: 9px; padding: 9px 18px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; transition: var(--transition); }
+    .ct-modal-cancel:hover { border-color: var(--muted); color: var(--ink); }
+    .ct-modal-submit { background: var(--wia-blue); color: #fff; border: none; border-radius: 9px; padding: 9px 20px; font-size: 13px; font-weight: 800; cursor: pointer; transition: var(--transition); }
+    .ct-modal-submit:hover { background: var(--wia-blue-2); }
+
+    /* ── 오픈랩 (Open Lab) — .ol- prefix ────────────────────────── */
+    .ol-hero {
+      background: linear-gradient(135deg, #051e6b 0%, #062983 40%, #0b3fbe 75%, #1450d1 100%);
+      padding: 52px 48px 48px; display: flex; align-items: center; gap: 48px;
+      position: relative; overflow: hidden;
+    }
+    .ol-hero::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse 60% 80% at 110% 50%, rgba(100,160,255,.13) 0%, transparent 70%),
+                  radial-gradient(ellipse 30% 40% at 5% 80%, rgba(255,255,255,.05) 0%, transparent 60%);
+    }
+    .ol-hero-left { flex: 1; min-width: 0; position: relative; }
+    .ol-hero-left .eyebrow { color: rgba(180,210,255,.75); margin-bottom: 10px; }
+    .ol-hero-title { font-size: 38px; font-weight: 950; color: #fff; letter-spacing: -.03em; line-height: 1.1; margin: 0 0 12px; }
+    .ol-hero-title .red-dot { color: #ff8080; }
+    .ol-hero-desc { font-size: 14px; color: rgba(220,235,255,.8); line-height: 1.7; margin: 0 0 28px; }
+    .ol-stats { display: flex; align-items: center; }
+    .ol-stat-item { display: flex; flex-direction: column; align-items: flex-start; padding-right: 20px; }
+    .ol-stat-num { font-size: 26px; font-weight: 950; color: #fff; letter-spacing: -.04em; line-height: 1; }
+    .ol-stat-label { font-size: 11px; font-weight: 700; color: rgba(180,210,255,.7); margin-top: 3px; letter-spacing: .02em; }
+    .ol-stat-divider { width: 1px; height: 36px; background: rgba(255,255,255,.18); margin-right: 20px; flex-shrink: 0; }
+    .ol-hero-right { flex-shrink: 0; width: 340px; display: flex; flex-direction: column; gap: 14px; position: relative; }
+    .ol-search-wrap {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22);
+      border-radius: 12px; padding: 10px 14px; backdrop-filter: blur(8px);
+      transition: border-color .18s, background .18s;
+    }
+    .ol-search-wrap:focus-within { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.45); box-shadow: 0 0 0 3px rgba(255,255,255,.1); }
+    .ol-search-icon { color: rgba(200,220,255,.7); flex-shrink: 0; }
+    .ol-search-input { flex: 1; background: none; border: none; outline: none; font-size: 13.5px; color: #fff; font-weight: 500; }
+    .ol-search-input::placeholder { color: rgba(200,220,255,.55); }
+    .ol-cat-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ol-cat-pill {
+      padding: 5px 13px; border-radius: 20px; border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.09); color: rgba(220,235,255,.8);
+      font-size: 11.5px; font-weight: 700; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+    }
+    .ol-cat-pill:hover { background: rgba(255,255,255,.18); color: #fff; }
+    .ol-cat-pill.active { background: #fff; color: var(--wia-blue); border-color: #fff; box-shadow: 0 3px 12px rgba(0,0,0,.18); }
+
+    .ol-wrap { padding: 36px 48px 52px; }
+    .ol-section-label { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
+    .ol-section-label-icon { font-size: 13px; }
+    .ol-section-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; margin-top: 40px; }
+
+    .ol-spotlight {
+      background: linear-gradient(120deg, #f5f7fb 0%, #eef2ff 100%);
+      border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 28px 30px;
+      display: flex; gap: 32px; align-items: stretch; box-shadow: var(--shadow-soft); overflow: hidden;
+    }
+    .ol-spotlight-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+    .ol-spotlight-badges { display: flex; align-items: center; gap: 8px; }
+    .ol-level-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: .03em;
+    }
+    .ol-level-badge.beginner { background: rgba(16,185,129,.1); color: #059669; border: 1px solid rgba(16,185,129,.25); }
+    .ol-level-badge.mid      { background: rgba(245,158,11,.1); color: #d97706; border: 1px solid rgba(245,158,11,.25); }
+    .ol-level-badge.advanced { background: rgba(239,68,68,.1);  color: #dc2626; border: 1px solid rgba(239,68,68,.25);  }
+    .ol-spotlight-cat { font-size: 11px; font-weight: 700; color: var(--wia-blue); background: rgba(6,41,131,.08); border-radius: 20px; padding: 3px 10px; }
+    .ol-spotlight-title { font-size: 20px; font-weight: 900; color: var(--ink); letter-spacing: -.02em; line-height: 1.25; margin: 4px 0 0; }
+    .ol-spotlight-desc { font-size: 13px; color: var(--body); line-height: 1.65; margin: 0; flex: 1; }
+    .ol-spotlight-meta { display: flex; align-items: center; gap: 14px; padding-top: 14px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+    .ol-spotlight-author { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    .ol-spotlight-author .cs-nb-avatar { width: 24px; height: 24px; font-size: 11px; }
+    .ol-spotlight-stat { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+    .ol-spotlight-fork-btn {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+      background: var(--wia-blue); color: #fff; border: none; border-radius: 9px; padding: 9px 20px;
+      font-size: 13px; font-weight: 800; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(6,41,131,.22); transition: background .18s, box-shadow .18s;
+    }
+    .ol-spotlight-fork-btn:hover { background: var(--wia-blue-2); box-shadow: 0 8px 24px rgba(6,41,131,.3); }
+    .ol-spotlight-right { flex-shrink: 0; width: 340px; display: flex; flex-direction: column; }
+    .ol-code-box {
+      background: #0f172a; border-radius: 12px; flex: 1; overflow: hidden;
+      box-shadow: 0 8px 28px rgba(0,0,0,.22); display: flex; flex-direction: column;
+    }
+    .ol-code-box-bar {
+      padding: 9px 14px; background: #1e293b; border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ol-code-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .ol-code-dot.r { background: #ff5f57; }
+    .ol-code-dot.y { background: #ffbd2e; }
+    .ol-code-dot.g { background: #28c840; }
+    .ol-code-box-filename { font-size: 11px; color: #64748b; margin-left: 8px; font-family: "JetBrains Mono", monospace; }
+    .ol-code-body {
+      padding: 14px 16px; flex: 1; font-family: "JetBrains Mono", monospace;
+      font-size: 11px; line-height: 1.75; color: #e2e8f0; overflow: hidden; margin: 0;
+    }
+    .ol-code-body .cs-cm  { color: #64748b; font-style: italic; }
+    .ol-code-body .cs-kw  { color: #c084fc; }
+    .ol-code-body .cs-fn  { color: #60a5fa; }
+    .ol-code-body .cs-str { color: #86efac; }
+    .ol-code-body .cs-num { color: #fbbf24; }
+
+    .ol-level-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ol-level-tab {
+      padding: 5px 14px; border-radius: 20px; border: 1px solid var(--line);
+      background: #fff; color: var(--muted); font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+    }
+    .ol-level-tab:hover { border-color: var(--wia-blue); color: var(--wia-blue); }
+    .ol-level-tab.active { background: var(--wia-blue); color: #fff; border-color: var(--wia-blue); }
+
+    .ol-nb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .ol-nb-card {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+      padding: 20px 18px 15px; display: flex; flex-direction: column; gap: 11px;
+      box-shadow: var(--shadow-soft); transition: transform .18s, box-shadow .18s, border-color .18s; cursor: pointer;
+    }
+    .ol-nb-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--wia-blue); }
+    .ol-nb-card-top { display: flex; align-items: flex-start; gap: 11px; }
+    .ol-nb-card-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, rgba(6,41,131,.1) 0%, rgba(6,41,131,.06) 100%); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .ol-nb-card-info { flex: 1; min-width: 0; }
+    .ol-nb-card-name { font-size: 13.5px; font-weight: 800; color: var(--ink); line-height: 1.35; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ol-nb-card-desc { font-size: 11.5px; color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ol-nb-card-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ol-nb-card-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: rgba(6,41,131,.07); color: var(--wia-blue); }
+    .ol-nb-card-footer { display: flex; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); margin-top: auto; }
+    .ol-nb-card-author { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); flex: 1; }
+    .ol-nb-card-stat { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); }
+
+    .ol-recent-list { display: flex; flex-direction: column; gap: 10px; }
+    .ol-recent-row {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px;
+      display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-soft);
+      transition: border-color .18s, box-shadow .18s; cursor: pointer;
+    }
+    .ol-recent-row:hover { border-color: var(--wia-blue); box-shadow: 0 6px 20px rgba(6,41,131,.08); }
+    .ol-recent-icon { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, rgba(6,41,131,.1) 0%, rgba(6,41,131,.05) 100%); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .ol-recent-info { flex: 1; min-width: 0; }
+    .ol-recent-name { font-size: 13px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+    .ol-recent-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ol-recent-tag { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 20px; background: rgba(6,41,131,.07); color: var(--wia-blue); }
+    .ol-recent-meta { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+    .ol-recent-author { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
+    .ol-recent-stat { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .ol-recent-new-badge { background: rgba(230,0,18,.08); color: var(--wia-red); border: 1px solid rgba(230,0,18,.18); font-size: 9.5px; font-weight: 800; padding: 1px 7px; border-radius: 20px; letter-spacing: .04em; white-space: nowrap; }
+
+    .ol-contributors { display: flex; gap: 14px; flex-wrap: wrap; }
+    .ol-contrib-card {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 22px 20px;
+      flex: 1; min-width: 160px; max-width: 220px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      box-shadow: var(--shadow-soft); transition: transform .18s, box-shadow .18s; cursor: pointer; text-align: center;
+    }
+    .ol-contrib-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+    .ol-contrib-avatar-wrap { position: relative; display: inline-block; }
+    .ol-contrib-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--wia-blue) 0%, #1a3dbe 100%);
+      color: #fff; font-size: 20px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center; border: 3px solid var(--line);
+    }
+    .ol-contrib-card:first-child .ol-contrib-avatar { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.15); }
+    .ol-contrib-rank {
+      position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%;
+      background: #f59e0b; color: #fff; font-size: 9px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ol-contrib-name { font-size: 13.5px; font-weight: 800; color: var(--ink); }
+    .ol-contrib-dept { font-size: 11px; color: var(--muted); margin-top: -6px; }
+    .ol-contrib-stats { display: flex; gap: 10px; }
+    .ol-contrib-stat { display: flex; flex-direction: column; align-items: center; }
+    .ol-contrib-stat-num { font-size: 15px; font-weight: 900; color: var(--wia-blue); }
+    .ol-contrib-stat-label { font-size: 10px; color: var(--muted); font-weight: 600; }
+    .ol-contrib-divider { width: 1px; height: 32px; background: var(--line); }
+
+    /* 오픈랩 전체 노트북 뷰 */
+    .ol-view-tabs { display: flex; align-items: center; gap: 0; border-bottom: 2px solid var(--line); margin-bottom: 36px; }
+    .ol-view-tab { padding: 10px 24px; font-size: 14px; font-weight: 700; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; transition: color .15s, border-color .15s; letter-spacing: -.01em; }
+    .ol-view-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .ol-view-tab:hover:not(.active) { color: var(--ink); }
+    .ol-all-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .ol-all-count { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+    .ol-all-level-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .ol-all-level-tab { padding: 5px 13px; font-size: 12px; font-weight: 500; border: 1px solid var(--line); border-radius: 20px; background: none; cursor: pointer; color: var(--muted); transition: all .15s; }
+    .ol-all-level-tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .ol-all-sort { display: flex; gap: 4px; margin-left: auto; }
+    .ol-all-sort-btn { padding: 5px 13px; font-size: 12px; font-weight: 500; border: 1px solid var(--line); border-radius: 20px; background: none; cursor: pointer; color: var(--muted); transition: all .15s; }
+    .ol-all-sort-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .ol-all-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     /* ── End CODE STUDIO ─────────────────────────────────────────── */
   </style>
 </head>
@@ -5427,7 +5748,7 @@
                 <button class="cs-toolbar-btn run">▶ 실행</button>
                 <button class="cs-toolbar-btn" data-cs-action="add-cell">+ 셀 추가</button>
                 <button class="cs-toolbar-btn">↑ 커널 재시작</button>
-                <button class="cs-toolbar-btn">공유</button>
+                <button class="cs-toolbar-btn" onclick="csOpenShareModal()">↗ 공유</button>
               </div>
               <div class="cs-cells">
 
@@ -5543,246 +5864,199 @@ plt.<span style="color:#93c5fd">show</span>()</div>
             </div>
 
           </div><!-- /.cs-workspace-shell -->
+
+          <!-- 공유 모달 -->
+          <div id="cs-share-overlay" class="ct-modal-overlay" style="display:none" onclick="csCloseShareModalOutside(event)">
+            <div class="ct-modal" style="width:440px">
+              <div class="ct-modal-head">
+                <span class="ct-modal-title">팀 워크스페이스에 공유</span>
+                <button class="ct-modal-close" onclick="csCloseShareModal()">✕</button>
+              </div>
+              <div class="ct-modal-body" style="gap:8px">
+                <p style="font-size:12.5px;color:var(--muted);margin:0">공유할 워크스페이스를 선택하세요. 해당 워크스페이스 멤버 전원이 열람할 수 있습니다.</p>
+                <div id="cs-share-ws-list" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+              </div>
+              <div class="ct-modal-footer">
+                <button class="ct-modal-cancel" onclick="csCloseShareModal()">취소</button>
+                <button class="ct-modal-submit" id="cs-share-submit" onclick="csShareNotebook()" disabled style="opacity:.5;cursor:not-allowed">공유하기</button>
+              </div>
+            </div>
+          </div>
+
         </section>
 
         <!-- 팀 노트북 -->
-        <section id="code-team" data-cs-page="code-team" aria-label="팀 노트북">
-          <div class="cs-wrap">
-            <div class="cs-hero">
-              <div class="eyebrow">CODE STUDIO</div>
-              <h2>팀 노트북<span class="red-dot">·</span></h2>
-              <p>우리 팀·부서가 공유한 노트북을 탐색하고 포크해서 내 워크스페이스에서 바로 활용하세요.</p>
-            </div>
-            <div class="cs-list-head">
-              <input class="cs-search" placeholder="노트북 검색…" />
-              <div class="cs-dept-tabs">
-                <button class="cs-dept-tab active">전체</button>
-                <button class="cs-dept-tab">생산기술</button>
-                <button class="cs-dept-tab">품질</button>
-                <button class="cs-dept-tab">R&amp;D·설계</button>
-                <button class="cs-dept-tab">SCM·구매</button>
-                <button class="cs-dept-tab">DX추진랩</button>
+        <section id="code-team" data-cs-page="code-team" aria-label="팀 노트북" style="padding:0">
+
+          <!-- View 1: 워크스페이스 목록 -->
+          <div id="ct-list-view" class="ct-view">
+            <div class="ct-page-head">
+              <div>
+                <h2 class="ct-page-title">팀 워크스페이스</h2>
+                <p class="ct-page-desc">팀·부서 단위로 노트북을 함께 관리하고 협업하세요.</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-shrink:0">
+                <button class="ct-join-btn" onclick="ctOpenJoinModal()">↗ 워크스페이스 참가</button>
+                <button class="ct-create-btn" onclick="ctOpenModal()">+ 워크스페이스 만들기</button>
               </div>
             </div>
-            <div class="cs-nb-grid">
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">CNC 진동 데이터 이상 탐지 파이프라인</div>
-                    <div class="cs-nb-desc">Isolation Forest 기반 이상 탐지, 실시간 알림 연동까지 포함</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">이상 탐지</span><span class="cs-nb-tag team">생산기술</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">김</div>김민준 · 생산기술팀</div>
-                  <span class="cs-nb-stat">🍴 12</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
+            <div class="ct-ws-grid" id="ct-ws-grid"></div>
+          </div>
+
+          <!-- View 2: 워크스페이스 상세 -->
+          <div id="ct-detail-view" style="display:none">
+            <div class="ct-detail-head">
+              <button class="ct-back-btn" onclick="ctCloseWorkspace()">← 목록으로</button>
+              <div class="ct-detail-title-row">
+                <span class="ct-detail-ws-ico" id="ct-detail-ico"></span>
+                <h2 class="ct-detail-title" id="ct-detail-title"></h2>
+                <span class="ct-detail-role" id="ct-detail-role"></span>
               </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">품질 검사 이미지 분류 모델 (ResNet50)</div>
-                    <div class="cs-nb-desc">표면 결함 유형 6종 분류, 전이학습 파인튜닝 포함</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">컴퓨터비전</span><span class="cs-nb-tag team">품질</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">이</div>이수연 · 품질팀</div>
-                  <span class="cs-nb-stat">🍴 8</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
+              <div class="ct-detail-actions">
+                <span class="ct-detail-meta-text" id="ct-detail-meta"></span>
+                <button class="ct-add-nb-btn">+ 노트북 추가</button>
               </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">수요 예측 LSTM 시계열 모델</div>
-                    <div class="cs-nb-desc">월별 부품 수요량 예측, MAE 기준 기존 대비 23% 개선</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">시계열</span><span class="cs-nb-tag team">SCM·구매</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">박</div>박지훈 · SCM팀</div>
-                  <span class="cs-nb-stat">🍴 15</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
+            </div>
+            <div class="ct-detail-notebooks">
+              <div class="cs-nb-grid" id="ct-detail-notebooks"></div>
+            </div>
+          </div>
+
+          <!-- 생성 모달 -->
+          <div id="ct-modal-overlay" class="ct-modal-overlay" style="display:none" onclick="ctCloseModalOutside(event)">
+            <div class="ct-modal">
+              <div class="ct-modal-head">
+                <span class="ct-modal-title">팀 워크스페이스 만들기</span>
+                <button class="ct-modal-close" onclick="ctCloseModal()">✕</button>
               </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">공구 마모 예측 회귀 모델</div>
-                    <div class="cs-nb-desc">절삭력·온도 센서 조합으로 공구 잔여 수명 예측</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">예측 모델</span><span class="cs-nb-tag team">생산기술</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">최</div>최재원 · 생산기술팀</div>
-                  <span class="cs-nb-stat">🍴 6</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
+              <div class="ct-modal-body">
+                <label class="ct-form-label">워크스페이스 이름 <span class="ct-required">*</span></label>
+                <input class="ct-form-input" placeholder="예: 생산기술팀 AI 파이프라인" id="ct-ws-name" />
+                <label class="ct-form-label">설명</label>
+                <textarea class="ct-form-textarea" placeholder="워크스페이스의 목적이나 프로젝트 내용을 입력하세요" id="ct-ws-desc"></textarea>
+                <label class="ct-form-label">공개 범위</label>
+                <select class="ct-form-select" id="ct-ws-scope">
+                  <option value="team">팀 내 공개</option>
+                  <option value="dept">부서 공개</option>
+                  <option value="all">전사 공개</option>
+                </select>
+                <label class="ct-form-label">멤버 초대 <span class="ct-muted-label">(이름 또는 사번)</span></label>
+                <input class="ct-form-input" placeholder="예: 김민준, 이수연" id="ct-ws-members" />
               </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">설비 에너지 소비 최적화 분석</div>
-                    <div class="cs-nb-desc">시간대별·공정별 에너지 소비 패턴 분석 및 절감 시뮬레이션</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">데이터 분석</span><span class="cs-nb-tag team">DX추진랩</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">홍</div>홍길동 · DX추진랩</div>
-                  <span class="cs-nb-stat">🍴 9</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
-              </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">NLP 기반 불량 보고서 자동 분류</div>
-                    <div class="cs-nb-desc">작업자 보고서 텍스트를 분석해 불량 유형·원인 자동 태깅</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">NLP</span><span class="cs-nb-tag team">품질</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">정</div>정유진 · 품질팀</div>
-                  <span class="cs-nb-stat">🍴 11</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
+              <div class="ct-modal-footer">
+                <button class="ct-modal-cancel" onclick="ctCloseModal()">취소</button>
+                <button class="ct-modal-submit" onclick="ctCreateWorkspace()">만들기</button>
               </div>
             </div>
           </div>
+
+          <!-- 참가 모달 -->
+          <div id="ct-join-overlay" class="ct-modal-overlay" style="display:none" onclick="ctCloseJoinModalOutside(event)">
+            <div class="ct-modal">
+              <div class="ct-modal-head">
+                <span class="ct-modal-title">워크스페이스 참가</span>
+                <button class="ct-modal-close" onclick="ctCloseJoinModal()">✕</button>
+              </div>
+              <div class="ct-modal-body">
+                <p style="font-size:13px;color:var(--muted);margin:0 0 4px">팀원에게 받은 공유 토큰을 입력하면 해당 워크스페이스에 참가할 수 있습니다.</p>
+                <label class="ct-form-label">공유 토큰 <span class="ct-required">*</span></label>
+                <input class="ct-form-input" placeholder="예: WS-A1B2-C3D4-E5F6" id="ct-join-token" style="font-family:monospace;letter-spacing:.05em" />
+              </div>
+              <div class="ct-modal-footer">
+                <button class="ct-modal-cancel" onclick="ctCloseJoinModal()">취소</button>
+                <button class="ct-modal-submit" onclick="ctJoinWorkspace()">참가하기</button>
+              </div>
+            </div>
+          </div>
+
         </section>
 
         <!-- 오픈랩 -->
-        <section id="code-openlab" data-cs-page="code-openlab" aria-label="오픈랩">
-          <div class="cs-wrap">
-            <div class="cs-hero">
-              <div class="eyebrow">CODE STUDIO</div>
-              <h2>오픈랩<span class="red-dot">·</span></h2>
-              <p>전사 누구나 열람하고 포크할 수 있는 공개 노트북입니다. 우수 사례를 참고하고 내 과제에 바로 적용해보세요.</p>
-            </div>
-            <div class="cs-list-head">
-              <input class="cs-search" placeholder="공개 노트북 검색…" />
-              <div class="cs-dept-tabs">
-                <button class="cs-dept-tab active">전체</button>
-                <button class="cs-dept-tab">이상 탐지</button>
-                <button class="cs-dept-tab">컴퓨터비전</button>
-                <button class="cs-dept-tab">시계열</button>
-                <button class="cs-dept-tab">NLP</button>
-                <button class="cs-dept-tab">데이터 분석</button>
-              </div>
-            </div>
-            <div class="cs-featured-label">⭐ 이번 달 인기 노트북</div>
-            <div class="cs-nb-grid">
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">제조 데이터 EDA 완전 정복 가이드</div>
-                    <div class="cs-nb-desc">센서·품질·공정 데이터 탐색부터 시각화까지 단계별 실습 노트북</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">데이터 분석</span><span class="cs-nb-tag open">전사 공개</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">이</div>이승훈 · DX추진랩</div>
-                  <span class="cs-nb-stat">👁 342</span>
-                  <span class="cs-nb-stat">🍴 58</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
-              </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">XGBoost로 불량 예측하기 (입문)</div>
-                    <div class="cs-nb-desc">데이터 전처리부터 모델 학습·평가까지 주석이 풍부한 입문자 노트북</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">예측 모델</span><span class="cs-nb-tag open">전사 공개</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">김</div>김현우 · DX추진랩</div>
-                  <span class="cs-nb-stat">👁 289</span>
-                  <span class="cs-nb-stat">🍴 44</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
-              </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">YOLO v8 커스텀 학습 템플릿</div>
-                    <div class="cs-nb-desc">사내 이미지 데이터셋으로 YOLO 모델을 파인튜닝하는 전체 파이프라인</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">컴퓨터비전</span><span class="cs-nb-tag open">전사 공개</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">박</div>박서연 · R&amp;D팀</div>
-                  <span class="cs-nb-stat">👁 201</span>
-                  <span class="cs-nb-stat">🍴 37</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
-              </div>
-            </div>
+        <section id="code-openlab" data-cs-page="code-openlab" aria-label="오픈랩" style="padding:0">
 
-            <div class="cs-featured-label" style="margin-top:32px">최근 등록</div>
-            <div class="cs-nb-grid">
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">Isolation Forest 이상 탐지 기초</div>
-                    <div class="cs-nb-desc">비지도 학습 기반 이상 탐지 원리와 제조 센서 데이터 적용 예시</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">이상 탐지</span><span class="cs-nb-tag open">전사 공개</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">최</div>최민서 · 생산기술팀</div>
-                  <span class="cs-nb-stat">👁 74</span>
-                  <span class="cs-nb-stat">🍴 9</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
-              </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">공정 파라미터 최적화 (베이즈 최적화)</div>
-                    <div class="cs-nb-desc">Optuna를 활용한 CNC 가공 파라미터 자동 최적화 실험</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">최적화</span><span class="cs-nb-tag open">전사 공개</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">윤</div>윤재혁 · R&amp;D팀</div>
-                  <span class="cs-nb-stat">👁 61</span>
-                  <span class="cs-nb-stat">🍴 7</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
-              </div>
-              <div class="cs-nb-card">
-                <div class="cs-nb-card-top">
-                  <span class="cs-nb-ico">📓</span>
-                  <div class="cs-nb-info">
-                    <div class="cs-nb-name">LLM API 활용 보고서 자동 요약</div>
-                    <div class="cs-nb-desc">Claude API로 품질 보고서·회의록을 자동 요약하는 실습 노트북</div>
-                  </div>
-                </div>
-                <div class="cs-nb-tags"><span class="cs-nb-tag">NLP</span><span class="cs-nb-tag open">전사 공개</span></div>
-                <div class="cs-nb-footer">
-                  <div class="cs-nb-author"><div class="cs-nb-avatar">강</div>강태양 · DX추진랩</div>
-                  <span class="cs-nb-stat">👁 53</span>
-                  <span class="cs-nb-stat">🍴 6</span>
-                  <button class="cs-fork-btn">🍴 포크</button>
-                </div>
+          <!-- 히어로 배너 -->
+          <div class="ol-hero">
+            <div class="ol-hero-left">
+              <div class="eyebrow">CODE STUDIO · OPEN LAB</div>
+              <h2 class="ol-hero-title">오픈랩<span class="red-dot">·</span></h2>
+              <p class="ol-hero-desc">전사 누구나 열람하고 포크할 수 있는 공개 노트북입니다.<br>우수 사례를 참고하고 내 과제에 바로 적용해 보세요.</p>
+              <div class="ol-stats">
+                <div class="ol-stat-item"><span class="ol-stat-num">127</span><span class="ol-stat-label">공개 노트북</span></div>
+                <div class="ol-stat-divider"></div>
+                <div class="ol-stat-item"><span class="ol-stat-num">89</span><span class="ol-stat-label">기여자</span></div>
+                <div class="ol-stat-divider"></div>
+                <div class="ol-stat-item"><span class="ol-stat-num">1,284</span><span class="ol-stat-label">누적 포크</span></div>
+                <div class="ol-stat-divider"></div>
+                <div class="ol-stat-item"><span class="ol-stat-num">12K+</span><span class="ol-stat-label">조회수</span></div>
               </div>
             </div>
-
+            <div class="ol-hero-right">
+              <div class="ol-search-wrap">
+                <svg class="ol-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                <input id="olSearchInput" class="ol-search-input" placeholder="노트북 검색…  예: XGBoost, 이상탐지" oninput="olHandleSearch()" />
+              </div>
+              <div class="ol-cat-pills">
+                <button class="ol-cat-pill active" data-cat="전체" onclick="olSetCat(this)">전체</button>
+                <button class="ol-cat-pill" data-cat="이상탐지" onclick="olSetCat(this)">이상탐지</button>
+                <button class="ol-cat-pill" data-cat="컴퓨터비전" onclick="olSetCat(this)">컴퓨터비전</button>
+                <button class="ol-cat-pill" data-cat="시계열" onclick="olSetCat(this)">시계열</button>
+                <button class="ol-cat-pill" data-cat="NLP" onclick="olSetCat(this)">NLP</button>
+                <button class="ol-cat-pill" data-cat="데이터분석" onclick="olSetCat(this)">데이터분석</button>
+                <button class="ol-cat-pill" data-cat="최적화" onclick="olSetCat(this)">최적화</button>
+                <button class="ol-cat-pill" data-cat="GenAI" onclick="olSetCat(this)">GenAI</button>
+              </div>
+            </div>
           </div>
+
+          <!-- 본문 -->
+          <div class="ol-wrap">
+            <!-- 뷰 탭 -->
+            <div class="ol-view-tabs">
+              <button class="ol-view-tab active" data-view="home" onclick="olSetView(this)">홈</button>
+              <button class="ol-view-tab" data-view="all" onclick="olSetView(this)">전체 노트북</button>
+            </div>
+
+            <!-- 홈 뷰 -->
+            <div id="olHomeView">
+              <div class="ol-section-label"><span class="ol-section-label-icon">✦</span>이달의 스포트라이트</div>
+              <div class="ol-spotlight" id="olSpotlight"></div>
+
+              <div class="ol-section-head">
+                <div class="ol-section-label" style="margin:0"><span class="ol-section-label-icon">⭐</span>인기 노트북</div>
+                <div class="ol-level-tabs">
+                  <button class="ol-level-tab active" data-level="전체" onclick="olSetLevel(this)">전체 난이도</button>
+                  <button class="ol-level-tab" data-level="입문" onclick="olSetLevel(this)">🟢 입문</button>
+                  <button class="ol-level-tab" data-level="중급" onclick="olSetLevel(this)">🟡 중급</button>
+                  <button class="ol-level-tab" data-level="고급" onclick="olSetLevel(this)">🔴 고급</button>
+                </div>
+              </div>
+              <div class="ol-nb-grid" id="olTrendingGrid"></div>
+
+              <div class="ol-section-label" style="margin-top:40px"><span class="ol-section-label-icon">🕐</span>최근 등록</div>
+              <div class="ol-recent-list" id="olRecentList"></div>
+
+            </div>
+
+            <!-- 전체 노트북 뷰 -->
+            <div id="olAllView" style="display:none">
+              <div class="ol-all-toolbar">
+                <span class="ol-all-count" id="olAllCount"></span>
+                <div class="ol-all-level-tabs">
+                  <button class="ol-all-level-tab active" data-level="전체" onclick="olAllSetLevel(this)">전체 난이도</button>
+                  <button class="ol-all-level-tab" data-level="입문" onclick="olAllSetLevel(this)">🟢 입문</button>
+                  <button class="ol-all-level-tab" data-level="중급" onclick="olAllSetLevel(this)">🟡 중급</button>
+                  <button class="ol-all-level-tab" data-level="고급" onclick="olAllSetLevel(this)">🔴 고급</button>
+                </div>
+                <div class="ol-all-sort">
+                  <button class="ol-all-sort-btn active" data-sort="popular" onclick="olAllSetSort(this)">인기순</button>
+                  <button class="ol-all-sort-btn" data-sort="recent" onclick="olAllSetSort(this)">최신순</button>
+                  <button class="ol-all-sort-btn" data-sort="forks" onclick="olAllSetSort(this)">포크순</button>
+                </div>
+              </div>
+              <div class="ol-all-grid" id="olAllGrid"></div>
+            </div>
+          </div>
+
         </section>
         <!-- ══ End CODE STUDIO ════════════════════════════════════ -->
 
@@ -10261,6 +10535,459 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     })();
     /* ── End DX Chat ─────────────────────────────────────────── */
+
+    /* ── 팀 노트북: 워크스페이스 ─────────────── */
+    const CT_WORKSPACES = [
+      {
+        id: 0, name: '생산기술팀 AI 파이프라인', ico: '⚙', icoClass: 'blue', role: '관리자', token: 'WS-A1B2-C3D4-E5F6',
+        desc: 'CNC 가공 공정 이상 탐지, 공구 수명 예측 등 생산기술 특화 AI 모델 개발 및 공유',
+        members: ['김','이','박','최','정'], tags: ['이상탐지','예측모델','센서데이터'],
+        notebooks: [
+          { name: 'CNC 진동 이상 탐지 파이프라인', desc: 'Isolation Forest 기반 이상 탐지, 실시간 알림 연동', tags: ['이상탐지'], author: '김민준', dept: '생산기술팀', forks: 12 },
+          { name: '공구 마모 예측 회귀 모델', desc: '절삭력·온도 센서 조합으로 공구 잔여 수명 예측', tags: ['예측모델'], author: '최재원', dept: '생산기술팀', forks: 6 },
+          { name: '양품/불량 이미지 분류 (ResNet)', desc: '표면 이미지 기반 실시간 불량 판정, 정확도 97.2%', tags: ['컴퓨터비전'], author: '박준혁', dept: '생산기술팀', forks: 9 },
+          { name: '가공 공정 실시간 모니터링', desc: '절삭 조건·센서 데이터 실시간 수집 및 대시보드 시각화', tags: ['데이터분석'], author: '이수진', dept: '생산기술팀', forks: 4 },
+          { name: '절삭 조건 최적화 실험 노트북', desc: '속도·이송량 파라미터 최적화 실험 기록 및 결과 비교', tags: ['최적화'], author: '정대한', dept: '생산기술팀', forks: 3 },
+          { name: '센서 데이터 전처리 공통 유틸', desc: '결측치·이상값 처리, 피처 엔지니어링 공통 함수 모음', tags: ['전처리'], author: '김민준', dept: '생산기술팀', forks: 18 },
+          { name: '불량 예측 GBM 모델 v2', desc: 'GradientBoosting 기반 불량 예측, F1-score 0.91 달성', tags: ['예측모델'], author: '최재원', dept: '생산기술팀', forks: 7 },
+          { name: '설비 에너지 소비 패턴 분석', desc: '시간대별 에너지 소비 최적화 시뮬레이션', tags: ['데이터분석'], author: '이수진', dept: '생산기술팀', forks: 5 },
+        ]
+      },
+      {
+        id: 1, name: '품질검사 자동화 프로젝트', ico: '🔍', icoClass: 'purple', role: '멤버', token: 'WS-G7H8-I9J0-K1L2',
+        desc: '이미지·NLP 기반 검사 자동화 모델 개발. 표면 결함 탐지부터 불량 보고서 분류까지',
+        members: ['이','정','강','오'], tags: ['컴퓨터비전','NLP','자동화'],
+        notebooks: [
+          { name: '품질 검사 이미지 분류 (ResNet50)', desc: '표면 결함 유형 6종 분류, 전이학습 파인튜닝 포함', tags: ['컴퓨터비전'], author: '이수연', dept: '품질팀', forks: 8 },
+          { name: 'NLP 불량 보고서 자동 분류', desc: '작업자 보고서 텍스트 분석해 불량 유형·원인 자동 태깅', tags: ['NLP'], author: '정유진', dept: '품질팀', forks: 11 },
+          { name: 'X-ray 영상 이상 탐지', desc: '부품 내부 결함 검출, UNet 기반 세그멘테이션', tags: ['이상탐지'], author: '강태양', dept: '품질팀', forks: 5 },
+          { name: '검사 데이터 EDA 리포트', desc: '월별 불량 현황 분석, 공정별 상관관계 시각화', tags: ['데이터분석'], author: '오다은', dept: '품질팀', forks: 3 },
+          { name: '자동 품질 게이트 룰 추출', desc: '합격/불합격 기준 자동 추출, 결정 트리 기반 룰 생성', tags: ['분류모델'], author: '이수연', dept: '품질팀', forks: 6 },
+        ]
+      },
+      {
+        id: 2, name: 'DX추진랩 공통 플랫폼', ico: '🧩', icoClass: 'green', role: '관리자', token: 'WS-M3N4-O5P6-Q7R8',
+        desc: '전사 AI 개발에 재사용 가능한 공통 템플릿, 파이프라인, 라이브러리 관리',
+        members: ['홍','박','김','유','최','송','나'], tags: ['공통템플릿','MLOps','자동화'],
+        notebooks: [
+          { name: '공통 데이터 전처리 템플릿', desc: '결측치·이상값 처리, 타입 변환, 스케일링 공통 파이프라인', tags: ['전처리'], author: '홍길동', dept: 'DX추진랩', forks: 34 },
+          { name: 'MLflow 실험 관리 가이드', desc: 'MLflow Tracking 설정, 실험 비교, 모델 레지스트리 활용법', tags: ['MLOps'], author: '박서연', dept: 'DX추진랩', forks: 27 },
+          { name: 'AI 모델 배포 파이프라인', desc: 'FastAPI 기반 모델 서빙, Docker 컨테이너화, 배포 자동화', tags: ['MLOps'], author: '김지훈', dept: 'DX추진랩', forks: 19 },
+          { name: 'KPI 대시보드 자동화', desc: 'Plotly 기반 인터랙티브 KPI 시각화 공통 컴포넌트', tags: ['시각화'], author: '유민지', dept: 'DX추진랩', forks: 22 },
+          { name: '데이터 품질 모니터링', desc: '데이터 드리프트 감지, 스키마 검증, 알림 연동 자동화', tags: ['MLOps'], author: '최현수', dept: 'DX추진랩', forks: 15 },
+          { name: 'Gen AI API 연동 샘플', desc: 'Claude API, GPT-4 연동 기본 코드, 프롬프트 템플릿 포함', tags: ['GenAI'], author: '홍길동', dept: 'DX추진랩', forks: 41 },
+          { name: '이상 탐지 공통 라이브러리', desc: '시계열·이미지·테이블 데이터 이상 탐지 통합 래퍼', tags: ['이상탐지'], author: '송지원', dept: 'DX추진랩', forks: 16 },
+          { name: '자연어 리포트 생성 에이전트', desc: 'LLM 기반 분석 결과 자동 리포트 생성 (한국어)', tags: ['GenAI'], author: '나채원', dept: 'DX추진랩', forks: 23 },
+          { name: '시각화 공통 컴포넌트', desc: 'matplotlib/seaborn 스타일 가이드, 재사용 차트 함수 모음', tags: ['시각화'], author: '유민지', dept: 'DX추진랩', forks: 20 },
+          { name: '데이터 레이크 탐색 가이드', desc: '내부 데이터 레이크 연결, 카탈로그 검색, 샘플 쿼리 모음', tags: ['데이터분석'], author: '박서연', dept: 'DX추진랩', forks: 11 },
+          { name: '부서별 KPI 집계 쿼리 모음', desc: '생산/품질/SCM 부서 KPI SQL 쿼리 및 집계 파이프라인', tags: ['데이터분석'], author: '김지훈', dept: 'DX추진랩', forks: 13 },
+          { name: '모델 성능 비교 대시보드', desc: '학습된 모델들의 메트릭 자동 비교 및 리더보드 시각화', tags: ['MLOps'], author: '최현수', dept: 'DX추진랩', forks: 18 },
+        ]
+      },
+      {
+        id: 3, name: 'SCM 수요예측 프로젝트', ico: '📦', icoClass: 'orange', role: '멤버', token: 'WS-S9T0-U1V2-W3X4',
+        desc: '부품 수요량 예측 및 재고 최적화 모델 개발. 시계열 분석 중심',
+        members: ['박','안','황'], tags: ['시계열','예측모델','최적화'],
+        notebooks: [
+          { name: '수요 예측 LSTM 시계열 모델', desc: '월별 부품 수요량 예측, MAE 기준 기존 대비 23% 개선', tags: ['시계열'], author: '박지훈', dept: 'SCM팀', forks: 15 },
+          { name: '재고 최적화 시뮬레이션', desc: '안전재고·발주점 자동 계산, 수요 변동성 시뮬레이션', tags: ['최적화'], author: '안소희', dept: 'SCM팀', forks: 9 },
+          { name: '공급망 리스크 분석', desc: '납기 지연 패턴 분석, 리스크 공급사 자동 탐지', tags: ['데이터분석'], author: '황준서', dept: 'SCM팀', forks: 6 },
+          { name: '리드타임 예측 XGBoost', desc: '주문~입고 리드타임 예측 모델, 특이 공급사 플래그 처리', tags: ['예측모델'], author: '박지훈', dept: 'SCM팀', forks: 7 },
+        ]
+      },
+    ];
+
+    function ctRenderWorkspaces() {
+      const grid = document.getElementById('ct-ws-grid');
+      if (!grid) return;
+      grid.innerHTML = CT_WORKSPACES.map(ws => `
+        <div class="ct-ws-card" onclick="ctOpenWorkspace(${ws.id})">
+          <div class="ct-ws-card-head">
+            <div class="ct-ws-ico ${ws.icoClass}">${ws.ico}</div>
+            <div class="ct-ws-card-title">
+              <div class="ct-ws-name">${ws.name}</div>
+            </div>
+          </div>
+          <p class="ct-ws-desc">${ws.desc}</p>
+          <div class="ct-ws-tags">${ws.tags.map(t => `<span class="ct-ws-tag">${t}</span>`).join('')}</div>
+          <div class="ct-ws-footer">
+            <div class="ct-ws-avatars">${ws.members.slice(0,4).map(m => `<div class="ct-ws-avatar">${m}</div>`).join('')}${ws.members.length > 4 ? `<div class="ct-ws-avatar" style="background:#e2e8f2;color:var(--muted)">+${ws.members.length-4}</div>` : ''}</div>
+            <span class="ct-ws-stat">👤 <strong>${ws.members.length}</strong>명</span>
+            <span class="ct-ws-stat">📓 <strong>${ws.notebooks.length}</strong>개</span>
+            <button class="ct-token-btn" onclick="ctCopyToken(event, '${ws.token}')">🔗 토큰 복사</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function ctOpenWorkspace(id) {
+      const ws = CT_WORKSPACES.find(w => w.id === id);
+      if (!ws) return;
+      document.getElementById('ct-list-view').style.display = 'none';
+      document.getElementById('ct-detail-view').style.display = '';
+      document.getElementById('ct-detail-ico').textContent = ws.ico;
+      document.getElementById('ct-detail-title').textContent = ws.name;
+      const roleEl = document.getElementById('ct-detail-role');
+      roleEl.textContent = ws.role;
+      roleEl.className = 'ct-detail-role ' + (ws.role === '관리자' ? 'admin' : 'member');
+      document.getElementById('ct-detail-meta').textContent = `멤버 ${ws.members.length}명 · 노트북 ${ws.notebooks.length}개`;
+      document.getElementById('ct-detail-notebooks').innerHTML = ws.notebooks.map(nb => `
+        <div class="cs-nb-card">
+          <div class="cs-nb-card-top">
+            <span class="cs-nb-ico">📓</span>
+            <div class="cs-nb-info">
+              <div class="cs-nb-name">${nb.name}</div>
+              <div class="cs-nb-desc">${nb.desc}</div>
+            </div>
+          </div>
+          <div class="cs-nb-tags">${nb.tags.map(t => `<span class="cs-nb-tag">${t}</span>`).join('')}<span class="cs-nb-tag team">${nb.dept.replace('팀','')}</span></div>
+          <div class="cs-nb-footer">
+            <div class="cs-nb-author"><div class="cs-nb-avatar">${nb.author[0]}</div>${nb.author} · ${nb.dept}</div>
+            <span class="cs-nb-stat">🍴 ${nb.forks}</span>
+            <button class="cs-fork-btn">🍴 포크</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function ctCloseWorkspace() {
+      document.getElementById('ct-detail-view').style.display = 'none';
+      document.getElementById('ct-list-view').style.display = '';
+    }
+
+    function ctOpenModal() { document.getElementById('ct-modal-overlay').style.display = 'flex'; }
+    function ctCloseModal() { document.getElementById('ct-modal-overlay').style.display = 'none'; }
+    function ctCloseModalOutside(e) { if (e.target === document.getElementById('ct-modal-overlay')) ctCloseModal(); }
+
+    function ctOpenJoinModal() {
+      const el = document.getElementById('ct-join-token');
+      if (el) el.value = '';
+      document.getElementById('ct-join-overlay').style.display = 'flex';
+    }
+    function ctCloseJoinModal() { document.getElementById('ct-join-overlay').style.display = 'none'; }
+    function ctCloseJoinModalOutside(e) { if (e.target === document.getElementById('ct-join-overlay')) ctCloseJoinModal(); }
+    function ctJoinWorkspace() {
+      const token = (document.getElementById('ct-join-token').value || '').trim();
+      if (!token) { document.getElementById('ct-join-token').focus(); return; }
+      const found = CT_WORKSPACES.find(w => w.token === token);
+      if (found) {
+        ctCloseJoinModal();
+        alert(`"${found.name}" 워크스페이스에 참가했습니다.`);
+      } else {
+        document.getElementById('ct-join-token').style.borderColor = 'var(--wia-red)';
+        document.getElementById('ct-join-token').placeholder = '유효하지 않은 토큰입니다.';
+        setTimeout(() => {
+          const el = document.getElementById('ct-join-token');
+          if (el) { el.style.borderColor = ''; el.placeholder = '예: WS-A1B2-C3D4-E5F6'; }
+        }, 1800);
+      }
+    }
+
+    function ctCopyToken(e, token) {
+      e.stopPropagation();
+      navigator.clipboard.writeText(token).catch(() => {});
+      const btn = e.currentTarget;
+      btn.classList.add('copied');
+      btn.textContent = '✓ 복사됨';
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '🔗 토큰 복사'; }, 1800);
+    }
+
+    function ctCreateWorkspace() {
+      const name = document.getElementById('ct-ws-name').value.trim();
+      if (!name) { document.getElementById('ct-ws-name').focus(); return; }
+      const desc = document.getElementById('ct-ws-desc').value.trim();
+      const scope = document.getElementById('ct-ws-scope').value;
+      const scopeLabel = { team: '팀 내', dept: '부서', all: '전사' }[scope];
+      const newId = CT_WORKSPACES.reduce((m, w) => Math.max(m, w.id), -1) + 1;
+      CT_WORKSPACES.unshift({ id: newId, name, ico: '🆕', icoClass: 'blue', role: '관리자',
+        desc: desc || '새로 만든 워크스페이스입니다.', members: ['나'], tags: [scopeLabel + ' 공개'], notebooks: [] });
+      ['ct-ws-name','ct-ws-desc','ct-ws-members'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+      ctCloseModal();
+      ctRenderWorkspaces();
+    }
+
+    ctRenderWorkspaces();
+
+    /* 내 워크스페이스 → 공유 모달 */
+    let csShareSelected = null;
+
+    function csOpenShareModal() {
+      csShareSelected = null;
+      const submitBtn = document.getElementById('cs-share-submit');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '.5'; submitBtn.style.cursor = 'not-allowed'; }
+      const list = document.getElementById('cs-share-ws-list');
+      if (list) {
+        list.innerHTML = CT_WORKSPACES.map(ws => `
+          <div class="cs-share-ws-item" onclick="csSelectWs(${ws.id}, this)">
+            <div class="ct-ws-ico ${ws.icoClass}" style="width:36px;height:36px;font-size:16px;border-radius:9px;flex-shrink:0">${ws.ico}</div>
+            <div style="flex:1;min-width:0">
+              <div class="cs-share-ws-name">${ws.name}</div>
+              <div class="cs-share-ws-meta">멤버 ${ws.members.length}명 · 노트북 ${ws.notebooks.length}개</div>
+            </div>
+            <div class="cs-share-ws-check">✓</div>
+          </div>
+        `).join('');
+      }
+      document.getElementById('cs-share-overlay').style.display = 'flex';
+    }
+
+    function csSelectWs(id, el) {
+      csShareSelected = id;
+      document.querySelectorAll('.cs-share-ws-item').forEach(item => item.classList.remove('selected'));
+      el.classList.add('selected');
+      const submitBtn = document.getElementById('cs-share-submit');
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+    }
+
+    function csCloseShareModal() { document.getElementById('cs-share-overlay').style.display = 'none'; }
+    function csCloseShareModalOutside(e) { if (e.target === document.getElementById('cs-share-overlay')) csCloseShareModal(); }
+
+    function csShareNotebook() {
+      const ws = CT_WORKSPACES.find(w => w.id === csShareSelected);
+      if (!ws) return;
+      csCloseShareModal();
+      const nbTitle = 'CNC 불량 예측 모델.ipynb';
+      ws.notebooks.unshift({ name: nbTitle, desc: '내 워크스페이스에서 공유한 노트북', tags: ['공유'], author: '누구누구', dept: 'DX추진랩', forks: 0 });
+      alert(`"${nbTitle}"을 "${ws.name}"에 공유했습니다.`);
+    }
+    /* ── End 팀 노트북 ──────────────────────────── */
+
+    /* ── 오픈랩 ─────────────────────────────────── */
+    const OL_TRENDING = [
+      { id:1, icon:'📊', cat:'데이터분석', level:'beginner', title:'제조 데이터 EDA 완전 정복 가이드', desc:'센서·품질·공정 데이터 탐색부터 시각화까지 단계별 실습. pandas + seaborn 기반.', author:'이승훈', dept:'DX추진랩', views:342, forks:58, spotlight:true,
+        code:['<span class="cs-cm"># 센서 데이터 로드 및 기초 탐색</span>','<span class="cs-kw">import</span> pandas <span class="cs-kw">as</span> pd','<span class="cs-kw">import</span> seaborn <span class="cs-kw">as</span> sns','','df = pd.<span class="cs-fn">read_csv</span>(<span class="cs-str">"sensor_data.csv"</span>)','<span class="cs-fn">print</span>(df.<span class="cs-fn">describe</span>())','','<span class="cs-cm"># 결측 비율 확인</span>','missing = df.<span class="cs-fn">isnull</span>().<span class="cs-fn">mean</span>() * <span class="cs-num">100</span>','<span class="cs-fn">display</span>(missing[missing > <span class="cs-num">0</span>])'] },
+      { id:2, icon:'🤖', cat:'이상탐지', level:'mid', title:'Isolation Forest 이상 탐지 실전', desc:'비지도 학습 기반 이상 탐지 원리와 제조 센서 데이터 적용 예시. 하이퍼파라미터 튜닝 포함.', author:'최민서', dept:'생산기술팀', views:291, forks:43 },
+      { id:3, icon:'🎯', cat:'컴퓨터비전', level:'advanced', title:'YOLO v8 커스텀 학습 템플릿', desc:'사내 이미지 데이터셋으로 YOLO 모델을 파인튜닝하는 전체 파이프라인. Comet 로깅 연동.', author:'박서연', dept:'R&D팀', views:201, forks:37 },
+      { id:4, icon:'📈', cat:'시계열', level:'mid', title:'LSTM으로 설비 잔존 수명 예측', desc:'Keras LSTM으로 롤링베어링 RUL 예측. 멀티스텝 예측 구현.', author:'장준호', dept:'DX추진랩', views:178, forks:29 },
+      { id:5, icon:'💬', cat:'NLP', level:'beginner', title:'XGBoost로 불량 예측하기 (입문)', desc:'전처리부터 학습·평가까지 주석이 풍부한 입문 노트북. SHAP 해석 포함.', author:'김현우', dept:'DX추진랩', views:289, forks:44 },
+      { id:6, icon:'⚡', cat:'최적화', level:'advanced', title:'공정 파라미터 베이즈 최적화', desc:'Optuna를 활용한 CNC 가공 파라미터 자동 최적화 실험. 멀티오브젝티브 지원.', author:'윤재혁', dept:'R&D팀', views:156, forks:31 },
+    ];
+    const OL_RECENT = [
+      { id:10, icon:'🧠', cat:'GenAI',   level:'mid',      title:'LLM API 활용 품질 보고서 자동 요약', desc:'Claude API로 품질 보고서·회의록을 자동 요약하는 실습 노트북.', author:'강태양', dept:'DX추진랩', views:53, forks:6,  isNew:true },
+      { id:11, icon:'📡', cat:'이상탐지', level:'mid',      title:'CUSUM 관리도 기반 공정 이상 감지', desc:'누적합 통계를 이용한 공정 드리프트 조기 탐지. 실시간 알람 연동 예제 포함.', author:'오지수', dept:'생산기술팀', views:41, forks:4, isNew:true },
+      { id:12, icon:'🔬', cat:'데이터분석', level:'beginner', title:'Plotly로 인터랙티브 공정 대시보드', desc:'Plotly Dash를 활용한 실시간 공정 모니터링 대시보드 프로토타입.', author:'한지민', dept:'DX추진랩', views:38, forks:3, isNew:false },
+      { id:13, icon:'🌐', cat:'GenAI',   level:'advanced', title:'RAG 파이프라인으로 사내 문서 QA', desc:'LangChain + Claude API로 사내 표준 문서 검색·답변 시스템 구축 실습.', author:'정수빈', dept:'R&D팀', views:29, forks:2, isNew:false },
+      { id:14, icon:'🔧', cat:'최적화', level:'mid',        title:'유전 알고리즘으로 생산 스케줄 최적화', desc:'DEAP 라이브러리로 Job-Shop 스케줄링 문제 풀기. Gantt 차트 시각화 포함.', author:'임도현', dept:'SCM팀', views:22, forks:1, isNew:false },
+    ];
+    const OL_CONTRIBUTORS = [
+      { name:'이승훈', dept:'DX추진랩',   notebooks:18, forks:142 },
+      { name:'박서연', dept:'R&D팀',       notebooks:14, forks:118 },
+      { name:'강태양', dept:'DX추진랩',   notebooks:11, forks:97  },
+      { name:'윤재혁', dept:'R&D팀',       notebooks:9,  forks:83  },
+      { name:'최민서', dept:'생산기술팀', notebooks:8,  forks:76  },
+    ];
+
+    const OL_ALL = [
+      ...OL_TRENDING,
+      ...OL_RECENT,
+      { id:20, icon:'🔩', cat:'데이터분석', level:'beginner', title:'공장 IoT 센서 데이터 정제 실습', desc:'누락값·이상값 처리부터 피처 엔지니어링까지. 실제 설비 데이터 기반.', author:'이승훈', dept:'DX추진랩', views:110, forks:19, createdAt:'2025-06-12' },
+      { id:21, icon:'🧪', cat:'이상탐지', level:'advanced', title:'AutoEncoder 기반 비정상 진동 탐지', desc:'딥러닝 오토인코더로 정상·비정상 진동 패턴 구분. 재구성 오차 임계값 설정 방법.', author:'박서연', dept:'R&D팀', views:89, forks:15, createdAt:'2025-06-08' },
+      { id:22, icon:'📉', cat:'시계열', level:'beginner', title:'Prophet으로 생산량 수요 예측', desc:'Meta Prophet 라이브러리로 시계열 예측 모델을 빠르게 구축. 계절성·휴일 효과 반영.', author:'김현우', dept:'DX추진랩', views:77, forks:12, createdAt:'2025-05-30' },
+      { id:23, icon:'🖼', cat:'컴퓨터비전', level:'mid', title:'OpenCV 기반 표면 결함 검출', desc:'Canny 엣지 + 컨투어 분석으로 표면 스크래치 자동 마킹. 실시간 카메라 연동 예제 포함.', author:'최민서', dept:'생산기술팀', views:63, forks:9, createdAt:'2025-05-22' },
+      { id:24, icon:'🗺', cat:'최적화', level:'mid', title:'OR-Tools로 물류 경로 최적화', desc:'Google OR-Tools VRP 솔버로 내부 물류 차량 배송 경로 최적화. Folium 지도 시각화.', author:'임도현', dept:'SCM팀', views:51, forks:8, createdAt:'2025-05-15' },
+      { id:25, icon:'💡', cat:'GenAI', level:'beginner', title:'Claude API 입문: 사내 FAQ 봇 만들기', desc:'Claude API를 처음 쓰는 분을 위한 입문 가이드. 간단한 FAQ 응답 봇 구현.', author:'강태양', dept:'DX추진랩', views:148, forks:22, createdAt:'2025-07-01' },
+      { id:26, icon:'🧲', cat:'NLP', level:'mid', title:'사내 문서 임베딩·유사도 검색', desc:'Sentence-Transformers로 문서 임베딩 생성 후 FAISS 인덱스 기반 의미 검색 구현.', author:'정수빈', dept:'R&D팀', views:99, forks:16, createdAt:'2025-06-25' },
+    ];
+
+    let olActiveCat = '전체', olActiveLevel = '전체';
+    let olAllActiveLevel = '전체', olAllSort = 'popular';
+
+    function olLevelMeta(l) {
+      return ({beginner:{label:'입문',dot:'🟢',cls:'beginner'}, mid:{label:'중급',dot:'🟡',cls:'mid'}, advanced:{label:'고급',dot:'🔴',cls:'advanced'}})[l] || {label:'입문',dot:'🟢',cls:'beginner'};
+    }
+
+    function olRenderSpotlight() {
+      const nb = OL_TRENDING.find(n => n.spotlight) || OL_TRENDING[0];
+      const lv = olLevelMeta(nb.level);
+      const el = document.getElementById('olSpotlight');
+      if (!el) return;
+      el.innerHTML = `
+        <div class="ol-spotlight-left">
+          <div class="ol-spotlight-badges">
+            <span class="ol-level-badge ${lv.cls}">${lv.dot} ${lv.label}</span>
+            <span class="ol-spotlight-cat">${nb.cat}</span>
+          </div>
+          <div class="ol-spotlight-title">${nb.title}</div>
+          <p class="ol-spotlight-desc">${nb.desc}</p>
+          <div class="ol-spotlight-meta">
+            <div class="ol-spotlight-author"><div class="cs-nb-avatar">${nb.author[0]}</div>${nb.author} · ${nb.dept}</div>
+            <span class="ol-spotlight-stat">👁 ${nb.views}</span>
+            <span class="ol-spotlight-stat">🍴 ${nb.forks}</span>
+            <button class="ol-spotlight-fork-btn" onclick="event.stopPropagation()">🍴 포크하기</button>
+          </div>
+        </div>
+        <div class="ol-spotlight-right">
+          <div class="ol-code-box">
+            <div class="ol-code-box-bar">
+              <span class="ol-code-dot r"></span><span class="ol-code-dot y"></span><span class="ol-code-dot g"></span>
+              <span class="ol-code-box-filename">notebook.ipynb</span>
+            </div>
+            <pre class="ol-code-body">${(nb.code||[]).join('\n')}</pre>
+          </div>
+        </div>`;
+    }
+
+    function olRenderTrending() {
+      const grid = document.getElementById('olTrendingGrid');
+      if (!grid) return;
+      const q = (document.getElementById('olSearchInput')?.value||'').trim().toLowerCase();
+      const list = OL_TRENDING.filter(nb => {
+        const catOk = olActiveCat==='전체' || nb.cat===olActiveCat;
+        const lvOk  = olActiveLevel==='전체' || olLevelMeta(nb.level).label===olActiveLevel;
+        const txtOk = !q || nb.title.toLowerCase().includes(q) || nb.cat.toLowerCase().includes(q);
+        return catOk && lvOk && txtOk;
+      });
+      grid.innerHTML = list.length ? list.map(nb => {
+        const lv = olLevelMeta(nb.level);
+        return `<div class="ol-nb-card">
+          <div class="ol-nb-card-top">
+            <div class="ol-nb-card-icon">${nb.icon}</div>
+            <div class="ol-nb-card-info">
+              <div class="ol-nb-card-name">${nb.title}</div>
+              <div class="ol-nb-card-desc">${nb.desc}</div>
+            </div>
+          </div>
+          <div class="ol-nb-card-tags">
+            <span class="ol-level-badge ${lv.cls}" style="font-size:10px;padding:2px 8px">${lv.dot} ${lv.label}</span>
+            <span class="ol-nb-card-tag">${nb.cat}</span>
+          </div>
+          <div class="ol-nb-card-footer">
+            <div class="ol-nb-card-author"><div class="cs-nb-avatar">${nb.author[0]}</div>${nb.author} · ${nb.dept}</div>
+            <span class="ol-nb-card-stat">👁 ${nb.views}</span>
+            <span class="ol-nb-card-stat">🍴 ${nb.forks}</span>
+            <button class="cs-fork-btn" onclick="event.stopPropagation()">🍴 포크</button>
+          </div>
+        </div>`;
+      }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--muted);font-size:13px">검색 결과가 없습니다.</div>';
+    }
+
+    function olRenderRecent() {
+      const list = document.getElementById('olRecentList');
+      if (!list) return;
+      const q = (document.getElementById('olSearchInput')?.value||'').trim().toLowerCase();
+      const items = OL_RECENT.filter(nb => {
+        const catOk = olActiveCat==='전체' || nb.cat===olActiveCat;
+        const txtOk = !q || nb.title.toLowerCase().includes(q) || nb.cat.toLowerCase().includes(q);
+        return catOk && txtOk;
+      });
+      list.innerHTML = items.length ? items.map(nb => {
+        const lv = olLevelMeta(nb.level);
+        return `<div class="ol-recent-row">
+          <div class="ol-recent-icon">${nb.icon}</div>
+          <div class="ol-recent-info">
+            <div class="ol-recent-name">${nb.title}</div>
+            <div class="ol-recent-tags">
+              <span class="ol-level-badge ${lv.cls}" style="font-size:10px;padding:1px 7px">${lv.dot} ${lv.label}</span>
+              <span class="ol-recent-tag">${nb.cat}</span>
+              ${nb.isNew ? '<span class="ol-recent-new-badge">NEW</span>' : ''}
+            </div>
+          </div>
+          <div class="ol-recent-meta">
+            <div class="ol-recent-author"><div class="cs-nb-avatar" style="width:20px;height:20px;font-size:9px">${nb.author[0]}</div>${nb.author} · ${nb.dept}</div>
+            <span class="ol-recent-stat">👁 ${nb.views}</span>
+            <span class="ol-recent-stat">🍴 ${nb.forks}</span>
+            <button class="cs-fork-btn" onclick="event.stopPropagation()">🍴 포크</button>
+          </div>
+        </div>`;
+      }).join('') : '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">검색 결과가 없습니다.</div>';
+    }
+
+    function olRenderContributors() {
+      const wrap = document.getElementById('olContributors');
+      if (!wrap) return;
+      wrap.innerHTML = OL_CONTRIBUTORS.map((c, i) => `
+        <div class="ol-contrib-card">
+          <div class="ol-contrib-avatar-wrap">
+            <div class="ol-contrib-avatar">${c.name[0]}</div>
+            ${i < 3 ? `<div class="ol-contrib-rank">${i+1}</div>` : ''}
+          </div>
+          <div class="ol-contrib-name">${c.name}</div>
+          <div class="ol-contrib-dept">${c.dept}</div>
+          <div class="ol-contrib-stats">
+            <div class="ol-contrib-stat"><span class="ol-contrib-stat-num">${c.notebooks}</span><span class="ol-contrib-stat-label">노트북</span></div>
+            <div class="ol-contrib-divider"></div>
+            <div class="ol-contrib-stat"><span class="ol-contrib-stat-num">${c.forks}</span><span class="ol-contrib-stat-label">포크</span></div>
+          </div>
+        </div>`).join('');
+    }
+
+    function olSetCat(btn) {
+      document.querySelectorAll('.ol-cat-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      olActiveCat = btn.dataset.cat;
+      olRenderTrending(); olRenderRecent(); olRenderAll();
+    }
+    function olSetLevel(btn) {
+      document.querySelectorAll('.ol-level-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      olActiveLevel = btn.dataset.level;
+      olRenderTrending();
+    }
+    function olHandleSearch() { olRenderTrending(); olRenderRecent(); olRenderAll(); }
+
+    function olSetView(btn) {
+      document.querySelectorAll('.ol-view-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const view = btn.dataset.view;
+      document.getElementById('olHomeView').style.display = view === 'home' ? '' : 'none';
+      document.getElementById('olAllView').style.display  = view === 'all'  ? '' : 'none';
+      if (view === 'all') olRenderAll();
+    }
+    function olAllSetLevel(btn) {
+      document.querySelectorAll('.ol-all-level-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      olAllActiveLevel = btn.dataset.level;
+      olRenderAll();
+    }
+    function olAllSetSort(btn) {
+      document.querySelectorAll('.ol-all-sort-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      olAllSort = btn.dataset.sort;
+      olRenderAll();
+    }
+    function olRenderAll() {
+      const grid = document.getElementById('olAllGrid');
+      const countEl = document.getElementById('olAllCount');
+      if (!grid) return;
+      const q = (document.getElementById('olSearchInput')?.value||'').trim().toLowerCase();
+      let list = OL_ALL.filter(nb => {
+        const catOk = olActiveCat==='전체' || nb.cat===olActiveCat;
+        const lvOk  = olAllActiveLevel==='전체' || olLevelMeta(nb.level).label===olAllActiveLevel;
+        const txtOk = !q || nb.title.toLowerCase().includes(q) || nb.cat.toLowerCase().includes(q);
+        return catOk && lvOk && txtOk;
+      });
+      if (olAllSort === 'popular') list = list.slice().sort((a,b) => b.views - a.views);
+      else if (olAllSort === 'forks') list = list.slice().sort((a,b) => b.forks - a.forks);
+      else list = list.slice().sort((a,b) => (b.id||0) - (a.id||0));
+      if (countEl) countEl.textContent = `전체 ${list.length}개`;
+      grid.innerHTML = list.length ? list.map(nb => {
+        const lv = olLevelMeta(nb.level);
+        return `<div class="ol-nb-card">
+          <div class="ol-nb-card-top">
+            <div class="ol-nb-card-icon">${nb.icon}</div>
+            <div class="ol-nb-card-info">
+              <div class="ol-nb-card-name">${nb.title}</div>
+              <div class="ol-nb-card-desc">${nb.desc}</div>
+            </div>
+          </div>
+          <div class="ol-nb-card-tags">
+            <span class="ol-level-badge ${lv.cls}" style="font-size:10px;padding:2px 8px">${lv.dot} ${lv.label}</span>
+            <span class="ol-nb-card-tag">${nb.cat}</span>
+            ${nb.isNew ? '<span class="ol-recent-new-badge">NEW</span>' : ''}
+          </div>
+          <div class="ol-nb-card-footer">
+            <div class="ol-nb-card-author"><div class="cs-nb-avatar">${nb.author[0]}</div>${nb.author} · ${nb.dept}</div>
+            <span class="ol-nb-card-stat">👁 ${nb.views}</span>
+            <span class="ol-nb-card-stat">🍴 ${nb.forks}</span>
+            <button class="cs-fork-btn" onclick="event.stopPropagation()">🍴 포크</button>
+          </div>
+        </div>`;
+      }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:48px 0;color:var(--muted);font-size:13px">검색 결과가 없습니다.</div>';
+    }
+
+    function olInit() { olRenderSpotlight(); olRenderTrending(); olRenderRecent(); olRenderContributors(); }
+    olInit();
+    /* ── End 오픈랩 ──────────────────────────────── */
   </script>
 </body>
 </html>
