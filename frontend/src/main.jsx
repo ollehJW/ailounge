@@ -104,7 +104,6 @@ const emptyAiIdeaForm = {
 
 const aiIdeaStatusClass = {
   '접수완료': 'received',
-  '심사중': 'reviewing',
   '선정': 'selected',
   '미선정': 'rejected',
 };
@@ -136,6 +135,7 @@ const formatViewCount = (value) => Number(value || 0).toLocaleString('ko-KR');
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '');
 const ideaAttachmentName = (attachment) => (typeof attachment === 'string' ? attachment : attachment.original_name);
 const aiUsageAuthor = (post) => [post?.author_org, post?.author_name, post?.author_job_title].filter(Boolean).join(' ') || 'AI Lounge';
+const ideaAuthor = (idea) => [idea?.author_org, idea?.author_name, idea?.author_job_title].filter(Boolean).join(' ') || '작성자 정보 없음';
 const withApiAssetUrls = (html = '') => html.replace(/src="\/api\//g, `src="${API_BASE}/api/`);
 
 const previewText = (html, limit = 50) => {
@@ -176,6 +176,7 @@ function App() {
   const [editingNewsId, setEditingNewsId] = useState('');
   const [aiUsagePosts, setAiUsagePosts] = useState([]);
   const [aiIdeas, setAiIdeas] = useState([]);
+  const [adminIdeas, setAdminIdeas] = useState([]);
   const [selectedAiIdea, setSelectedAiIdea] = useState(null);
   const [ideaToDelete, setIdeaToDelete] = useState(null);
   const [aiIdeaForm, setAiIdeaForm] = useState(emptyAiIdeaForm);
@@ -184,6 +185,11 @@ function App() {
   const [aiIdeaError, setAiIdeaError] = useState('');
   const [isLoadingAiIdeas, setIsLoadingAiIdeas] = useState(false);
   const [isSubmittingAiIdea, setIsSubmittingAiIdea] = useState(false);
+  const [isLoadingAdminIdeas, setIsLoadingAdminIdeas] = useState(false);
+  const [adminIdeaError, setAdminIdeaError] = useState('');
+  const [isUpdatingIdeaStatus, setIsUpdatingIdeaStatus] = useState(false);
+  const [ideaReviewTarget, setIdeaReviewTarget] = useState(null);
+  const [ideaReviewForm, setIdeaReviewForm] = useState({ status: '', comment: '' });
   const [aiUsageForm, setAiUsageForm] = useState(emptyAiUsageForm);
   const [aiUsageQuery, setAiUsageQuery] = useState('');
   const [aiUsageCategoryFilter, setAiUsageCategoryFilter] = useState('전체');
@@ -204,11 +210,13 @@ function App() {
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${authToken}` }), [authToken]);
   const isAdminView = Boolean(authUser?.is_admin);
-  const adminPage = activePage === 'tech-news-write' ? 'tech-news-write' : 'accounts';
+  const adminPage = ['accounts', 'tech-news-write', 'idea-review'].includes(activePage) ? activePage : 'accounts';
   const orgFilterOptions = useMemo(() => Array.from(new Set(accounts.map((account) => account.org_name).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko')), [accounts]);
   const filteredAccounts = useMemo(() => (orgFilter === 'all' ? accounts : accounts.filter((account) => account.org_name === orgFilter)), [accounts, orgFilter]);
   const hotAiUsagePosts = useMemo(() => [...aiUsagePosts].sort((a, b) => b.like_count - a.like_count || b.created_at.localeCompare(a.created_at)).slice(0, 3), [aiUsagePosts]);
   const hottestAiUsagePost = hotAiUsagePosts[hotAiUsageIndex] || hotAiUsagePosts[0] || null;
+  const pendingReviewIdeas = useMemo(() => adminIdeas.filter((idea) => idea.status === '접수완료'), [adminIdeas]);
+  const completedReviewIdeas = useMemo(() => adminIdeas.filter((idea) => ['선정', '미선정'].includes(idea.status)), [adminIdeas]);
   const filteredAiUsagePosts = useMemo(() => {
     const query = aiUsageQuery.trim().toLowerCase();
     const filtered = aiUsagePosts.filter((post) => {
@@ -265,6 +273,10 @@ function App() {
 
   useEffect(() => {
     if (authUser && !isAdminView && activePage === 'gen-ai-proposal') loadAiIdeas();
+  }, [authUser, isAdminView, activePage]);
+
+  useEffect(() => {
+    if (authUser && isAdminView && activePage === 'idea-review') loadAdminIdeas();
   }, [authUser, isAdminView, activePage]);
 
   useEffect(() => {
@@ -490,6 +502,54 @@ function App() {
       setAiIdeaError(error.message);
     } finally {
       setIsLoadingAiIdeas(false);
+    }
+  };
+
+  const loadAdminIdeas = async () => {
+    setIsLoadingAdminIdeas(true);
+    setAdminIdeaError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/ideas`, { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, '심사 아이디어 목록을 불러오지 못했습니다.');
+      setAdminIdeas(await response.json());
+    } catch (error) {
+      setAdminIdeaError(error.message);
+    } finally {
+      setIsLoadingAdminIdeas(false);
+    }
+  };
+
+  const openIdeaReviewForm = (idea) => {
+    setIdeaReviewTarget(idea);
+    setIdeaReviewForm({ status: idea.status === '선정' || idea.status === '미선정' ? idea.status : '', comment: idea.review_comment || '' });
+    setAdminIdeaError('');
+  };
+
+  const closeIdeaReviewForm = () => {
+    setIdeaReviewTarget(null);
+    setIdeaReviewForm({ status: '', comment: '' });
+  };
+
+  const submitIdeaReview = async (event) => {
+    event.preventDefault();
+    if (!ideaReviewTarget) return;
+    setAdminIdeaError('');
+    setIsUpdatingIdeaStatus(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/ideas/${ideaReviewTarget.idea_id}/status`, {
+        method: 'PUT',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: ideaReviewForm.status, review_comment: ideaReviewForm.comment.trim() }),
+      });
+      if (!response.ok) throw await apiError(response, '심사 상태를 변경하지 못했습니다.');
+      const updatedIdea = await response.json();
+      setAdminIdeas((current) => current.map((idea) => (idea.idea_id === updatedIdea.idea_id ? updatedIdea : idea)));
+      setSelectedAiIdea((current) => (current?.idea_id === updatedIdea.idea_id ? updatedIdea : current));
+      closeIdeaReviewForm();
+    } catch (error) {
+      setAdminIdeaError(error.message);
+    } finally {
+      setIsUpdatingIdeaStatus(false);
     }
   };
 
@@ -974,6 +1034,10 @@ function App() {
                 <Newspaper size={17} />
                 <span className="side-name">Tech News 작성하기</span>
               </button>
+              <button className={`side-item ${adminPage === 'idea-review' ? 'active' : ''}`} type="button" onClick={() => { setAccountError(''); setNewsError(''); setActivePage('idea-review'); }}>
+                <FilePenLine size={17} />
+                <span className="side-name">Idea 심사</span>
+              </button>
             </>
           ) : (
             <>
@@ -1379,7 +1443,7 @@ function App() {
               <div className="ai-idea-guide-intro">
                 <span>PROCESS GUIDE</span>
                 <h2>아이디어를 보내면 이렇게 진행됩니다</h2>
-                <p>작성한 제안은 DX추진랩에 전달되고, 업무 영향도와 AI 적용 가능성을 검토한 뒤 결과 상태가 업데이트됩니다.</p>
+                <p>작성한 제안은 DX추진랩에 전달되며, 업무 영향도와 AI 적용 가능성 검토 후 심사평과 함께 결과가 업데이트됩니다.</p>
               </div>
               <div className="ai-idea-guide-steps">
                 <div className="ai-idea-guide-step">
@@ -1387,10 +1451,10 @@ function App() {
                   <strong>접수완료</strong>
                   <span>제안 내용과 첨부자료가 DX추진랩 검토 목록에 등록됩니다.</span>
                 </div>
-                <div className="ai-idea-guide-step">
+                <div className="ai-idea-guide-step review">
                   <b>02</b>
-                  <strong>심사중</strong>
-                  <span>문제 명확성, 데이터 확보 가능성, 기대 효과를 기준으로 검토합니다.</span>
+                  <strong>심사</strong>
+                  <span>DX추진랩이 제안 내용을 검토하고, 결과와 함께 심사평을 제공합니다.</span>
                 </div>
                 <div className="ai-idea-guide-step selected">
                   <b>03A</b>
@@ -1400,7 +1464,7 @@ function App() {
                 <div className="ai-idea-guide-step rejected">
                   <b>03B</b>
                   <strong>미선정</strong>
-                  <span>현재 추진은 어렵지만, 보완 의견을 바탕으로 재제안할 수 있습니다.</span>
+                  <span>현재 추진은 어렵지만, 심사평을 바탕으로 보완 방향을 확인할 수 있습니다.</span>
                 </div>
               </div>
             </section>
@@ -1484,7 +1548,7 @@ function App() {
                     className="ai-idea-file-input"
                     type="file"
                     multiple
-                    onChange={(event) => { updateAiIdeaFiles(event.target.files); event.target.value = ''; }}
+                    onChange={(event) => { const selectedFiles = Array.from(event.target.files || []); updateAiIdeaFiles(selectedFiles); event.target.value = ''; }}
                   />
                   <button className="ai-idea-file-drop" type="button" onClick={() => aiIdeaFileInputRef.current?.click()}>
                     <Plus size={18} />
@@ -1555,6 +1619,17 @@ function App() {
                     </div>
                   </header>
 
+                  {selectedAiIdea.status !== '접수완료' && selectedAiIdea.review_comment && (
+                    <section className={`idea-review-result-panel ${aiIdeaStatusClass[selectedAiIdea.status] || 'received'}`}>
+                      <div>
+                        <span>심사 완료</span>
+                        <strong>{selectedAiIdea.status}</strong>
+                      </div>
+                      <div className="idea-review-result-message">{selectedAiIdea.review_comment}</div>
+                      {selectedAiIdea.reviewed_at && <time>{formatDate(selectedAiIdea.reviewed_at)}</time>}
+                    </section>
+                  )}
+
                   <div className="ai-idea-proposal-body">
                     <section className="ai-idea-proposal-section">
                       <span>01</span>
@@ -1597,6 +1672,167 @@ function App() {
           </section>
         )}
 
+        {isAdminView && adminPage === 'idea-review' && (
+          <section className="content idea-review-page">
+            <div className="account-head">
+              <div>
+                <span>ADMIN</span>
+                <h1>Idea 심사</h1>
+                <p>DX추진랩에 접수된 AI 아이디어를 검토하고 심사 상태를 관리합니다.</p>
+              </div>
+            </div>
+
+            {adminIdeaError && <div className="form-error">{adminIdeaError}</div>}
+
+            <div className="idea-review-layout">
+              {[
+                { title: '심사 필요', count: pendingReviewIdeas.length, items: pendingReviewIdeas },
+                { title: '심사 완료', count: completedReviewIdeas.length, items: completedReviewIdeas },
+              ].map((column) => (
+                <section className="idea-review-column" key={column.title}>
+                  <div className="idea-review-column-head">
+                    <div>
+                      <span>IDEA REVIEW</span>
+                      <h2>{column.title}</h2>
+                    </div>
+                    <b>{column.count}건</b>
+                  </div>
+                  <div className="idea-review-list">
+                    {isLoadingAdminIdeas ? (
+                      <div className="empty-state">아이디어 목록을 불러오는 중입니다.</div>
+                    ) : column.items.length === 0 ? (
+                      <div className="empty-state">표시할 아이디어가 없습니다.</div>
+                    ) : column.items.map((idea) => (
+                      <article
+                        className={`idea-review-card ${column.title === '심사 완료' ? `completed ${aiIdeaStatusClass[idea.status] || 'received'}` : ''}`}
+                        key={idea.idea_id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedAiIdea(idea)}
+                        onKeyDown={(event) => { if (event.key === 'Enter') setSelectedAiIdea(idea); }}
+                      >
+                        {column.title === '심사 완료' && <span className={`idea-review-result-ribbon ${aiIdeaStatusClass[idea.status] || 'received'}`}>{idea.status}</span>}
+                        <h3>{idea.title}</h3>
+                        <div className="idea-review-card-meta">
+                          <span>{ideaAuthor(idea)}</span>
+                          <time>{formatDate(idea.created_at)}</time>
+                        </div>
+                        <div className="idea-review-card-status-row"><span className="idea-review-result-badge placeholder" aria-hidden="true">대기</span></div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            {ideaReviewTarget && (
+              <div className="news-modal-backdrop idea-review-submit-backdrop" role="presentation" onMouseDown={closeIdeaReviewForm}>
+                <form className="idea-review-submit-modal" onSubmit={submitIdeaReview} onMouseDown={(event) => event.stopPropagation()}>
+                  <button className="news-modal-close idea-review-submit-close" type="button" aria-label="닫기" onClick={closeIdeaReviewForm}>×</button>
+                  <div className="idea-review-submit-head">
+                    <span>IDEA REVIEW</span>
+                    <h2>심사 의견 작성</h2>
+                    <p>{ideaReviewTarget.title}</p>
+                  </div>
+                  <label className="form-field">
+                    <span>심사 결과</span>
+                    <div className="idea-review-choice">
+                      {['선정', '미선정'].map((statusOption) => (
+                        <button
+                          key={statusOption}
+                          className={ideaReviewForm.status === statusOption ? 'active' : ''}
+                          type="button"
+                          onClick={() => setIdeaReviewForm((current) => ({ ...current, status: statusOption }))}
+                        >
+                          {statusOption}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+                  <label className="form-field">
+                    <span>심사 의견</span>
+                    <textarea
+                      value={ideaReviewForm.comment}
+                      onChange={(event) => setIdeaReviewForm((current) => ({ ...current, comment: event.target.value }))}
+                      placeholder="선정 또는 미선정 사유와 후속 안내를 작성하세요."
+                      rows="6"
+                      required
+                    />
+                  </label>
+                  {adminIdeaError && <div className="form-error">{adminIdeaError}</div>}
+                  <div className="form-actions">
+                    <button className="line-btn" type="button" onClick={closeIdeaReviewForm}>취소</button>
+                    <button className="primary-btn" type="submit" disabled={isUpdatingIdeaStatus || !ideaReviewForm.status || !ideaReviewForm.comment.trim()}>보내기</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {selectedAiIdea && (
+              <div className="news-modal-backdrop" role="presentation" onMouseDown={() => setSelectedAiIdea(null)}>
+                <article className="ai-idea-proposal-modal" role="dialog" aria-modal="true" aria-label="AI 아이디어 제안서" onMouseDown={(event) => event.stopPropagation()}>
+                  <button className="news-modal-close ai-idea-proposal-close" type="button" aria-label="닫기" onClick={() => setSelectedAiIdea(null)}>×</button>
+                  <header className="ai-idea-proposal-head">
+                    <div className="ai-idea-proposal-title">
+                      <span>AI IDEA PROPOSAL</span>
+                      <h2>{selectedAiIdea.title}</h2>
+                      <p>{ideaAuthor(selectedAiIdea)}</p>
+                    </div>
+                    <div className="ai-idea-proposal-meta">
+                      <div><span>상태</span><strong className={`proposal-status ${aiIdeaStatusClass[selectedAiIdea.status] || 'received'}`}>{selectedAiIdea.status}</strong></div>
+                      <div><span>제출일</span><strong>{formatDate(selectedAiIdea.created_at)}</strong></div>
+                    </div>
+                  </header>
+
+                  {selectedAiIdea.status === '접수완료' ? (
+                    <div className="idea-review-actions">
+                      <span>심사 의견을 작성해 결과를 전송하세요.</span>
+                      <button className="primary-btn" type="button" onClick={() => openIdeaReviewForm(selectedAiIdea)}>심사</button>
+                    </div>
+                  ) : selectedAiIdea.review_comment && (
+                    <section className={`idea-review-result-panel ${aiIdeaStatusClass[selectedAiIdea.status] || 'received'}`}>
+                      <div>
+                        <span>심사 완료</span>
+                        <strong>{selectedAiIdea.status}</strong>
+                      </div>
+                      <div className="idea-review-result-message">{selectedAiIdea.review_comment}</div>
+                      {selectedAiIdea.reviewed_at && <time>{formatDate(selectedAiIdea.reviewed_at)}</time>}
+                    </section>
+                  )}
+
+                  <div className="ai-idea-proposal-body">
+                    <section className="ai-idea-proposal-section">
+                      <span>01</span>
+                      <div><h3>문제 정의</h3><p>{selectedAiIdea.problem_definition}</p></div>
+                    </section>
+                    <section className="ai-idea-proposal-section">
+                      <span>02</span>
+                      <div><h3>제안 내용</h3><p>{selectedAiIdea.proposal}</p></div>
+                    </section>
+                    <section className="ai-idea-proposal-section highlight">
+                      <span>03</span>
+                      <div><h3>예상 효과</h3><p>{selectedAiIdea.effect}</p></div>
+                    </section>
+                    <section className="ai-idea-proposal-section">
+                      <span>04</span>
+                      <div>
+                        <h3>참고자료</h3>
+                        {selectedAiIdea.attachments?.length > 0 ? (
+                          <div className="ai-idea-proposal-files">
+                            {selectedAiIdea.attachments.map((attachment) => attachment.url ? <button key={attachment.attachment_id} type="button" onClick={() => downloadIdeaAttachment(attachment)}>{ideaAttachmentName(attachment)}</button> : <b key={ideaAttachmentName(attachment)}>{ideaAttachmentName(attachment)}</b>)}
+                          </div>
+                        ) : (
+                          <p>첨부된 참고자료가 없습니다.</p>
+                        )}
+                      </div>
+                    </section>
+                  </div>
+                </article>
+              </div>
+            )}
+          </section>
+        )}
+
         {isAdminView && adminPage === 'accounts' && (
           <section className="content account-page">
             <div className="account-head">
@@ -1605,7 +1841,6 @@ function App() {
                 <h1>계정 관리</h1>
                 <p>AI Lounge 접속 계정을 추가하고 권한과 기본 정보를 관리합니다.</p>
               </div>
-              <button className="line-btn" type="button" onClick={loadAccounts} disabled={isLoadingAccounts}>새로고침</button>
             </div>
 
             <div className="account-layout">

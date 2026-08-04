@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS ideas (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     reviewed_at TEXT,
+    review_comment TEXT,
     FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT
 );
 

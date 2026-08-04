@@ -139,6 +139,11 @@ class IdeaAttachmentResponse(BaseModel):
     url: str
 
 
+class IdeaStatusUpdateRequest(BaseModel):
+    status: str = Field(min_length=1)
+    review_comment: str = Field(min_length=1)
+
+
 class IdeaResponse(BaseModel):
     idea_id: str
     title: str
@@ -155,6 +160,7 @@ class IdeaResponse(BaseModel):
     created_at: str
     updated_at: str
     reviewed_at: str | None = None
+    review_comment: str | None = None
 
 
 def utc_now() -> str:
@@ -271,6 +277,7 @@ def init_db() -> None:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 reviewed_at TEXT,
+                review_comment TEXT,
                 FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT
             )
             """
@@ -283,6 +290,8 @@ def init_db() -> None:
         if "updated_at" not in idea_columns:
             con.execute("ALTER TABLE ideas ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''")
             con.execute("UPDATE ideas SET updated_at = created_at WHERE updated_at = ''")
+        if "review_comment" not in idea_columns:
+            con.execute("ALTER TABLE ideas ADD COLUMN review_comment TEXT")
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS idea_attachments (
@@ -474,6 +483,7 @@ def idea_from_row(row: sqlite3.Row, attachments: list[IdeaAttachmentResponse] | 
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         reviewed_at=row["reviewed_at"],
+        review_comment=row["review_comment"] if "review_comment" in row.keys() else None,
     )
 
 
@@ -693,6 +703,87 @@ def fetch_idea_attachments(con: sqlite3.Connection, idea_id: str) -> list[IdeaAt
     return [idea_attachment_from_row(row) for row in rows]
 
 
+@app.get("/api/admin/ideas", response_model=list[IdeaResponse])
+def list_admin_ideas(_: Annotated[UserResponse, Depends(require_admin)]) -> list[IdeaResponse]:
+    with get_connection() as con:
+        rows = con.execute(
+            """
+            SELECT
+                i.idea_id,
+                i.title,
+                i.problem_definition,
+                i.proposal,
+                i.effect,
+                i.user_id,
+                u.displayed_name AS author_name,
+                u.org_name AS author_org,
+                u.job_title AS author_job_title,
+                i.status,
+                i.attachment_count,
+                i.created_at,
+                i.updated_at,
+                i.reviewed_at,
+                i.review_comment
+            FROM ideas i
+            LEFT JOIN user u ON u.user_id = i.user_id
+            ORDER BY i.created_at DESC
+            """
+        ).fetchall()
+        return [idea_from_row(row, fetch_idea_attachments(con, row["idea_id"])) for row in rows]
+
+
+@app.put("/api/admin/ideas/{idea_id}/status", response_model=IdeaResponse)
+def update_admin_idea_status(
+    idea_id: str,
+    payload: IdeaStatusUpdateRequest,
+    _: Annotated[UserResponse, Depends(require_admin)],
+) -> IdeaResponse:
+    clean_status = payload.status.strip()
+    clean_comment = payload.review_comment.strip()
+    if clean_status not in {"선정", "미선정"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="올바른 심사 상태를 선택하세요.")
+    if not clean_comment:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="심사 의견을 입력하세요.")
+    now = utc_now()
+    reviewed_at = now
+    with get_connection() as con:
+        result = con.execute(
+            """
+            UPDATE ideas
+            SET status = ?, updated_at = ?, reviewed_at = ?, review_comment = ?
+            WHERE idea_id = ?
+            """,
+            (clean_status, now, reviewed_at, clean_comment, idea_id),
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="아이디어를 찾을 수 없습니다.")
+        row = con.execute(
+            """
+            SELECT
+                i.idea_id,
+                i.title,
+                i.problem_definition,
+                i.proposal,
+                i.effect,
+                i.user_id,
+                u.displayed_name AS author_name,
+                u.org_name AS author_org,
+                u.job_title AS author_job_title,
+                i.status,
+                i.attachment_count,
+                i.created_at,
+                i.updated_at,
+                i.reviewed_at,
+                i.review_comment
+            FROM ideas i
+            LEFT JOIN user u ON u.user_id = i.user_id
+            WHERE i.idea_id = ?
+            """,
+            (idea_id,),
+        ).fetchone()
+        return idea_from_row(row, fetch_idea_attachments(con, idea_id))
+
+
 @app.get("/api/ideas", response_model=list[IdeaResponse])
 def list_ideas(current_user: Annotated[UserResponse, Depends(get_current_user)]) -> list[IdeaResponse]:
     with get_connection() as con:
@@ -712,7 +803,8 @@ def list_ideas(current_user: Annotated[UserResponse, Depends(get_current_user)])
                 i.attachment_count,
                 i.created_at,
                 i.updated_at,
-                i.reviewed_at
+                i.reviewed_at,
+                i.review_comment
             FROM ideas i
             LEFT JOIN user u ON u.user_id = i.user_id
             WHERE i.user_id = ?
@@ -804,7 +896,8 @@ def create_idea(
                     i.attachment_count,
                     i.created_at,
                     i.updated_at,
-                    i.reviewed_at
+                    i.reviewed_at,
+                i.review_comment
                 FROM ideas i
                 LEFT JOIN user u ON u.user_id = i.user_id
                 WHERE i.idea_id = ?
@@ -836,7 +929,8 @@ def get_idea(idea_id: str, current_user: Annotated[UserResponse, Depends(get_cur
                 i.attachment_count,
                 i.created_at,
                 i.updated_at,
-                i.reviewed_at
+                i.reviewed_at,
+                i.review_comment
             FROM ideas i
             LEFT JOIN user u ON u.user_id = i.user_id
             WHERE i.idea_id = ? AND i.user_id = ?
@@ -867,7 +961,7 @@ def get_idea_attachment(
 ) -> FileResponse:
     with get_connection() as con:
         idea = con.execute("SELECT user_id FROM ideas WHERE idea_id = ?", (idea_id,)).fetchone()
-        if idea is None or idea["user_id"] != current_user.user_id:
+        if idea is None or (idea["user_id"] != current_user.user_id and not current_user.is_admin):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="아이디어를 찾을 수 없습니다.")
         attachment = con.execute(
             """
