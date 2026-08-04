@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Clock3,
   Code2,
+  Download,
   ExternalLink,
   Eye,
   FilePenLine,
@@ -164,6 +165,138 @@ const formatDate = (value) => (value ? String(value).slice(0, 10) : '');
 const ideaAttachmentName = (attachment) => (typeof attachment === 'string' ? attachment : attachment.original_name);
 const aiUsageAuthor = (post) => [post?.author_org, post?.author_name, post?.author_job_title].filter(Boolean).join(' ') || 'AI Lounge';
 const ideaAuthor = (idea) => [idea?.author_org, idea?.author_name, idea?.author_job_title].filter(Boolean).join(' ') || '작성자 정보 없음';
+const dxFieldLabels = [
+  ['business_area', '업무 영역'],
+  ['target_work', '적용 업무'],
+  ['current_process', '현재 업무 방식'],
+  ['pain_points', 'Pain Points'],
+  ['problem_scale', '문제 발생 규모'],
+  ['solution_direction', '해결 방향'],
+  ['required_data', '필요 데이터'],
+  ['quantitative_effect', '기대 정량 효과'],
+  ['qualitative_effect', '기대 정성 효과'],
+  ['beneficiaries', '수혜 대상'],
+];
+const dxBulletFieldKeys = new Set(['pain_points', 'quantitative_effect', 'qualitative_effect', 'beneficiaries']);
+
+const renderDxFieldValue = (key, value) => {
+  if (key === 'required_data' && Array.isArray(value)) {
+    if (!value.length) return <p>Agent가 대화를 통해 내용을 채우는 영역입니다.</p>;
+    return (
+      <div className="dx-data-list">
+        {value.map((item, index) => {
+          const dataName = typeof item === 'object' && item ? item.data_name : item;
+          const description = typeof item === 'object' && item ? item.description : '';
+          return (
+            <div className="dx-data-item" key={`required-data-${index}`}>
+              <strong>{dataName || '데이터명 미정'}</strong>
+              {description && <p>{description}</p>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return <p>Agent가 대화를 통해 내용을 채우는 영역입니다.</p>;
+    return (
+      <ul className="dx-template-bullets">
+        {value.map((item, index) => (
+          <li key={`${key}-${index}`}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
+  if (dxBulletFieldKeys.has(key) && value) {
+    return (
+      <ul className="dx-template-bullets">
+        <li>{value}</li>
+      </ul>
+    );
+  }
+  return <p>{value || 'Agent가 대화를 통해 내용을 채우는 영역입니다.'}</p>;
+};
+
+const normalizeDxList = (value) => {
+  if (Array.isArray(value)) return value.filter((item) => String(item || '').trim());
+  if (!value) return [];
+  return String(value).split(/[,/·]/).map((item) => item.trim()).filter(Boolean);
+};
+
+const normalizeDxRequiredData = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    if (typeof item === 'object' && item) {
+      return { data_name: item.data_name || item.name || '데이터명 미정', description: item.description || item.desc || '' };
+    }
+    return { data_name: String(item), description: '' };
+  }).filter((item) => item.data_name || item.description);
+};
+
+const resolveDxDocFields = (fields) => {
+  const source = fields || {};
+  return {
+    project_title: source.project_title || dxTaskDefinition.title,
+    business_area: source.business_area || dxTaskDefinition.process,
+    target_work: source.target_work || dxTaskDefinition.description,
+    current_process: source.current_process || 'Agent가 대화를 통해 내용을 채우는 영역입니다.',
+    pain_points: normalizeDxList(source.pain_points),
+    problem_scale: source.problem_scale || 'Agent가 대화를 통해 내용을 채우는 영역입니다.',
+    solution_direction: source.solution_direction || 'Agent가 대화를 통해 내용을 채우는 영역입니다.',
+    required_data: normalizeDxRequiredData(source.required_data),
+    quantitative_effect: normalizeDxList(source.quantitative_effect),
+    qualitative_effect: normalizeDxList(source.qualitative_effect),
+    beneficiaries: normalizeDxList(source.beneficiaries),
+  };
+};
+
+const escapeDxHtml = (value) => String(value ?? '').replace(/[&<>\"]/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '\"': '&quot;',
+}[char]));
+
+const dxFileSafeName = (value) => String(value || '과제정의서')
+  .replace(/[\\/:*?"<>|]/g, '_')
+  .replace(/\s+/g, '_')
+  .slice(0, 80);
+
+const buildDxDefinitionHtml = (d) => {
+  const listItems = (items) => items.map((item) => `<li>${escapeDxHtml(item)}</li>`).join('');
+  const dataRows = (d.required_data.length ? d.required_data : [{ data_name: '데이터명 미정', description: '' }])
+    .map((item) => `<div class="datarow"><div class="dataname">${escapeDxHtml(item.data_name)}</div><div class="datadesc">${escapeDxHtml(item.description)}</div></div>`)
+    .join('');
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>${escapeDxHtml(d.project_title)}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F5F6F3;--panel:#FFFFFF;--line:#DCE0DD;--line-strong:#B9C0BB;--ink:#16233A;--ink-soft:#51617A;--steel:#5C7A96;--amber:#C97D00;--red:#B5432F;--green:#2F7D52;}*{box-sizing:border-box;margin:0;padding:0;}body{background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/100% 32px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/32px 100%,var(--paper);font-family:'IBM Plex Sans KR',sans-serif;color:var(--ink);padding:48px 20px 80px;line-height:1.6;}.sheet{max-width:920px;margin:0 auto;background:var(--panel);border:1px solid var(--line-strong);box-shadow:0 1px 0 var(--line-strong),0 24px 60px -30px rgba(22,35,58,.25);}.titleblock{padding:28px 40px 24px;border-bottom:2px solid var(--ink);}h1.taskname{font-size:clamp(26px,4vw,36px);font-weight:700;line-height:1.3;margin-bottom:18px;}.business-line{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}.business-label{display:inline-flex;align-items:center;gap:7px;border:1px solid #e6b75f;background:#fff8e8;color:#a86b00;padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:800;letter-spacing:.12em;line-height:1;white-space:nowrap;}.business-label:before{content:'';width:6px;height:6px;background:#c97d00;transform:rotate(45deg);}.business-line strong{font-size:15px;font-weight:700;}.section{padding:26px 40px;border-bottom:1px solid var(--line);}.section:last-child{border-bottom:none;}.sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:16px;}.sec-num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--amber);font-weight:600;}.sec-title{font-size:17px;font-weight:600;}.sec-body{font-size:15px;color:var(--ink-soft);white-space:pre-wrap;}.grid2{display:grid;grid-template-columns:1fr 1fr;}.grid2 .section{border-bottom:none;}.grid2 .section:first-child{border-right:1px solid var(--line);}.painlist{list-style:none;display:flex;flex-direction:column;gap:10px;}.painlist li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--ink-soft);}.painlist li:before{content:'';flex:none;width:8px;height:8px;margin-top:6px;background:var(--red);border-radius:1px;}.efflist li:before{background:var(--green);}.datatable{border:1px solid var(--line-strong);}.datarow{display:flex;border-bottom:1px solid var(--line);}.datarow:last-child{border-bottom:none;}.dataname{flex:0 0 168px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;background:#EDF2F6;color:var(--ink);padding:12px 14px;display:flex;align-items:center;}.datadesc{flex:1;font-size:14px;color:var(--ink-soft);padding:12px 16px;display:flex;align-items:center;background:var(--panel);}.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}.card{border:1px solid var(--line-strong);padding:16px;background:var(--paper);font-size:13.5px;color:var(--ink-soft);line-height:1.55;}.card:before{content:'＋ ';color:var(--green);font-weight:600;}.benefrow{display:flex;flex-wrap:wrap;gap:10px;}.benef{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink);border:1px solid var(--line-strong);padding:8px 12px;background:var(--panel);}.benef .dot{width:7px;height:7px;background:var(--steel);border-radius:50%;}@media(max-width:680px){.grid2,.cards3{grid-template-columns:1fr;}.grid2 .section:first-child{border-right:none;border-bottom:1px solid var(--line);}.titleblock,.section{padding-left:24px;padding-right:24px;}.datarow{flex-direction:column;}.dataname{flex:none;}}
+</style>
+</head>
+<body>
+<div class="sheet">
+<div class="titleblock"><h1 class="taskname">${escapeDxHtml(d.project_title)}</h1><div class="business-line"><span class="business-label">업무 영역</span><strong>${escapeDxHtml(d.business_area)}</strong></div></div>
+<div class="section"><div class="sec-head"><span class="sec-num">SEC.01</span><span class="sec-title">적용 업무</span></div><p class="sec-body">${escapeDxHtml(d.target_work)}</p></div>
+<div class="grid2"><div class="section"><div class="sec-head"><span class="sec-num">SEC.02</span><span class="sec-title">현재 업무 방식</span></div><p class="sec-body">${escapeDxHtml(d.current_process)}</p></div><div class="section"><div class="sec-head"><span class="sec-num">SEC.03</span><span class="sec-title">Pain Points</span></div><ul class="painlist">${listItems(d.pain_points)}</ul></div></div>
+<div class="section"><div class="sec-head"><span class="sec-num">SEC.04</span><span class="sec-title">문제 발생 규모</span></div><p class="sec-body">${escapeDxHtml(d.problem_scale)}</p></div>
+<div class="section"><div class="sec-head"><span class="sec-num">SEC.05</span><span class="sec-title">해결 방향</span></div><p class="sec-body">${escapeDxHtml(d.solution_direction)}</p></div>
+<div class="section"><div class="sec-head"><span class="sec-num">SEC.06</span><span class="sec-title">필요 데이터</span></div><div class="datatable">${dataRows}</div></div>
+<div class="section"><div class="sec-head"><span class="sec-num">SEC.07</span><span class="sec-title">기대 정량 효과</span></div><ul class="painlist efflist">${listItems(d.quantitative_effect)}</ul></div>
+<div class="section"><div class="sec-head"><span class="sec-num">SEC.08</span><span class="sec-title">기대 정성 효과</span></div><div class="cards3">${d.qualitative_effect.map((item) => `<div class="card">${escapeDxHtml(item)}</div>`).join('')}</div></div>
+<div class="section"><div class="sec-head"><span class="sec-num">SEC.09</span><span class="sec-title">수혜 대상</span></div><div class="benefrow">${d.beneficiaries.map((item) => `<div class="benef"><span class="dot"></span>${escapeDxHtml(item)}</div>`).join('')}</div></div>
+</div>
+</body>
+</html>`;
+};
+
+
 const withApiAssetUrls = (html = '') => html.replace(/src="\/api\//g, `src="${API_BASE}/api/`);
 
 const previewText = (html, limit = 50) => {
@@ -205,6 +338,8 @@ function App() {
   const [dxMessages, setDxMessages] = useState(dxMockMessages);
   const [dxInput, setDxInput] = useState('');
   const [isDxTyping, setIsDxTyping] = useState(false);
+  const [dxError, setDxError] = useState('');
+  const [dxDefinitionFields, setDxDefinitionFields] = useState(null);
   const [isDxResultVisible, setIsDxResultVisible] = useState(false);
   const [aiUsagePosts, setAiUsagePosts] = useState([]);
   const [aiIdeas, setAiIdeas] = useState([]);
@@ -339,21 +474,34 @@ function App() {
     return new Error(data.detail || fallback);
   };
 
-  const submitDxMessage = (event) => {
+  const submitDxMessage = async (event) => {
     event.preventDefault();
     const message = dxInput.trim();
     if (!message || isDxTyping) return;
-    if (dxReplyTimerRef.current) window.clearTimeout(dxReplyTimerRef.current);
-    setDxMessages((current) => [...current, { role: 'user', text: message }]);
+    const nextMessages = [...dxMessages, { role: 'user', text: message }];
+    setDxMessages(nextMessages);
     setDxInput('');
+    setDxError('');
     setIsDxResultVisible(false);
     setIsDxTyping(true);
-    dxReplyTimerRef.current = window.setTimeout(() => {
-      setDxMessages((current) => [...current, { role: 'agent', text: '안녕하세요' }]);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/dx-discovery/chat`, {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nextMessages }),
+      });
+      if (!response.ok) throw await apiError(response, 'DX 과제 발굴 Agent 응답을 불러오지 못했습니다.');
+      const data = await response.json();
+      setDxMessages((current) => [...current, { role: 'agent', text: data.reply || '안녕하세요' }]);
+      setDxDefinitionFields(data.fields || null);
+      setIsDxResultVisible(Boolean(data.is_complete));
+    } catch (error) {
+      setDxError(error.message);
+      setDxMessages((current) => [...current, { role: 'agent', text: '응답을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.' }]);
+    } finally {
       setIsDxTyping(false);
-      setIsDxResultVisible(true);
-      dxReplyTimerRef.current = null;
-    }, 5000);
+    }
   };
 
   const resetDxDiscovery = () => {
@@ -361,8 +509,25 @@ function App() {
     dxReplyTimerRef.current = null;
     setDxMessages(dxMockMessages);
     setDxInput('');
+    setDxError('');
+    setDxDefinitionFields(null);
     setIsDxTyping(false);
     setIsDxResultVisible(false);
+  };
+
+
+  const downloadDxDefinition = () => {
+    const fields = resolveDxDocFields(dxDefinitionFields);
+    const html = buildDxDefinitionHtml(fields);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `과제정의서_${dxFileSafeName(fields.project_title)}.html`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const loadAccounts = async () => {
@@ -1074,6 +1239,8 @@ function App() {
     );
   }
 
+  const dxDocFields = resolveDxDocFields(dxDefinitionFields);
+
   return (
     <div className="portal-shell">
       <aside className="sidebar" aria-label="AI Lounge 사이드 메뉴">
@@ -1204,33 +1371,100 @@ function App() {
                   </div>
                 )}
               </div>
+              {dxError && <div className="dx-chat-error">{dxError}</div>}
               <form className="dx-input-bar" onSubmit={submitDxMessage}>
                 <textarea value={dxInput} onChange={(event) => setDxInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submitDxMessage(event); } }} placeholder="해결하고 싶은 업무 과제를 자유롭게 설명해 주세요." rows="1" disabled={isDxTyping} />
                 <button className="primary-btn" type="submit" aria-label="전송" disabled={isDxTyping || !dxInput.trim()}><Send size={16} /></button>
               </form>
             </section>
 
-            <section className={`dx-results ${isDxResultVisible ? 'visible' : ''}`} aria-label="DX 과제 발굴 결과">
-              <article className="dx-task-def">
-                <header className="dx-task-def-header">
-                  <h2>과제 정의서</h2>
-                  <span>Mock 자동 생성</span>
-                </header>
-                <div className="dx-task-def-body">
-                  <div className="dx-field full"><span>과제명</span><strong>{dxTaskDefinition.title}</strong></div>
-                  <div className="dx-field"><span>대상 공정</span><b>{dxTaskDefinition.process}</b></div>
-                  <div className="dx-field"><span>현재 불량률 / 목표</span><b>{dxTaskDefinition.target}</b></div>
-                  <div className="dx-field"><span>과제 유형</span><b>{dxTaskDefinition.type}</b></div>
-                  <div className="dx-field"><span>기대 효과</span><b>{dxTaskDefinition.effect}</b></div>
-                  <div className="dx-field full"><span>활용 Data</span><b>{dxTaskDefinition.data}</b></div>
-                  <div className="dx-field full"><span>적용 기술</span><div className="dx-tech-tags">{dxTaskDefinition.tech.map((tag) => <em key={tag}>{tag}</em>)}</div></div>
-                  <div className="dx-field full"><span>과제 설명</span><p>{dxTaskDefinition.description}</p></div>
+            {isDxResultVisible && (
+            <section className="dx-results visible" aria-label="DX 과제 발굴 결과">
+              <div className="dx-result-toolbar">
+                <button className="line-btn dx-download-btn" type="button" onClick={downloadDxDefinition}>
+                  <Download size={15} />
+                  과제정의서 다운로드
+                </button>
+              </div>
+              <article className="dx-doc-sheet">
+                <div className="dx-doc-titleblock">
+                  <h2 className="dx-doc-taskname">{dxDocFields.project_title}</h2>
+                  <div className="dx-doc-business-line">
+                    <span className="dx-doc-business-label">업무 영역</span>
+                    <strong>{dxDocFields.business_area}</strong>
+                  </div>
                 </div>
+
+                <section className="dx-doc-section">
+                  <div className="dx-doc-sec-head"><span>SEC.01</span><strong>적용 업무</strong></div>
+                  <p className="dx-doc-body-text">{dxDocFields.target_work}</p>
+                </section>
+
+                <div className="dx-doc-grid2">
+                  <section className="dx-doc-section">
+                    <div className="dx-doc-sec-head"><span>SEC.02</span><strong>현재 업무 방식</strong></div>
+                    <p className="dx-doc-body-text">{dxDocFields.current_process}</p>
+                  </section>
+                  <section className="dx-doc-section">
+                    <div className="dx-doc-sec-head"><span>SEC.03</span><strong>Pain Points</strong></div>
+                    <ul className="dx-doc-list pain">
+                      {(dxDocFields.pain_points.length ? dxDocFields.pain_points : ['Agent가 대화를 통해 내용을 채우는 영역입니다.']).map((item, index) => <li key={`pain-${index}`}>{item}</li>)}
+                    </ul>
+                  </section>
+                </div>
+
+                <section className="dx-doc-section">
+                  <div className="dx-doc-sec-head"><span>SEC.04</span><strong>문제 발생 규모</strong></div>
+                  <p className="dx-doc-body-text">{dxDocFields.problem_scale}</p>
+                </section>
+
+                <section className="dx-doc-section">
+                  <div className="dx-doc-sec-head"><span>SEC.05</span><strong>해결 방향</strong></div>
+                  <p className="dx-doc-body-text">{dxDocFields.solution_direction}</p>
+                </section>
+
+                <section className="dx-doc-section">
+                  <div className="dx-doc-sec-head"><span>SEC.06</span><strong>필요 데이터</strong></div>
+                  <div className="dx-doc-data-table">
+                    {(dxDocFields.required_data.length ? dxDocFields.required_data : [{ data_name: '데이터명 미정', description: 'Agent가 대화를 통해 내용을 채우는 영역입니다.' }]).map((item, index) => (
+                      <div className="dx-doc-data-row" key={`required-data-${index}`}>
+                        <div className="dx-doc-data-name">{item.data_name}</div>
+                        <div className="dx-doc-data-desc">{item.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="dx-doc-section">
+                  <div className="dx-doc-sec-head"><span>SEC.07</span><strong>기대 정량 효과</strong></div>
+                  <ul className="dx-doc-list effect">
+                    {(dxDocFields.quantitative_effect.length ? dxDocFields.quantitative_effect : ['Agent가 대화를 통해 내용을 채우는 영역입니다.']).map((item, index) => <li key={`quant-${index}`}>{item}</li>)}
+                  </ul>
+                </section>
+
+                <section className="dx-doc-section">
+                  <div className="dx-doc-sec-head"><span>SEC.08</span><strong>기대 정성 효과</strong></div>
+                  <div className="dx-doc-cards">
+                    {(dxDocFields.qualitative_effect.length ? dxDocFields.qualitative_effect : ['Agent가 대화를 통해 내용을 채우는 영역입니다.']).map((item, index) => (
+                      <div className="dx-doc-card" key={`qual-${index}`}>{item}</div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="dx-doc-section">
+                  <div className="dx-doc-sec-head"><span>SEC.09</span><strong>수혜 대상</strong></div>
+                  <div className="dx-doc-benef-row">
+                    {(dxDocFields.beneficiaries.length ? dxDocFields.beneficiaries : ['Agent가 대화를 통해 내용을 채우는 영역입니다.']).map((item, index) => (
+                      <div className="dx-doc-benef" key={`benef-${index}`}><span />{item}</div>
+                    ))}
+                  </div>
+                </section>
+
               </article>
 
               <div className="dx-rec-row">
                 <section className="dx-rec-panel">
-                  <div className="dx-rec-head"><span className="dx-rec-icon ds">D</span><strong>추천 Data</strong><b>3개 매칭</b></div>
+                  <div className="dx-rec-head"><span className="dx-rec-icon ds">D</span><strong>추천 Data</strong></div>
                   <div className="dx-rec-list">
                     {dxDataRecommendations.map((item) => (
                       <article className="dx-rec-card" key={item.name}>
@@ -1241,7 +1475,7 @@ function App() {
                   </div>
                 </section>
                 <section className="dx-rec-panel">
-                  <div className="dx-rec-head"><span className="dx-rec-icon ai">AI</span><strong>추천 AI 자산</strong><b>3개 매칭</b></div>
+                  <div className="dx-rec-head"><span className="dx-rec-icon ai">AI</span><strong>추천 AI 자산</strong></div>
                   <div className="dx-rec-list">
                     {dxAssetRecommendations.map((item) => (
                       <article className="dx-rec-card" key={item.name}>
@@ -1253,6 +1487,7 @@ function App() {
                 </section>
               </div>
             </section>
+            )}
           </section>
         )}
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import os
 import re
 import shutil
@@ -25,6 +26,7 @@ DB_PATH = BASE_DIR / "app.db"
 NEWS_WORKSPACE = BASE_DIR / "workspace" / "tech_news"
 USAGE_POSTS_WORKSPACE = BASE_DIR / "workspace" / "usage_posts"
 IDEAS_WORKSPACE = BASE_DIR / "workspace" / "ideas"
+PROMPTS_DIR = BASE_DIR / "prompts"
 PBKDF2_ITERATIONS = 210_000
 
 app = FastAPI(title="AI Lounge API")
@@ -104,6 +106,21 @@ class NewsDraftResponse(BaseModel):
     markdown: str
 
 
+class DxChatMessage(BaseModel):
+    role: str
+    text: str
+
+
+class DxDiscoveryChatRequest(BaseModel):
+    messages: list[DxChatMessage] = Field(default_factory=list)
+
+
+class DxDiscoveryChatResponse(BaseModel):
+    reply: str
+    is_complete: bool = False
+    fields: dict[str, str | list[str] | list[dict[str, str]]] = Field(default_factory=dict)
+
+
 class AiUsagePostCreateRequest(BaseModel):
     title: str = Field(min_length=1)
     category: str = Field(min_length=1)
@@ -165,6 +182,73 @@ class IdeaResponse(BaseModel):
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def read_prompt(name: str) -> str:
+    path = PROMPTS_DIR / name
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"프롬프트 파일을 찾을 수 없습니다: {name}")
+    return path.read_text(encoding="utf-8")
+
+
+def extract_json_object(text: str) -> dict:
+    clean = text.strip()
+    if clean.startswith("```"):
+        clean = re.sub(r"^```(?:json)?\s*", "", clean)
+        clean = re.sub(r"\s*```$", "", clean)
+    start = clean.find("{")
+    end = clean.rfind("}")
+    if start >= 0 and end >= start:
+        clean = clean[start:end + 1]
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        return {"reply": text.strip() or "응답을 해석하지 못했습니다. 다시 입력해 주세요.", "is_complete": False, "fields": {}}
+
+
+def format_dx_conversation(messages: list[DxChatMessage]) -> str:
+    if not messages:
+        return "대화 없음"
+    lines = []
+    for message in messages[-20:]:
+        role = "사용자" if message.role == "user" else "Agent"
+        lines.append(f"{role}: {message.text.strip()}")
+    return "\n".join(lines)
+
+
+def normalize_dx_fields(raw_fields: object) -> dict[str, str | list[str] | list[dict[str, str]]]:
+    if not isinstance(raw_fields, dict):
+        return {}
+
+    list_fields = {"pain_points", "quantitative_effect", "qualitative_effect", "beneficiaries"}
+    fields: dict[str, str | list[str] | list[dict[str, str]]] = {}
+    for key, value in raw_fields.items():
+        if key == "required_data":
+            if isinstance(value, list):
+                rows: list[dict[str, str]] = []
+                for item in value:
+                    if isinstance(item, dict):
+                        data_name = str(item.get("data_name") or item.get("name") or "").strip()
+                        description = str(item.get("description") or item.get("desc") or "").strip()
+                        if data_name or description:
+                            rows.append({"data_name": data_name, "description": description})
+                    elif str(item).strip():
+                        rows.append({"data_name": str(item).strip(), "description": ""})
+                fields[key] = rows
+            elif value:
+                fields[key] = [{"data_name": str(value).strip(), "description": ""}]
+            else:
+                fields[key] = []
+        elif key in list_fields:
+            if isinstance(value, list):
+                fields[key] = [str(item).strip() for item in value if str(item).strip()]
+            elif value:
+                fields[key] = [str(value).strip()]
+            else:
+                fields[key] = []
+        else:
+            fields[key] = str(value).strip() if value is not None else ""
+    return fields
 
 
 def get_connection() -> sqlite3.Connection:
@@ -782,6 +866,26 @@ def update_admin_idea_status(
             (idea_id,),
         ).fetchone()
         return idea_from_row(row, fetch_idea_attachments(con, idea_id))
+
+
+@app.post("/api/dx-discovery/chat", response_model=DxDiscoveryChatResponse)
+def chat_dx_discovery(
+    payload: DxDiscoveryChatRequest,
+    _: Annotated[UserResponse, Depends(get_current_user)],
+) -> DxDiscoveryChatResponse:
+    conversation = format_dx_conversation(payload.messages)
+    prompt = read_prompt("dx_discovery_agent.txt").replace("{{conversation}}", conversation)
+    try:
+        raw_response = chat_completion(prompt, temperature=0)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"LLM 응답을 생성하지 못했습니다: {exc}")
+
+    data = extract_json_object(raw_response)
+    return DxDiscoveryChatResponse(
+        reply=str(data.get("reply") or "다음 정보를 조금 더 알려주세요."),
+        is_complete=bool(data.get("is_complete")),
+        fields=normalize_dx_fields(data.get("fields")),
+    )
 
 
 @app.get("/api/ideas", response_model=list[IdeaResponse])
