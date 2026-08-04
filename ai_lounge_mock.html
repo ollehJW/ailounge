@@ -1337,7 +1337,6 @@
       color: #5a6a86;
     }
     .card-maturity-badge.card-maturity-운영 { background: #e4f7ed; color: #0a7240; }
-    .card-maturity-badge.card-maturity-검증완료 { background: #e8f4ff; color: #0063a5; }
     .card-maturity-badge.card-maturity-Pilot { background: #f0edff; color: #5432b0; }
     .card-maturity-badge.card-maturity-PoC { background: #fff4e5; color: #8a5200; }
     .card-maturity-badge.card-maturity-아이디어 { background: #f5f5f5; color: #6b7280; }
@@ -4023,6 +4022,123 @@
       white-space: pre-wrap; font-family: inherit; max-height: 340px; overflow-y: auto;
     }
 
+
+    /* ── 확산 사례 탭 ───────────────────────────── */
+    .diff-case-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 4px 0 12px;
+    }
+    .diff-case-toolbar h3 { margin: 0; font-size: 16px; letter-spacing: -.04em; }
+    .diff-case-list { display: grid; gap: 10px; margin-bottom: 14px; }
+    .diff-case-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 16px 18px;
+      display: grid;
+      gap: 10px;
+    }
+    .diff-case-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .diff-case-card h4 {
+      margin: 0;
+      color: #172033;
+      font-size: 15px;
+      font-weight: 950;
+      line-height: 1.35;
+      letter-spacing: -.035em;
+    }
+    .diff-case-org { margin-top: 4px; color: #66758d; font-size: 12px; font-weight: 800; }
+    .diff-stage {
+      flex: 0 0 auto;
+      min-height: 25px;
+      padding: 4px 10px;
+      border: 1px solid #c8ecd6;
+      background: #eefaf3;
+      color: #16703a;
+      font-size: 11px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+    .diff-stage.poc { border-color: #cfe0ff; background: #eef5ff; color: var(--wia-blue); }
+    .diff-stage.pilot { border-color: #ddd6fe; background: #f5f3ff; color: #5b21b6; }
+    .diff-case-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .diff-case-field {
+      background: #f8fafc;
+      border: 1px solid #edf1f7;
+      padding: 10px 11px;
+    }
+    .diff-case-field b { display:block; color:#1d2a42; font-size:12px; margin-bottom:4px; }
+    .diff-case-field span { color:#5c687a; font-size:12px; line-height:1.5; }
+    .diff-case-git {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f5f7fc;
+      border: 1px solid #e2e8f0;
+      padding: 9px 12px;
+    }
+    .diff-case-git code {
+      flex: 1;
+      min-width: 0;
+      color: #3f4857;
+      font-size: 11.5px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .diff-case-form {
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 18px;
+    }
+    .diff-case-form-head { margin-bottom: 14px; }
+    .diff-case-form-head h3 { margin: 0 0 5px; font-size: 16px; letter-spacing: -.04em; }
+    .diff-case-form-head p { margin: 0; color: #748093; font-size: 12px; line-height: 1.55; }
+    .diff-case-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .diff-case-input { display: grid; gap: 5px; }
+    .diff-case-input.full { grid-column: 1 / -1; }
+    .diff-case-input label { color: #4a5568; font-size: 12px; font-weight: 850; }
+    .diff-case-input input,
+    .diff-case-input select,
+    .diff-case-input textarea {
+      width: 100%;
+      border: 1px solid #dfe6f0;
+      background: #fbfcff;
+      padding: 9px 11px;
+      color: #273244;
+      font: inherit;
+      font-size: 12.5px;
+      outline: 0;
+    }
+    .diff-case-input textarea { min-height: 72px; resize: vertical; line-height: 1.55; }
+    .diff-case-input input:focus,
+    .diff-case-input select:focus,
+    .diff-case-input textarea:focus {
+      border-color: var(--wia-blue);
+      box-shadow: 0 0 0 3px rgba(6, 41, 131, .08);
+      background: #fff;
+    }
+    .diff-case-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+    @media (max-width: 760px) {
+      .diff-case-grid,
+      .diff-case-form-grid { grid-template-columns: 1fr; }
+      .diff-case-card-head,
+      .diff-case-toolbar { display: grid; }
+    }
+
     /* ── DX 과제 발굴 ─────────────────────────────────────────── */
     .dx-wrap {
       padding: 0 32px 60px;
@@ -6060,11 +6176,21 @@ plt.<span style="color:#93c5fd">show</span>()</div>
         </section>
         <!-- ══ End CODE STUDIO ════════════════════════════════════ -->
 
-        <section id="catalog" class="explorer" data-studio-page="explore" aria-label="AI 자산 카탈로그">
+        <section id="collection" class="collection-section" data-studio-page="explore" aria-label="내 컬렉션">
+          <div class="section-head">
+            <div class="eyebrow">MY ACTIVITY</div>
+            <h2>내 컬렉션<span class="red-dot">·</span></h2>
+            <p>관심 자산을 저장하고, 재사용 요청 또는 샌드박스 실행으로 이어갈 수 있습니다. 자산 카드의 별표를 눌러 저장/해제할 수 있습니다.</p>
+          </div>
+          <div class="collection-toolbar"><span id="collectionCount" class="result-count"></span></div>
+          <div id="collectionGrid" class="collection-grid-v3"></div>
+        </section>
+
+        <section id="catalog" class="explorer" data-studio-page="explore" aria-label="AI 자산 라이브러리">
           <div class="explorer-head">
             <div>
               <div class="eyebrow">AI STUDIO</div>
-              <h2>AI Asset Catalog<span class="red-dot">·</span></h2>
+              <h2>AI 자산 라이브러리<span class="red-dot">·</span></h2>
               <p>전사 내 우수 AI 자산과 프로젝트 산출물, 현업 주도 결과물을 재사용 가능한 기술자산으로 표준화하고 체계적으로 관리합니다.</p>
             </div>
             <div class="quick-metrics" aria-label="AI Studio 주요 지표">
@@ -6108,9 +6234,8 @@ plt.<span style="color:#93c5fd">show</span>()</div>
                     <span id="activeFilters" class="helper-text"></span>
                   </div>
                   <div class="sort-tabs" role="tablist" aria-label="정렬">
-                    <button class="tab-btn active" data-sort="reuse">재사용순</button>
+                    <button class="tab-btn active" data-sort="reuse">인기순</button>
                     <button class="tab-btn" data-sort="updated">최신순</button>
-                    <button class="tab-btn" data-sort="maturity">운영성숙도</button>
                   </div>
                 </div>
                 <div id="projectGrid" class="project-grid"></div>
@@ -6439,7 +6564,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
                   <select><option value="">선택</option><option>문서</option><option>테이블·정형데이터</option><option>시계열데이터</option><option>이미지</option><option>영상</option><option>음성</option><option>로그</option><option>코드</option><option>복합</option></select>
                 </div>
                 <div class="form-field"><label>자산 성숙도 *</label>
-                  <select><option>아이디어</option><option>PoC</option><option>Pilot</option><option>검증완료</option><option>운영</option></select>
+                  <select><option>아이디어</option><option>PoC</option><option>Pilot</option><option>운영</option></select>
                 </div>
                 <div class="form-field full">
                   <div class="req-field-head" style="margin-bottom:6px">
@@ -6840,16 +6965,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
             <div id="podiumGrid" class="podium-grid"></div>
             <div id="leaderTable" class="leader-table"></div>
           </div>
-        </section>
-
-        <section id="collection" class="collection-section" data-studio-page="explore" aria-label="내 컬렉션">
-          <div class="section-head">
-            <div class="eyebrow">MY ACTIVITY</div>
-            <h2>내 컬렉션<span class="red-dot">·</span></h2>
-            <p>관심 자산을 저장하고, 재사용 요청 또는 샌드박스 실행으로 이어갈 수 있습니다. 자산 카드의 별표를 눌러 저장/해제할 수 있습니다.</p>
-          </div>
-          <div class="collection-toolbar"><span id="collectionCount" class="result-count"></span><button class="line-btn" data-jump="#catalog">카탈로그로 돌아가기</button></div>
-          <div id="collectionGrid" class="collection-grid-v3"></div>
         </section>
 
         <section id="tech-news" class="ax-community-section" data-ax-page="tech-news" aria-label="Tech News">
@@ -7363,14 +7478,8 @@ plt.<span style="color:#93c5fd">show</span>()</div>
   <div id="drawerBackdrop" class="drawer-backdrop"></div>
   <aside id="detailDrawer" class="detail-drawer" aria-hidden="true"></aside>
 
-  <div id="compareTray" class="compare-tray" aria-live="polite">
-    <b>프로젝트 비교</b>
-    <div id="compareItems" class="compare-items"></div>
-    <button id="openCompare" class="primary-btn">비교 보기</button>
-  </div>
-
   <div id="compareBackdrop" class="compare-backdrop"></div>
-  <div id="compareModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="compareTitle"></div>
+  <div id="diffCaseModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="diffCaseModalTitle" style="width:min(760px,calc(100vw - 40px))"></div>
   <div id="newsBackdrop" class="compare-backdrop"></div>
   <div id="newsModal" class="modal" role="dialog" aria-modal="true" aria-label="뉴스 기사" style="width:min(720px,calc(100vw - 40px));padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 60px)"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -7446,7 +7555,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       {
         id: 'spec-rag',
         title: '도면·사양서 RAG 질의응답',
-        source: 'Learning Lab', domain: 'R&D·설계', task: ['검색', '질의응답'], dataType: '문서', maturity: '검증완료', access: '권한승인',
+        source: 'Learning Lab', domain: 'R&D·설계', task: ['검색', '질의응답'], dataType: '문서', maturity: 'Pilot', access: '권한승인',
         score: 91, reuse: 37, updated: '2026.06.07', owner: 'Learning Lab 4기 / 설계검색팀', license: 'Restricted Internal', implMethod: ['LLM', 'RAG'],
         description: '도면, 사양서, 표준 문서를 벡터화하여 설계 담당자 질문에 근거 문서와 함께 답변합니다.',
         tags: ['RAG', '문서검색', '사양서', '설계지원', 'LLM'],
@@ -7630,7 +7739,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       {
         id: 'quote-summary',
         title: '구매 견적 자동 요약·비교',
-        source: '현업 주도', domain: 'SCM·구매·물류', task: ['요약', '추출'], dataType: '문서', maturity: '검증완료', access: '권한승인',
+        source: '현업 주도', domain: 'SCM·구매·물류', task: ['요약', '추출'], dataType: '문서', maturity: 'Pilot', access: '권한승인',
         score: 79, reuse: 18, updated: '2026.05.21', owner: '구매전략팀', license: 'Restricted Internal', implMethod: ['LLM'],
         description: '협력사 견적서와 조건표를 자동 요약하고 가격, 납기, 품질 조건 차이를 비교합니다.',
         tags: ['문서요약', '견적비교', '구매', 'LLM', '표추출'],
@@ -7879,7 +7988,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       { key: 'task', title: 'Task 유형', options: ['예측', '탐지', '분류', '검색', '질의응답', '요약', '생성', '추출', '추천', '분석', '최적화', '자동화'] },
       { key: 'implMethod', title: '구현 방식', options: ['ML', 'DL', 'Computer Vision', 'LLM', 'RAG', 'Agent', 'Rule-Based', 'Hybrid'] },
       { key: 'dataType', title: 'Data 유형', options: ['문서', '테이블·정형데이터', '시계열데이터', '이미지', '영상', '음성', '로그', '코드', '복합'] },
-      { key: 'maturity', title: '자산 성숙도', options: ['아이디어', 'PoC', 'Pilot', '검증완료', '운영'] }
+      { key: 'maturity', title: '자산 성숙도', options: ['아이디어', 'PoC', 'Pilot', '운영'] }
     ];
 
     const state = {
@@ -7888,7 +7997,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       sort: 'reuse',
       drawerProject: null,
       drawerTab: 'overview',
-      compare: [],
       bookmarks: new Set(['assembly-defect', 'spec-rag', 'parts-forecast']),
       registryEnabled: true,
       sourceOptions: ['Learning Lab', 'DX추진랩', '현업 주도', '운영 자산'],
@@ -7903,7 +8011,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
     }
 
     function maturityRank(maturity) {
-      return { '아이디어': 1, 'PoC': 2, 'Pilot': 3, '검증완료': 4, '운영': 5 }[maturity] || 0;
+      return { '아이디어': 1, 'PoC': 2, 'Pilot': 3, '운영': 4 }[maturity] || 0;
     }
 
     function formatNumber(value) {
@@ -7912,7 +8020,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
 
     function projectCerts(project) {
       const certs = [];
-      if (['검증완료', '운영전환', '운영'].includes(project.maturity)) certs.push(['검증 완료', 'ok']);
+      if (['Pilot', '운영전환', '운영'].includes(project.maturity)) certs.push(['검증 완료', 'ok']);
       if (project.files?.some(file => /code|pipeline|classifier|service|agent|bundle|zip/i.test(file[0]))) certs.push(['재현 가능', 'rep']);
       if (project.maturity === '운영') certs.push(['운영 적용', 'live']);
       return certs;
@@ -7963,7 +8071,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
 
       result.sort((a, b) => {
         if (state.sort === 'updated') return b.updated.localeCompare(a.updated);
-        if (state.sort === 'maturity') return maturityRank(b.maturity) - maturityRank(a.maturity) || b.reuse - a.reuse;
         return b.reuse - a.reuse;
       });
       return result;
@@ -7979,7 +8086,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       $('#activeFilters').textContent = [queryTxt, filterTxt].filter(Boolean).join(' · ') || '전체 AI 자산';
       $('#emptyState').classList.toggle('show', list.length === 0);
       $('#projectGrid').innerHTML = list.map(project => {
-        const checked = state.compare.includes(project.id) ? 'checked' : '';
         return `
           <article class="project-card" data-project-id="${project.id}" tabindex="0" role="button" aria-label="${escapeHtml(project.title)} 상세 보기">
             <div class="card-topline">
@@ -7996,16 +8102,14 @@ plt.<span style="color:#93c5fd">show</span>()</div>
               <div class="card-meta-row"><span class="card-meta-label">Tags</span><span class="card-meta-value card-meta-tags">${project.tags.slice(0, 4).map(tag => `<span class="card-tag">#${tag}</span>`).join('')}</span></div>
             </div>
             <div class="card-foot">
-              <div class="small-stat"><b>${project.reuse}</b>회 재사용 · ${project.updated}</div>
+              <div class="small-stat"><b>${project.diffusionCount || 2}</b>회 확산 완료 / <b>${project.reuse}</b>회 확산 시도 · ${project.updated}</div>
               <div class="card-actions">
-                <label class="compare-check" title="비교함에 추가"><input type="checkbox" data-compare="${project.id}" ${checked}/> 비교</label>
                 <button class="mini-btn primary" data-open="${project.id}">보기</button>
               </div>
             </div>
           </article>
         `;
       }).join('');
-      renderCompareTray();
       renderCollection();
     }
 
@@ -8029,7 +8133,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
     function renderDrawer() {
       const p = state.drawerProject;
       const tabs = [
-        ['overview', '과제 설명'], ['tech', '적용 기술'], ['schema', '데이터'], ['performance', '성능 지표'], ['demo', '적용'], ['diffusion', '확산'], ['qa', 'Q&A']
+        ['overview', '과제 설명'], ['tech', '적용 기술'], ['schema', '데이터'], ['performance', '성능 지표'], ['demo', '적용'], ['diffusion', '확산 가이드'], ['diffusion-cases', '확산 사례'], ['qa', 'Q&A']
       ];
       $('#detailDrawer').innerHTML = `
         <div class="drawer-head">
@@ -8050,7 +8154,8 @@ plt.<span style="color:#93c5fd">show</span>()</div>
           </div>
           <div class="drawer-metrics">
             <div class="drawer-metric"><b>${p.maturity}</b><span>자산 성숙도</span></div>
-            <div class="drawer-metric"><b>${p.reuse}</b><span>재사용 횟수</span></div>
+            <div class="drawer-metric"><b>${p.reuse}</b><span>확산 시도</span></div>
+            <div class="drawer-metric"><b>${p.diffusionCount || 2}</b><span>확산 완료</span></div>
             <div class="drawer-metric"><b>${p.updated}</b><span>업데이트</span></div>
           </div>
         </div>
@@ -8202,6 +8307,9 @@ plt.<span style="color:#93c5fd">show</span>()</div>
           ${techSection('🔧', '기술 스택', p.tech.stack, 'stack')}
         `;
       }
+      if (state.drawerTab === 'diffusion-cases') {
+        return renderDiffusionCasesTab(p);
+      }
       /* ── 확산 탭 ── */
       const gitUrl = `https://git.hyundai-wia.com/ai-assets/${p.id}.git`;
       const prompt = p.diffusionPrompt || '(확산 프롬프트 준비 중입니다.)';
@@ -8271,6 +8379,61 @@ plt.<span style="color:#93c5fd">show</span>()</div>
           </div>
           <pre class="diff-prompt-body" id="diff-prompt-${p.id}">${prompt.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
         </div>
+      `;
+    }
+
+    function renderDiffusionCasesTab(p) {
+      const cases = [
+        {
+          title: `${p.title} 창원 2공장 파일럿 적용`,
+          org: '생산기술팀 · 창원 2공장 A라인',
+          stage: '시범 운영',
+          stageClass: 'pilot',
+          appliedWork: `${p.domain} 현장의 반복 판단 업무와 ${Array.isArray(p.task) ? p.task.join('·') : p.task} 프로세스`,
+          customization: '현장 컬럼명과 샘플 스키마를 매핑하고, 라인별 기준값을 반영해 입력 로더와 결과 리포트를 수정',
+          effect: p.impact || '현장 검증 리드타임 단축 및 분석 반복 작업 감소',
+          git: `https://git.hyundai-wia.com/diffusion-cases/${p.id}-cw2-pilot.git`,
+        },
+        {
+          title: `${p.title} 운영 전환 검토 사례`,
+          org: 'DX추진랩 · 현업 공동 TF',
+          stage: 'PoC',
+          stageClass: 'poc',
+          appliedWork: '현업 데이터 구조에 맞춘 운영 전환 가능성 검토 업무',
+          customization: '기존 코드와 확산 프롬프트를 현업 데이터 경로, 컬럼명, 검증 기준에 맞게 수정',
+          effect: '샘플 데이터 기준 재현성 확인 · 운영 전환 체크리스트 도출',
+          git: `https://git.hyundai-wia.com/diffusion-cases/${p.id}-poc-template.git`,
+        },
+      ];
+      return `
+        <div class="diff-case-toolbar">
+          <h3>확산 사례 목록 · 총 ${cases.length}건</h3>
+          <button class="primary-btn" type="button" data-open-diff-case-form="${p.id}">+ 사례 등록</button>
+        </div>
+
+        <div class="diff-case-list">
+          ${cases.map((item, index) => `
+            <article class="diff-case-card">
+              <div class="diff-case-card-head">
+                <div>
+                  <h4>${item.title}</h4>
+                  <div class="diff-case-org">${item.org}</div>
+                </div>
+                <span class="diff-stage ${item.stageClass}">${item.stage}</span>
+              </div>
+              <div class="diff-case-grid">
+                <div class="diff-case-field"><b>적용 업무</b><span>${item.appliedWork}</span></div>
+                <div class="diff-case-field"><b>수정·활용 방식</b><span>${item.customization}</span></div>
+                <div class="diff-case-field"><b>적용 효과</b><span>${item.effect}</span></div>
+              </div>
+              <div class="diff-case-git">
+                <code id="diff-case-git-${p.id}-${index}">${item.git}</code>
+                <button class="copy-btn" data-copy-target="diff-case-git-${p.id}-${index}">복사</button>
+              </div>
+            </article>
+          `).join('')}
+        </div>
+
       `;
     }
 
@@ -8878,20 +9041,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       showToast(`${filename} 다운로드를 시작했습니다.`);
     }
 
-    function toggleCompare(projectId, checked) {
-      if (checked) {
-        if (state.compare.length >= 3) {
-          showToast('비교는 최대 3개 자산까지 가능합니다.');
-          renderProjects();
-          return;
-        }
-        if (!state.compare.includes(projectId)) state.compare.push(projectId);
-      } else {
-        state.compare = state.compare.filter(id => id !== projectId);
-      }
-      renderCompareTray();
-    }
-
     function renderImpactDashboard() {
       const kpiHolder = $('#impactKpis');
       if (!kpiHolder) return;
@@ -8905,7 +9054,7 @@ plt.<span style="color:#93c5fd">show</span>()</div>
         pending: 7
       };
       const kpis = [
-        ['등록 AI 자산', `${formatNumber(impactBaseline.registeredAssets)}개`, `운영/전환 ${impactBaseline.operatingAssets}개 · 검증완료 ${impactBaseline.verifiedAssets}개`],
+        ['등록 AI 자산', `${formatNumber(impactBaseline.registeredAssets)}개`, `운영/전환 ${impactBaseline.operatingAssets}개 · Pilot ${impactBaseline.verifiedAssets}개`],
         ['누적 재사용', `${formatNumber(impactBaseline.totalReuse)}회`, '다운로드, 샌드박스 실행, API 호출 기반'],
         ['연간화 기대 효과', '3.8억', '품질 비용, 보전 리드타임, 문서 검색 시간 절감'],
         ['심사 대기', `${impactBaseline.pending}건`, '신규 등록 요청 및 권한 승인 대기']
@@ -9239,7 +9388,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       }
       $$('.side-item, .side-group-btn, .side-sub').forEach(el => el.classList.remove('active'));
       closeDrawer();
-      closeCompareModal();
       const content = $('.content');
       if (content) content.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -9305,42 +9453,45 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       renderCollection();
     }
 
-    function renderCompareTray() {
-      const tray = $('#compareTray');
-      tray.classList.toggle('show', state.compare.length > 0);
-      $('#compareItems').innerHTML = state.compare.map(id => {
-        const p = projects.find(project => project.id === id);
-        return `<span class="compare-pill">${p.title}<button data-remove-compare="${p.id}" aria-label="비교 제거">×</button></span>`;
-      }).join('');
-    }
-
-    function openCompareModal() {
-      const selected = state.compare.map(id => projects.find(p => p.id === id)).filter(Boolean);
-      if (selected.length < 2) {
-        showToast('2개 이상 선택하면 비교할 수 있습니다.');
-        return;
-      }
-      $('#compareModal').innerHTML = `
-        <div class="modal-head"><div><div class="eyebrow">PROJECT COMPARE</div><h2 id="compareTitle">AI 자산 비교</h2></div><button class="modal-close" aria-label="닫기">×</button></div>
+    function openDiffCaseModal(projectId) {
+      const p = projects.find(project => project.id === projectId) || state.drawerProject || projects[0];
+      $('#diffCaseModal').innerHTML = `
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">DIFFUSION CASE</div>
+            <h2 id="diffCaseModalTitle">확산 사례 등록</h2>
+          </div>
+          <button class="modal-close" aria-label="닫기">×</button>
+        </div>
         <div class="modal-body">
-          <table class="compare-table">
-            <thead><tr><th>항목</th>${selected.map(p => `<th>${p.title}</th>`).join('')}</tr></thead>
-            <tbody>
-              <tr><th>업무 영역</th>${selected.map(p => `<td>${p.domain}</td>`).join('')}</tr>
-              <tr><th>Task / Data</th>${selected.map(p => `<td>${Array.isArray(p.task) ? p.task.join(' · ') : p.task}<br/>${p.dataType}</td>`).join('')}</tr>
-              <tr><th>구현 방식</th>${selected.map(p => `<td>${Array.isArray(p.implMethod) ? p.implMethod.join(' · ') : (p.implMethod || '—')}</td>`).join('')}</tr>
-              <tr><th>자산 성숙도</th>${selected.map(p => `<td>${p.maturity}</td>`).join('')}</tr>
-            </tbody>
-          </table>
+          <form class="diff-case-form" style="border:0;padding:0">
+            <div class="diff-case-form-head">
+              <h3>${p.title}</h3>
+              <p>이 AI 자산을 다른 조직/라인에 적용한 경험과 공유 코드를 등록하는 입력 UI입니다. 현재 목업에서는 저장 동작 없이 화면 구성만 제공합니다.</p>
+            </div>
+            <div class="diff-case-form-grid">
+              <div class="diff-case-input"><label>사례 제목</label><input placeholder="예: 창원 2공장 검사 공정 적용" /></div>
+              <div class="diff-case-input"><label>적용 조직/라인</label><input placeholder="예: 생산기술팀 · A라인" /></div>
+              <div class="diff-case-input"><label>확산 단계</label><select><option>PoC</option><option>시범 운영</option><option>운영 적용</option><option>확산 완료</option></select></div>
+              <div class="diff-case-input"><label>코드 Git URL</label><input placeholder="https://git.hyundai-wia.com/..." /></div>
+              <div class="diff-case-input full"><label>적용 업무</label><textarea placeholder="이 자산을 어떤 업무/공정/프로세스에 적용했는지 작성하세요."></textarea></div>
+              <div class="diff-case-input full"><label>수정·활용 방식</label><textarea placeholder="원본 자산을 현장에 맞게 어떻게 수정하고 활용했는지 작성하세요."></textarea></div>
+              <div class="diff-case-input full"><label>적용 효과</label><textarea placeholder="적용 후 어떤 정량/정성 효과가 있었는지 작성하세요."></textarea></div>
+            </div>
+            <div class="diff-case-form-actions">
+              <button class="line-btn" type="button">초기화</button>
+              <button class="primary-btn" type="button" id="mockDiffCaseSubmit">사례 등록</button>
+            </div>
+          </form>
         </div>
       `;
       $('#compareBackdrop').classList.add('open');
-      $('#compareModal').classList.add('open');
+      $('#diffCaseModal').classList.add('open');
     }
 
-    function closeCompareModal() {
+    function closeDiffCaseModal() {
       $('#compareBackdrop').classList.remove('open');
-      $('#compareModal').classList.remove('open');
+      $('#diffCaseModal').classList.remove('open');
     }
 
     const newsData = [
@@ -9744,6 +9895,12 @@ plt.<span style="color:#93c5fd">show</span>()</div>
         return;
       }
 
+      const diffCaseFormBtn = event.target.closest('[data-open-diff-case-form]');
+      if (diffCaseFormBtn) {
+        openDiffCaseModal(diffCaseFormBtn.dataset.openDiffCaseForm);
+        return;
+      }
+
       if (event.target.closest('.drawer-close') || event.target === $('#drawerBackdrop')) {
         closeDrawer();
         return;
@@ -9849,19 +10006,13 @@ plt.<span style="color:#93c5fd">show</span>()</div>
         return;
       }
 
-      const removeCompare = event.target.closest('[data-remove-compare]');
-      if (removeCompare) {
-        state.compare = state.compare.filter(id => id !== removeCompare.dataset.removeCompare);
-        renderProjects();
-        return;
-      }
-
-      if (event.target.closest('#openCompare')) {
-        openCompareModal();
+      if (event.target.closest('#mockDiffCaseSubmit')) {
+        closeDiffCaseModal();
+        showToast('확산 사례 등록 UI 목업입니다. 실제 저장은 추후 DB 연동 시 적용됩니다.');
         return;
       }
       if (event.target.closest('.modal-close') || event.target === $('#compareBackdrop')) {
-        closeCompareModal();
+        closeDiffCaseModal();
         return;
       }
 
@@ -10240,15 +10391,10 @@ plt.<span style="color:#93c5fd">show</span>()</div>
         $('#dataFields')?.classList.toggle('disabled', event.target.checked);
         return;
       }
-      const compare = event.target.closest('[data-compare]');
-      if (compare) {
-        event.stopPropagation();
-        toggleCompare(compare.dataset.compare, compare.checked);
-      }
     });
 
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') { closeDrawer(); closeCompareModal(); closeNewsModal(); }
+      if (event.key === 'Escape') { closeDrawer(); closeDiffCaseModal(); closeNewsModal(); }
       // 태그 입력 Enter
       if (event.key === 'Enter' && event.target.matches('.tag-input')) {
         event.preventDefault();
