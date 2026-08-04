@@ -108,6 +108,34 @@ const aiIdeaStatusClass = {
   '미선정': 'rejected',
 };
 
+
+const dxMockMessages = [
+  { role: 'agent', text: '해결하고 싶은 업무 과제를 입력하면 과제 정의서와 추천 Data, AI 자산을 정리해드립니다.' },
+];
+
+const dxTaskDefinition = {
+  title: 'CNC 가공 공정 실시간 불량 예측 시스템 구축',
+  process: 'CNC 가공 공정 (머시닝센터)',
+  target: '불량률 3.2% → 1.0% 이하',
+  type: '예측형 (불량 사전 감지)',
+  effect: '불량률 68% 저감, 월 손실 비용 절감',
+  data: 'CNC 센서 데이터 (진동·온도·절삭력), 작업 지시서, 검사 결과 이력',
+  description: 'CNC 머신의 진동·온도·절삭력 센서 데이터를 실시간으로 분석하여 불량 발생 가능성을 사전에 감지하고, 작업자에게 즉시 알림을 제공하는 과제입니다.',
+  tech: ['시계열 이상 탐지', '머신러닝', '실시간 스트리밍', '대시보드 알림'],
+};
+
+const dxDataRecommendations = [
+  { name: 'CNC 머시닝센터 센서 로그 (2023-2024)', desc: '진동·온도·절삭력 15개 채널, 10Hz 샘플링, 불량 레이블 포함', tags: ['생산·제조', '18.4 GB'] },
+  { name: '품질 검사 결과 이력 DB', desc: '불량 유형·발생 시각·작업자 ID 포함, 3년치 누적 검사 데이터', tags: ['품질', '2.1 GB'] },
+  { name: '작업 지시서 & 공구 교체 이력', desc: '공구 수명·절삭 조건·소재 정보와 연계 가능한 정형 데이터', tags: ['생산·제조', '340 MB'] },
+];
+
+const dxAssetRecommendations = [
+  { name: '설비 이상 감지 LSTM 모델', desc: '시계열 센서 데이터 기반 이상 탐지, F1-score 0.91', tags: ['이상탐지', '운영'] },
+  { name: '공정 품질 예측 XGBoost Pipeline', desc: '공정 파라미터와 검사 이력을 결합한 품질 예측 템플릿', tags: ['예측', 'Pilot'] },
+  { name: '제조 현장 알림 Dashboard Kit', desc: '이상 신호를 현장 모니터와 메신저로 전달하는 대시보드 자산', tags: ['대시보드', '운영'] },
+];
+
 const emptyAiUsageForm = {
   title: '',
   category: '확산 사례',
@@ -174,6 +202,10 @@ function App() {
   const [isDraftingNews, setIsDraftingNews] = useState(false);
   const [newsAdminTab, setNewsAdminTab] = useState('write');
   const [editingNewsId, setEditingNewsId] = useState('');
+  const [dxMessages, setDxMessages] = useState(dxMockMessages);
+  const [dxInput, setDxInput] = useState('');
+  const [isDxTyping, setIsDxTyping] = useState(false);
+  const [isDxResultVisible, setIsDxResultVisible] = useState(false);
   const [aiUsagePosts, setAiUsagePosts] = useState([]);
   const [aiIdeas, setAiIdeas] = useState([]);
   const [adminIdeas, setAdminIdeas] = useState([]);
@@ -204,6 +236,7 @@ function App() {
   const [selectedAiUsagePost, setSelectedAiUsagePost] = useState(null);
   const [aiUsageEditorFormat, setAiUsageEditorFormat] = useState({ bold: false, underline: false, color: '#243047' });
   const [isAiUsageColorOpen, setIsAiUsageColorOpen] = useState(false);
+  const dxReplyTimerRef = useRef(null);
   const aiUsageEditorRef = useRef(null);
   const aiUsageSelectionRef = useRef(null);
   const aiIdeaFileInputRef = useRef(null);
@@ -304,6 +337,32 @@ function App() {
   const apiError = async (response, fallback) => {
     const data = await response.json().catch(() => ({}));
     return new Error(data.detail || fallback);
+  };
+
+  const submitDxMessage = (event) => {
+    event.preventDefault();
+    const message = dxInput.trim();
+    if (!message || isDxTyping) return;
+    if (dxReplyTimerRef.current) window.clearTimeout(dxReplyTimerRef.current);
+    setDxMessages((current) => [...current, { role: 'user', text: message }]);
+    setDxInput('');
+    setIsDxResultVisible(false);
+    setIsDxTyping(true);
+    dxReplyTimerRef.current = window.setTimeout(() => {
+      setDxMessages((current) => [...current, { role: 'agent', text: '안녕하세요' }]);
+      setIsDxTyping(false);
+      setIsDxResultVisible(true);
+      dxReplyTimerRef.current = null;
+    }, 5000);
+  };
+
+  const resetDxDiscovery = () => {
+    if (dxReplyTimerRef.current) window.clearTimeout(dxReplyTimerRef.current);
+    dxReplyTimerRef.current = null;
+    setDxMessages(dxMockMessages);
+    setDxInput('');
+    setIsDxTyping(false);
+    setIsDxResultVisible(false);
   };
 
   const loadAccounts = async () => {
@@ -1109,6 +1168,94 @@ function App() {
       </aside>
 
       <main className="main" aria-label="콘텐츠 영역">
+        {!isAdminView && activePage === 'dx-discovery' && (
+          <section className="content dx-discovery-page">
+            <div className="account-head">
+              <div>
+                <span>AI STUDIO</span>
+                <h1>DX 과제 발굴</h1>
+                <p>AI Agent와 대화하며 막연한 아이디어를 구체적인 업무 과제로 다듬어보세요. 대화가 끝나면 과제 정의서가 자동으로 정리되고, 관련된 데이터와 AI 자산도 함께 추천해드립니다.</p>
+              </div>
+            </div>
+
+            <section className="dx-chat-panel" aria-label="DX 과제 발굴 채팅">
+              <div className="dx-chat-header">
+                <span className="dx-agent-dot" />
+                <div>
+                  <strong>DX 과제 발굴 Agent</strong>
+                </div>
+                <button className="line-btn" type="button" onClick={resetDxDiscovery}>초기화</button>
+              </div>
+              <div className="dx-chat-body">
+                {dxMessages.map((message, index) => (
+                  <div className={`dx-msg ${message.role}`} key={`${message.role}-${index}`}>
+                    <div className="dx-avatar">{message.role === 'agent' ? <Bot size={16} /> : <UserRound size={15} />}</div>
+                    <div className="dx-bubble">{message.text}</div>
+                  </div>
+                ))}
+                {isDxTyping && (
+                  <div className="dx-msg agent dx-typing-msg">
+                    <div className="dx-avatar"><Bot size={16} /></div>
+                    <div className="dx-typing-bubble" aria-label="챗봇 입력 중">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <form className="dx-input-bar" onSubmit={submitDxMessage}>
+                <textarea value={dxInput} onChange={(event) => setDxInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submitDxMessage(event); } }} placeholder="해결하고 싶은 업무 과제를 자유롭게 설명해 주세요." rows="1" disabled={isDxTyping} />
+                <button className="primary-btn" type="submit" aria-label="전송" disabled={isDxTyping || !dxInput.trim()}><Send size={16} /></button>
+              </form>
+            </section>
+
+            <section className={`dx-results ${isDxResultVisible ? 'visible' : ''}`} aria-label="DX 과제 발굴 결과">
+              <article className="dx-task-def">
+                <header className="dx-task-def-header">
+                  <h2>과제 정의서</h2>
+                  <span>Mock 자동 생성</span>
+                </header>
+                <div className="dx-task-def-body">
+                  <div className="dx-field full"><span>과제명</span><strong>{dxTaskDefinition.title}</strong></div>
+                  <div className="dx-field"><span>대상 공정</span><b>{dxTaskDefinition.process}</b></div>
+                  <div className="dx-field"><span>현재 불량률 / 목표</span><b>{dxTaskDefinition.target}</b></div>
+                  <div className="dx-field"><span>과제 유형</span><b>{dxTaskDefinition.type}</b></div>
+                  <div className="dx-field"><span>기대 효과</span><b>{dxTaskDefinition.effect}</b></div>
+                  <div className="dx-field full"><span>활용 Data</span><b>{dxTaskDefinition.data}</b></div>
+                  <div className="dx-field full"><span>적용 기술</span><div className="dx-tech-tags">{dxTaskDefinition.tech.map((tag) => <em key={tag}>{tag}</em>)}</div></div>
+                  <div className="dx-field full"><span>과제 설명</span><p>{dxTaskDefinition.description}</p></div>
+                </div>
+              </article>
+
+              <div className="dx-rec-row">
+                <section className="dx-rec-panel">
+                  <div className="dx-rec-head"><span className="dx-rec-icon ds">D</span><strong>추천 Data</strong><b>3개 매칭</b></div>
+                  <div className="dx-rec-list">
+                    {dxDataRecommendations.map((item) => (
+                      <article className="dx-rec-card" key={item.name}>
+                        <div className="dx-rec-card-ico ds">D</div>
+                        <div><h3>{item.name}</h3><p>{item.desc}</p><div>{item.tags.map((tag) => <span className="dx-rec-tag ds" key={tag}>{tag}</span>)}</div></div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+                <section className="dx-rec-panel">
+                  <div className="dx-rec-head"><span className="dx-rec-icon ai">AI</span><strong>추천 AI 자산</strong><b>3개 매칭</b></div>
+                  <div className="dx-rec-list">
+                    {dxAssetRecommendations.map((item) => (
+                      <article className="dx-rec-card" key={item.name}>
+                        <div className="dx-rec-card-ico ai">AI</div>
+                        <div><h3>{item.name}</h3><p>{item.desc}</p><div>{item.tags.map((tag) => <span className="dx-rec-tag ai" key={tag}>{tag}</span>)}</div></div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </section>
+          </section>
+        )}
+
         {!isAdminView && activePage === 'tech-news' && (
           <section className="content tech-news-page">
             <div className="account-head">
