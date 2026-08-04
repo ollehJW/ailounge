@@ -120,6 +120,25 @@ const dxTaskDefinition = {
   description: 'Agent가 대화를 통해 내용을 채우는 영역입니다.',
 };
 
+const assetTaskTypes = ['예측', '탐지', '분류', '검색', '질의응답', '요약', '생성', '추출', '추천', '분석', '최적화', '자동화'];
+const assetImplementationTypes = ['ML', 'DL', 'Computer Vision', 'LLM', 'RAG', 'Agent', 'Rule-Based', 'Hybrid'];
+const createAssetTechItem = () => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}` });
+const createAssetImageItem = () => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, fileName: '', previewUrl: '' });
+const assetRegistrySteps = [
+  ['자산 명세서 작성', '담당자 정보, 자산 개요, 과제 정의, 데이터, 기술·성능 지표를 작성합니다.'],
+  ['자산 연동', 'GitHub/GitLab 저장소를 연결해 실제 코드·데이터 구조를 확인합니다.'],
+  ['Skill 생성', 'LLM이 저장소를 분석해 Skill 파일과 확산 프롬프트를 자동 생성합니다.'],
+  ['최종 제출 및 승인', '필독 사항 동의 후 제출하면 거버넌스 검토를 거쳐 카탈로그에 공개됩니다.'],
+];
+
+const assetGuideExamples = {
+  problem: '예: 8개 생산 라인의 불량 데이터를 매주 취합하지만, 라인별 MES 다운로드 포맷과 불량 유형 코드가 달라 담당자가 직접 정리합니다. 동일한 불량도 담당자마다 다르게 분류되어 재확인이 반복되고, 임원 보고서 작성에 매주 3~4시간이 소요됩니다.',
+  asIs: '예: 매주 월요일 담당자가 MES에서 라인별 불량 데이터를 엑셀로 내려받습니다. 이후 피벗테이블로 라인별·유형별 현황을 만들고, 전주 대비 증감 그래프와 보고 코멘트를 수작업으로 PPT에 옮깁니다.',
+  toBe: '예: MES 데이터를 업로드하면 표준 컬럼으로 자동 정리되고, 공정별 불량 코드가 표준 불량 유형으로 자동 매핑됩니다. 집계표와 증감 그래프가 자동 생성되며, 주요 증감 원인과 보고 코멘트 초안을 AI가 작성합니다.',
+  effect: '예: 보고서 작성 시간을 주당 3~4시간에서 1시간 이내로 단축합니다. 불량 유형 분류 기준을 표준화해 재확인 시간을 줄이고, 담당자가 단순 취합보다 원인 분석과 개선 활동에 집중할 수 있게 합니다.',
+  data: '예: MES 불량 이력 데이터와 불량 유형 매핑 기준표를 사용합니다. MES 데이터는 라인명, 발생일시, 품번, 공정명, 불량 유형 코드, 불량 내용 메모, 조치 결과 컬럼을 포함하며, 기준표는 공정별 코드와 표준 불량 유형의 매핑 정보를 담습니다.',
+};
+
 const emptyAiUsageForm = {
   title: '',
   category: '확산 사례',
@@ -305,6 +324,19 @@ function App() {
   const [isCheckingSession, setIsCheckingSession] = useState(Boolean(authToken));
   const [activePage, setActivePage] = useState('home');
   const [openGroups, setOpenGroups] = useState(() => new Set(navGroups.map((group) => group.id)));
+  const [assetRegistryStep, setAssetRegistryStep] = useState(0);
+  const [isAssetRegistrySubmitted, setIsAssetRegistrySubmitted] = useState(false);
+  const [isAssetNoData, setIsAssetNoData] = useState(false);
+  const [selectedAssetTasks, setSelectedAssetTasks] = useState([]);
+  const [selectedAssetImplementations, setSelectedAssetImplementations] = useState([]);
+  const [assetModelItems, setAssetModelItems] = useState(() => [createAssetTechItem()]);
+  const [assetStackItems, setAssetStackItems] = useState(() => [createAssetTechItem()]);
+  const [assetBeforeAfterItems, setAssetBeforeAfterItems] = useState(() => [createAssetTechItem()]);
+  const [assetKpiItems, setAssetKpiItems] = useState(() => [createAssetTechItem()]);
+  const [assetImageItems, setAssetImageItems] = useState(() => [createAssetImageItem()]);
+  const [openAssetGuides, setOpenAssetGuides] = useState({});
+  const [assetTagInput, setAssetTagInput] = useState('');
+  const [assetTags, setAssetTags] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [editingUserId, setEditingUserId] = useState('');
@@ -471,6 +503,65 @@ function App() {
   const apiError = async (response, fallback) => {
     const data = await response.json().catch(() => ({}));
     return new Error(data.detail || fallback);
+  };
+
+  const addAssetModelItem = () => setAssetModelItems((items) => [...items, createAssetTechItem()]);
+  const addAssetStackItem = () => setAssetStackItems((items) => [...items, createAssetTechItem()]);
+  const addAssetBeforeAfterItem = () => setAssetBeforeAfterItems((items) => [...items, createAssetTechItem()]);
+  const addAssetKpiItem = () => setAssetKpiItems((items) => [...items, createAssetTechItem()]);
+  const addAssetImageItem = () => setAssetImageItems((items) => [...items, createAssetImageItem()]);
+  const removeAssetModelItem = (id) => setAssetModelItems((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  const removeAssetStackItem = (id) => setAssetStackItems((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  const removeAssetBeforeAfterItem = (id) => setAssetBeforeAfterItems((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  const removeAssetKpiItem = (id) => setAssetKpiItems((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  const removeAssetImageItem = (id) => setAssetImageItems((items) => {
+    const target = items.find((item) => item.id === id);
+    if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+    return items.length > 1 ? items.filter((item) => item.id !== id) : items;
+  });
+  const updateAssetImageFile = (id, file) => {
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setAssetImageItems((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return { ...item, fileName: file.name, previewUrl };
+    }));
+  };
+  const moveAssetImageItem = (id, direction) => {
+    setAssetImageItems((items) => {
+      const index = items.findIndex((item) => item.id === id);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= items.length) return items;
+      const next = [...items];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  };
+  const toggleAssetGuide = (guideKey) => {
+    setOpenAssetGuides((items) => ({ ...items, [guideKey]: !items[guideKey] }));
+  };
+  const toggleAssetTask = (task) => {
+    setSelectedAssetTasks((items) => (items.includes(task) ? items.filter((item) => item !== task) : [...items, task]));
+  };
+  const toggleAssetImplementation = (implementation) => {
+    setSelectedAssetImplementations((items) => (
+      items.includes(implementation) ? items.filter((item) => item !== implementation) : [...items, implementation]
+    ));
+  };
+  const addAssetTag = () => {
+    const value = assetTagInput.trim();
+    if (!value) return;
+    setAssetTags((items) => (items.some((item) => item.toLowerCase() === value.toLowerCase()) ? items : [...items, value]));
+    setAssetTagInput('');
+  };
+  const handleAssetTagKeyDown = (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    addAssetTag();
+  };
+  const removeAssetTag = (tag) => {
+    setAssetTags((items) => items.filter((item) => item !== tag));
   };
 
   const applyDxSessionDetail = (detail) => {
@@ -1423,6 +1514,257 @@ function App() {
       </aside>
 
       <main className="main" aria-label="콘텐츠 영역">
+        {!isAdminView && activePage === 'registry' && (
+          <section className="content asset-registry-page" aria-label="AI 자산 등록">
+            <div className="asset-reg-head">
+              <span>ASSET REGISTRY</span>
+              <h1>AI 자산 등록<b>·</b></h1>
+              <p>개발 완료한 AI 모델·코드·업무 자동화 자산을 전사에서 재사용할 수 있도록 등록 요청서를 작성합니다.</p>
+            </div>
+
+            <section className="asset-reg-guide" aria-label="자산 등록 절차">
+              <div className="asset-reg-guide-label">자산 등록 절차</div>
+              <div className="asset-reg-guide-steps">
+                {assetRegistrySteps.map(([title, desc], index) => (
+                  <React.Fragment key={title}>
+                    <div className="asset-reg-guide-step">
+                      <div className="asset-reg-guide-num">{index + 1}</div>
+                      <div><b>{title}</b><span>{desc}</span></div>
+                    </div>
+                    {index < assetRegistrySteps.length - 1 && <div className="asset-reg-guide-arrow">→</div>}
+                  </React.Fragment>
+                ))}
+              </div>
+            </section>
+
+            {!isAssetRegistrySubmitted && (
+              <div className="asset-reg-flow" aria-label="등록 단계">
+                {assetRegistrySteps.map(([title], index) => (
+                  <React.Fragment key={title}>
+                    <button className={`asset-reg-flow-step ${assetRegistryStep === index ? 'active' : ''} ${assetRegistryStep > index ? 'done' : ''}`} type="button" onClick={() => setAssetRegistryStep(index)}>
+                      <span>{assetRegistryStep > index ? '✓' : index + 1}</span>
+                      <b>{title}</b>
+                    </button>
+                    {index < assetRegistrySteps.length - 1 && <i />}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+
+            {!isAssetRegistrySubmitted && assetRegistryStep === 0 && (
+              <section className="asset-reg-card">
+                <header className="asset-reg-card-head">
+                  <span>Step 1 / 4</span>
+                  <h2>자산 명세서 작성</h2>
+                  <p>담당자 정보, 자산 기본 정보, 과제 정의, 데이터, 기술 및 성능 지표를 순서대로 작성합니다.</p>
+                </header>
+                <div className="asset-reg-card-body">
+                  <div className="asset-reg-section-label">담당자 정보</div>
+                  <div className="asset-reg-form-grid">
+                    <label><span>이름 *</span><input placeholder="예: 홍길동" /></label>
+                    <label><span>직급 *</span><input placeholder="예: 책임매니저" /></label>
+                    <label><span>조직명 *</span><input placeholder="예: DX추진랩" /></label>
+                    <label><span>이메일 *</span><input type="email" placeholder="예: gildong@hyundai-wia.com" /></label>
+                  </div>
+
+                  <div className="asset-reg-section-label">자산 기본 정보</div>
+                  <div className="asset-reg-form-grid">
+                    <label className="full"><span>자산명 *</span><input placeholder="예: 가공품 표면 결함 자동 검출 모델" /></label>
+                    <label className="full"><span>설명 *</span><textarea rows="3" placeholder="이 자산이 해결하는 문제와 핵심 기능을 2-3문장으로 설명하세요." /></label>
+                    <div className="asset-reg-two-row full">
+                      <label><span>업무 영역 *</span><select><option>선택</option><option>생산·제조</option><option>품질</option><option>R&D·설계</option><option>SCM·구매·물류</option><option>영업·마케팅</option><option>경영지원</option><option>안전·환경·보건</option><option>IT·DX</option><option>공통</option></select></label>
+                      <label><span>자산 성숙도 *</span><select><option>아이디어</option><option>PoC</option><option>Pilot</option><option>운영</option></select></label>
+                    </div>
+                    <div className="asset-reg-chip-field full">
+                      <div className="asset-reg-chip-label"><span>Task 유형 *</span><small>복수 선택 가능</small></div>
+                      <div>
+                        {assetTaskTypes.map((item) => (
+                          <button className={selectedAssetTasks.includes(item) ? 'active' : ''} type="button" key={item} aria-pressed={selectedAssetTasks.includes(item)} onClick={() => toggleAssetTask(item)}>{item}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="asset-reg-chip-field full">
+                      <div className="asset-reg-chip-label"><span>구현 방식 *</span><small>복수 선택 가능</small></div>
+                      <div>
+                        {assetImplementationTypes.map((item) => (
+                          <button className={selectedAssetImplementations.includes(item) ? 'active' : ''} type="button" key={item} aria-pressed={selectedAssetImplementations.includes(item)} onClick={() => toggleAssetImplementation(item)}>{item}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="asset-reg-tag-field full">
+                      <label><span>태그</span><input value={assetTagInput} placeholder="태그 입력 후 Enter" onChange={(event) => setAssetTagInput(event.target.value)} onKeyDown={handleAssetTagKeyDown} onBlur={addAssetTag} /></label>
+                      {assetTags.length > 0 && (
+                        <div className="asset-reg-tag-list">
+                          {assetTags.map((tag) => (
+                            <button type="button" key={tag} onClick={() => removeAssetTag(tag)}>{tag}<span>×</span></button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="asset-reg-section-label">과제 정의</div>
+                  <div className="asset-reg-textarea-stack">
+                    <div className="asset-reg-guided-field">
+                      <div className="asset-reg-field-label"><span>문제 정의 *</span><button type="button" aria-label="문제 정의 작성 예시 보기" onClick={() => toggleAssetGuide('problem')}>?</button></div>
+                      <textarea rows="3" placeholder="현재 어떤 문제가 발생하고 있는지 설명하세요." />
+                      {openAssetGuides.problem && <div className="asset-reg-guide-example">{assetGuideExamples.problem}</div>}
+                    </div>
+                    <div className="asset-reg-guided-field">
+                      <div className="asset-reg-field-label"><span>As-Is Workflow *</span><button type="button" aria-label="As-Is Workflow 작성 예시 보기" onClick={() => toggleAssetGuide('asIs')}>?</button></div>
+                      <textarea rows="3" placeholder="AI 도입 이전의 현재 업무 방식을 설명하세요." />
+                      {openAssetGuides.asIs && <div className="asset-reg-guide-example">{assetGuideExamples.asIs}</div>}
+                    </div>
+                    <div className="asset-reg-guided-field">
+                      <div className="asset-reg-field-label"><span>To-Be Workflow *</span><button type="button" aria-label="To-Be Workflow 작성 예시 보기" onClick={() => toggleAssetGuide('toBe')}>?</button></div>
+                      <textarea rows="3" placeholder="AI 도입 후 목표하는 업무 방식을 설명하세요." />
+                      {openAssetGuides.toBe && <div className="asset-reg-guide-example">{assetGuideExamples.toBe}</div>}
+                    </div>
+                    <div className="asset-reg-guided-field">
+                      <div className="asset-reg-field-label"><span>AI 개선 효과 *</span><button type="button" aria-label="AI 개선 효과 작성 예시 보기" onClick={() => toggleAssetGuide('effect')}>?</button></div>
+                      <textarea rows="3" placeholder="기대하는 정량·정성 효과를 구체적으로 작성하세요." />
+                      {openAssetGuides.effect && <div className="asset-reg-guide-example">{assetGuideExamples.effect}</div>}
+                    </div>
+                  </div>
+
+                  <div className="asset-reg-section-label">데이터</div>
+                  <div className={`asset-reg-data-box ${isAssetNoData ? 'disabled' : ''}`}>
+                    <label className="asset-reg-check"><input type="checkbox" checked={isAssetNoData} onChange={(event) => setIsAssetNoData(event.target.checked)} /> 데이터 없음 (해당 자산에 첨부할 데이터가 없습니다)</label>
+                    <label><span>Data 유형</span><select disabled={isAssetNoData}><option>선택</option><option>테이블·정형데이터</option><option>시계열 데이터</option><option>센서·IoT 데이터</option><option>문서·텍스트</option><option>이미지</option><option>영상</option><option>음성</option><option>로그</option><option>CAD·도면</option><option>코드</option><option>웹·외부 데이터</option><option>복합 데이터</option></select></label>
+                    <div className="asset-reg-guided-field">
+                      <div className="asset-reg-field-label"><span>데이터 설명</span><button type="button" aria-label="데이터 설명 작성 예시 보기" onClick={() => toggleAssetGuide('data')}>?</button></div>
+                      <textarea rows="3" placeholder="데이터의 구조, 수집 방식, 레이블 기준 등을 설명하세요." disabled={isAssetNoData} />
+                      {openAssetGuides.data && <div className="asset-reg-guide-example">{assetGuideExamples.data}</div>}
+                    </div>
+                    <div className="asset-reg-upload-grid">
+                      <label><input type="file" disabled={isAssetNoData} /><b>학습 샘플 데이터</b><span>CSV · Parquet · XLSX · JSON · ZIP</span></label>
+                      <label><input type="file" disabled={isAssetNoData} /><b>검증 샘플 데이터</b><span>CSV · Parquet · XLSX · JSON · ZIP</span></label>
+                    </div>
+                  </div>
+
+                  <div className="asset-reg-section-label">적용 기술</div>
+                  <div className="asset-reg-tech-stack">
+                    <section className="asset-reg-tech-block">
+                      <h3>모델 / 알고리즘 *</h3>
+                      {assetModelItems.map((item, index) => (
+                        <div className="asset-reg-tech-item" key={item.id}>
+                          <div className="asset-reg-tech-item-head">
+                            <span>Model Note {index + 1}</span>
+                            {assetModelItems.length > 1 && <button type="button" aria-label="모델 항목 삭제" onClick={() => removeAssetModelItem(item.id)}>삭제</button>}
+                          </div>
+                          <input placeholder="모델명 (예: XGBoost)" />
+                          <input placeholder="설명 (예: 센서 피처 기반 불량 확률 예측 모델)" />
+                          <input placeholder="참조 URL (선택)" />
+                        </div>
+                      ))}
+                      <button className="asset-reg-dashed-add" type="button" onClick={addAssetModelItem}>+ 모델 추가</button>
+                    </section>
+                    <section className="asset-reg-tech-block">
+                      <h3>기술 스택 *</h3>
+                      {assetStackItems.map((item, index) => (
+                        <div className="asset-reg-tech-item" key={item.id}>
+                          <div className="asset-reg-tech-item-head">
+                            <span>Stack Note {index + 1}</span>
+                            {assetStackItems.length > 1 && <button type="button" aria-label="스택 항목 삭제" onClick={() => removeAssetStackItem(item.id)}>삭제</button>}
+                          </div>
+                          <input placeholder="라이브러리·프레임워크명 (예: PyTorch)" />
+                          <input placeholder="용도 설명 (예: 이미지 모델 학습 및 추론)" />
+                          <input placeholder="참조 URL (선택)" />
+                        </div>
+                      ))}
+                      <button className="asset-reg-dashed-add" type="button" onClick={addAssetStackItem}>+ 스택 추가</button>
+                    </section>
+                  </div>
+
+                  <div className="asset-reg-section-label">성능 지표</div>
+                  <div className="asset-reg-perf-grid">
+                    <div>
+                      <h3>Before / After 비교 * <small>(예: 처리시간, 수작업 시간, 오류 건수)</small></h3>
+                      {assetBeforeAfterItems.map((item, index) => (
+                        <div className="asset-reg-perf-item" key={item.id}>
+                          <div className="asset-reg-perf-row"><input placeholder="측정 항목 (예: 처리시간)" /><input placeholder="이전 값 (예: 4시간)" /><input placeholder="이후 값 (예: 1시간)" /><input placeholder="개선율 (예: 75%)" /></div>
+                          {assetBeforeAfterItems.length > 1 && <button type="button" aria-label={`Before / After 항목 ${index + 1} 삭제`} onClick={() => removeAssetBeforeAfterItem(item.id)}>삭제</button>}
+                        </div>
+                      ))}
+                      <button className="asset-reg-dashed-add" type="button" onClick={addAssetBeforeAfterItem}>+ 항목 추가</button>
+                    </div>
+                    <div>
+                      <h3>성능 지표 * <small>(예: 정확도, F1-score, 응답시간)</small></h3>
+                      {assetKpiItems.map((item, index) => (
+                        <div className="asset-reg-perf-item" key={item.id}>
+                          <div className="asset-reg-perf-row kpi"><input placeholder="지표명 (예: 정확도)" /><input placeholder="값 (예: 94.2%)" /><input placeholder="설명 (예: 검증 데이터 기준)" /></div>
+                          {assetKpiItems.length > 1 && <button type="button" aria-label={`성능 지표 ${index + 1} 삭제`} onClick={() => removeAssetKpiItem(item.id)}>삭제</button>}
+                        </div>
+                      ))}
+                      <button className="asset-reg-dashed-add" type="button" onClick={addAssetKpiItem}>+ 지표 추가</button>
+                    </div>
+                  </div>
+
+                  <div className="asset-reg-section-label">적용 이미지</div>
+                  <p className="asset-reg-section-guide">이 자산이 실제 업무에서 어떻게 활용되는지 보여주는 시연 이미지를 업로드하세요.<br />자산 카드의 적용 탭에 슬라이드로 표시됩니다.</p>
+                  <div className="asset-reg-slide-images">
+                    {assetImageItems.map((item, index) => (
+                      <section className="asset-reg-slide-image-card" key={item.id}>
+                        <div className="asset-reg-slide-order">{String(index + 1).padStart(2, '0')}</div>
+                        <label className="asset-reg-slide-thumb">
+                          <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => updateAssetImageFile(item.id, event.target.files?.[0])} />
+                          {item.previewUrl ? <img src={item.previewUrl} alt={item.fileName || '적용 이미지 미리보기'} /> : <b>이미지 선택</b>}
+                          <span>{item.fileName || 'PNG · JPG · GIF · WEBP'}</span>
+                        </label>
+                        <div className="asset-reg-slide-info">
+                          <input placeholder="캡션 (예: 불량 검출 결과 화면)" />
+                          <textarea rows="3" placeholder="설명 (예: 표면 이미지에서 스크래치 영역을 박스로 표시하고, 불량 확률을 함께 보여줍니다.)" />
+                        </div>
+                        <div className="asset-reg-slide-actions">
+                          <button type="button" disabled={index === 0} onClick={() => moveAssetImageItem(item.id, -1)}>↑</button>
+                          <button type="button" disabled={index === assetImageItems.length - 1} onClick={() => moveAssetImageItem(item.id, 1)}>↓</button>
+                          {assetImageItems.length > 1 && <button className="asset-reg-slide-delete" type="button" onClick={() => removeAssetImageItem(item.id)}>삭제</button>}
+                        </div>
+                      </section>
+                    ))}
+                    <button className="asset-reg-dashed-add" type="button" onClick={addAssetImageItem}>+ 이미지 추가</button>
+                  </div>
+                </div>
+                <footer className="asset-reg-nav"><span /><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(1)}>작성 완료</button></footer>
+              </section>
+            )}
+
+            {!isAssetRegistrySubmitted && assetRegistryStep === 1 && (
+              <section className="asset-reg-card">
+                <header className="asset-reg-card-head"><span>Step 2 / 4</span><h2>자산 연동</h2><p>GitHub 또는 GitLab 저장소를 연결하면 코드 구조가 자산에 자동으로 연결됩니다.</p></header>
+                <div className="asset-reg-card-body">
+                  <div className="asset-reg-connect-options"><button className="active" type="button"><b>GitLab</b><span>사내 GitLab 저장소</span></button><button type="button"><b>GitHub</b><span>외부 협업 저장소</span></button><button type="button"><b>ZIP Upload</b><span>저장소 없는 패키지</span></button></div>
+                  <div className="asset-reg-repo-panel"><div className="asset-reg-repo-grid"><input placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" /><input placeholder="브랜치명 (예: main)" /><button type="button">연결</button></div><div className="asset-reg-file-tree"><div>📁 저장소 <span>main</span></div><ul><li>README.md</li><li>src/model.py</li><li>configs/train.yaml</li><li>requirements.txt</li><li>skill/SKILL.md</li></ul></div></div>
+                </div>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(0)}>← 이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(2)}>다음</button></footer>
+              </section>
+            )}
+
+            {!isAssetRegistrySubmitted && assetRegistryStep === 2 && (
+              <section className="asset-reg-card">
+                <header className="asset-reg-card-head"><span>Step 3 / 4</span><h2>Skill 생성</h2><p>LLM이 연동된 저장소의 코드·README를 분석하여 Claude Skill 파일과 확산 프롬프트를 자동 생성합니다.</p></header>
+                <div className="asset-reg-card-body">
+                  <div className="asset-reg-skill-trigger"><div><Sparkles size={18} /><b>LLM 기반 자동 생성</b><span>저장소 구조, README, 설정 파일을 분석해 Skill 정의 파일과 확산 프롬프트를 작성합니다.</span></div><button className="primary-btn" type="button">✦ Skill 자동 생성</button></div>
+                  <div className="asset-reg-skill-result"><section><h3>생성된 Skill 파일 구조</h3><div className="asset-reg-file-tree"><div>📁 저장소 루트 <span>LLM 생성</span></div><ul><li>SKILL.md</li><li>references/usage_guide.md</li><li>prompts/diffusion_prompt.md</li></ul></div></section><section><h3>확산 프롬프트</h3><div className="asset-reg-prompt-box">이 자산의 입력 데이터 구조, 실행 절차, 검증 기준을 확인한 뒤 적용 조직의 업무 흐름에 맞춰 활용 방안을 제안하세요.</div></section></div>
+                </div>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(1)}>← 이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(3)}>다음</button></footer>
+              </section>
+            )}
+
+            {!isAssetRegistrySubmitted && assetRegistryStep === 3 && (
+              <section className="asset-reg-card">
+                <header className="asset-reg-card-head"><span>Step 4 / 4</span><h2>최종 제출</h2><p>아래 내용을 확인하고 동의하면 최종 제출이 가능합니다.</p></header>
+                <div className="asset-reg-card-body"><div className="asset-reg-submit-notice"><Clock3 size={20} /><div><b>승인까지 약 7일이 소요됩니다</b><span>제출된 자산은 거버넌스 검토를 거친 후 카탈로그에 공개됩니다. 검토 결과는 등록 담당자 이메일로 안내됩니다.</span></div></div><div className="asset-reg-agree-list"><label><input type="checkbox" /> 과제 정보 및 코드가 사내 AI 자산 카탈로그를 통해 팀 내 공유될 수 있음을 확인하였습니다.</label><label><input type="checkbox" /> 등록 자산의 내용이 사실임을 확인하며, 부정확한 정보 등록에 대한 책임을 인지합니다.</label></div></div>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(2)}>← 이전</button><button className="primary-btn" type="button" onClick={() => setIsAssetRegistrySubmitted(true)}>최종 제출</button></footer>
+              </section>
+            )}
+
+            {isAssetRegistrySubmitted && (
+              <section className="asset-reg-done-card"><div>✓</div><h2>제출이 완료되었습니다</h2><p>AI 자산 등록 요청이 접수되었습니다. 거버넌스 검토 후 카탈로그에 공개되며, 결과는 이메일로 안내됩니다.</p><button className="line-btn" type="button" onClick={() => { setIsAssetRegistrySubmitted(false); setAssetRegistryStep(0); setIsAssetNoData(false); setSelectedAssetTasks([]); setSelectedAssetImplementations([]); setAssetModelItems([createAssetTechItem()]); setAssetStackItems([createAssetTechItem()]); setAssetBeforeAfterItems([createAssetTechItem()]); setAssetKpiItems([createAssetTechItem()]); setAssetImageItems([createAssetImageItem()]); setOpenAssetGuides({}); setAssetTagInput(''); setAssetTags([]); }}>새 자산 등록</button></section>
+            )}
+          </section>
+        )}
+
         {!isAdminView && activePage === 'dx-discovery' && (
           <section className="content dx-discovery-page">
             <div className="account-head">
