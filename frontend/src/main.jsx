@@ -110,32 +110,15 @@ const aiIdeaStatusClass = {
 };
 
 
-const dxMockMessages = [
-  { role: 'agent', text: '해결하고 싶은 업무 과제를 입력하면 과제 정의서와 추천 Data, AI 자산을 정리해드립니다.' },
+const dxInitialMessages = [
+  { role: 'agent', text: '어떤 업무가 가장 힘드신가요? 편하게 이야기해주시면, 대화를 통해 과제를 구체화하고 과제 정의서와 참고할 Data·AI 자산까지 정리해드릴게요.' },
 ];
 
 const dxTaskDefinition = {
-  title: 'CNC 가공 공정 실시간 불량 예측 시스템 구축',
-  process: 'CNC 가공 공정 (머시닝센터)',
-  target: '불량률 3.2% → 1.0% 이하',
-  type: '예측형 (불량 사전 감지)',
-  effect: '불량률 68% 저감, 월 손실 비용 절감',
-  data: 'CNC 센서 데이터 (진동·온도·절삭력), 작업 지시서, 검사 결과 이력',
-  description: 'CNC 머신의 진동·온도·절삭력 센서 데이터를 실시간으로 분석하여 불량 발생 가능성을 사전에 감지하고, 작업자에게 즉시 알림을 제공하는 과제입니다.',
-  tech: ['시계열 이상 탐지', '머신러닝', '실시간 스트리밍', '대시보드 알림'],
+  title: '과제 발굴 중...',
+  process: '업무 영역 미정',
+  description: 'Agent가 대화를 통해 내용을 채우는 영역입니다.',
 };
-
-const dxDataRecommendations = [
-  { name: 'CNC 머시닝센터 센서 로그 (2023-2024)', desc: '진동·온도·절삭력 15개 채널, 10Hz 샘플링, 불량 레이블 포함', tags: ['생산·제조', '18.4 GB'] },
-  { name: '품질 검사 결과 이력 DB', desc: '불량 유형·발생 시각·작업자 ID 포함, 3년치 누적 검사 데이터', tags: ['품질', '2.1 GB'] },
-  { name: '작업 지시서 & 공구 교체 이력', desc: '공구 수명·절삭 조건·소재 정보와 연계 가능한 정형 데이터', tags: ['생산·제조', '340 MB'] },
-];
-
-const dxAssetRecommendations = [
-  { name: '설비 이상 감지 LSTM 모델', desc: '시계열 센서 데이터 기반 이상 탐지, F1-score 0.91', tags: ['이상탐지', '운영'] },
-  { name: '공정 품질 예측 XGBoost Pipeline', desc: '공정 파라미터와 검사 이력을 결합한 품질 예측 템플릿', tags: ['예측', 'Pilot'] },
-  { name: '제조 현장 알림 Dashboard Kit', desc: '이상 신호를 현장 모니터와 메신저로 전달하는 대시보드 자산', tags: ['대시보드', '운영'] },
-];
 
 const emptyAiUsageForm = {
   title: '',
@@ -162,6 +145,13 @@ const aiUsageTextColors = [
 const stripHtml = (html) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 const formatViewCount = (value) => Number(value || 0).toLocaleString('ko-KR');
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '');
+const formatDxSessionDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  return date.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
+const dxMessagesFromApi = (messages = []) => messages.map((message) => ({ role: message.role, text: message.content }));
 const ideaAttachmentName = (attachment) => (typeof attachment === 'string' ? attachment : attachment.original_name);
 const aiUsageAuthor = (post) => [post?.author_org, post?.author_name, post?.author_job_title].filter(Boolean).join(' ') || 'AI Lounge';
 const ideaAuthor = (idea) => [idea?.author_org, idea?.author_name, idea?.author_job_title].filter(Boolean).join(' ') || '작성자 정보 없음';
@@ -335,11 +325,16 @@ function App() {
   const [isDraftingNews, setIsDraftingNews] = useState(false);
   const [newsAdminTab, setNewsAdminTab] = useState('write');
   const [editingNewsId, setEditingNewsId] = useState('');
-  const [dxMessages, setDxMessages] = useState(dxMockMessages);
+  const [dxMessages, setDxMessages] = useState(dxInitialMessages);
+  const [dxSessions, setDxSessions] = useState([]);
+  const [activeDxSessionId, setActiveDxSessionId] = useState('');
   const [dxInput, setDxInput] = useState('');
   const [isDxTyping, setIsDxTyping] = useState(false);
+  const [isLoadingDxSessions, setIsLoadingDxSessions] = useState(false);
   const [dxError, setDxError] = useState('');
   const [dxDefinitionFields, setDxDefinitionFields] = useState(null);
+  const [dxRecommendedDataIds, setDxRecommendedDataIds] = useState([]);
+  const [dxRecommendedAssetIds, setDxRecommendedAssetIds] = useState([]);
   const [isDxResultVisible, setIsDxResultVisible] = useState(false);
   const [aiUsagePosts, setAiUsagePosts] = useState([]);
   const [aiIdeas, setAiIdeas] = useState([]);
@@ -448,6 +443,10 @@ function App() {
   }, [authUser, isAdminView, activePage]);
 
   useEffect(() => {
+    if (authUser && !isAdminView && activePage === 'dx-discovery') loadDxSessions();
+  }, [authUser, isAdminView, activePage]);
+
+  useEffect(() => {
     if (selectedAiUsagePostId) loadAiUsagePostDetail(selectedAiUsagePostId);
     else setSelectedAiUsagePost(null);
   }, [selectedAiUsagePostId]);
@@ -474,10 +473,105 @@ function App() {
     return new Error(data.detail || fallback);
   };
 
+  const applyDxSessionDetail = (detail) => {
+    setActiveDxSessionId(detail.session_id);
+    setDxMessages(detail.messages?.length ? dxMessagesFromApi(detail.messages) : dxInitialMessages);
+    setDxDefinitionFields(detail.fields || null);
+    setDxRecommendedDataIds(detail.recommended_data_ids || []);
+    setDxRecommendedAssetIds(detail.recommended_asset_ids || []);
+    setIsDxResultVisible(detail.status === '과제 발굴 완료');
+  };
+
+  const loadDxSessions = async () => {
+    setIsLoadingDxSessions(true);
+    setDxError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/dx-discovery/sessions`, { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, 'DX 과제 발굴 이력을 불러오지 못했습니다.');
+      const sessions = await response.json();
+      setDxSessions(sessions);
+      if (sessions.length > 0) {
+        await openDxSession(sessions[0].session_id, false);
+      } else {
+        await createDxSession(false);
+      }
+    } catch (error) {
+      setDxError(error.message);
+    } finally {
+      setIsLoadingDxSessions(false);
+    }
+  };
+
+  const createDxSession = async (refreshList = true) => {
+    setDxError('');
+    setIsDxResultVisible(false);
+    setDxDefinitionFields(null);
+    setDxRecommendedDataIds([]);
+    setDxRecommendedAssetIds([]);
+    setDxMessages(dxInitialMessages);
+    setDxInput('');
+    try {
+      const response = await fetch(`${API_BASE}/api/dx-discovery/sessions`, {
+        method: 'POST',
+        headers: authHeaders,
+      });
+      if (!response.ok) throw await apiError(response, '새 과제 발굴 세션을 만들지 못했습니다.');
+      const detail = await response.json();
+      applyDxSessionDetail(detail);
+      if (refreshList) await loadDxSessions();
+      else setDxSessions((current) => [detail, ...current]);
+      return detail;
+    } catch (error) {
+      setDxError(error.message);
+      return null;
+    }
+  };
+
+  const openDxSession = async (sessionId, showLoading = true) => {
+    if (!sessionId) return;
+    if (showLoading) setIsLoadingDxSessions(true);
+    setDxError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/dx-discovery/sessions/${sessionId}`, { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, 'DX 과제 발굴 세션을 불러오지 못했습니다.');
+      applyDxSessionDetail(await response.json());
+    } catch (error) {
+      setDxError(error.message);
+    } finally {
+      if (showLoading) setIsLoadingDxSessions(false);
+    }
+  };
+
+  const deleteDxSession = async (sessionId, event) => {
+    event.stopPropagation();
+    if (!sessionId) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/dx-discovery/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      if (!response.ok) throw await apiError(response, 'DX 과제 발굴 이력을 삭제하지 못했습니다.');
+      const nextSessions = dxSessions.filter((session) => session.session_id !== sessionId);
+      setDxSessions(nextSessions);
+      if (activeDxSessionId === sessionId) {
+        if (nextSessions.length > 0) await openDxSession(nextSessions[0].session_id, false);
+        else await createDxSession(false);
+      }
+    } catch (error) {
+      setDxError(error.message);
+    }
+  };
+
   const submitDxMessage = async (event) => {
     event.preventDefault();
     const message = dxInput.trim();
     if (!message || isDxTyping) return;
+    let sessionId = activeDxSessionId;
+    if (!sessionId) {
+      const created = await createDxSession(false);
+      if (!created) return;
+      sessionId = created.session_id;
+    }
     const nextMessages = [...dxMessages, { role: 'user', text: message }];
     setDxMessages(nextMessages);
     setDxInput('');
@@ -486,16 +580,15 @@ function App() {
     setIsDxTyping(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/dx-discovery/chat`, {
+      const response = await fetch(`${API_BASE}/api/dx-discovery/sessions/${sessionId}/chat`, {
         method: 'POST',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: nextMessages }),
       });
       if (!response.ok) throw await apiError(response, 'DX 과제 발굴 Agent 응답을 불러오지 못했습니다.');
-      const data = await response.json();
-      setDxMessages((current) => [...current, { role: 'agent', text: data.reply || '안녕하세요' }]);
-      setDxDefinitionFields(data.fields || null);
-      setIsDxResultVisible(Boolean(data.is_complete));
+      const detail = await response.json();
+      applyDxSessionDetail(detail);
+      setDxSessions((current) => [detail, ...current.filter((session) => session.session_id !== detail.session_id)]);
     } catch (error) {
       setDxError(error.message);
       setDxMessages((current) => [...current, { role: 'agent', text: '응답을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.' }]);
@@ -507,12 +600,7 @@ function App() {
   const resetDxDiscovery = () => {
     if (dxReplyTimerRef.current) window.clearTimeout(dxReplyTimerRef.current);
     dxReplyTimerRef.current = null;
-    setDxMessages(dxMockMessages);
-    setDxInput('');
-    setDxError('');
-    setDxDefinitionFields(null);
-    setIsDxTyping(false);
-    setIsDxResultVisible(false);
+    createDxSession();
   };
 
 
@@ -1345,38 +1433,63 @@ function App() {
               </div>
             </div>
 
-            <section className="dx-chat-panel" aria-label="DX 과제 발굴 채팅">
-              <div className="dx-chat-header">
-                <span className="dx-agent-dot" />
-                <div>
-                  <strong>DX 과제 발굴 Agent</strong>
+            <div className="dx-chat-workspace">
+              <aside className="dx-session-sidebar" aria-label="DX 과제 발굴 채팅 이력">
+                <button className="dx-new-chat-btn" type="button" onClick={resetDxDiscovery} disabled={isLoadingDxSessions}>
+                  <Plus size={15} />
+                  새 채팅
+                </button>
+                <div className="dx-session-head">
+                  <span>채팅 이력</span>
+                  <b>{dxSessions.length}</b>
                 </div>
-                <button className="line-btn" type="button" onClick={resetDxDiscovery}>초기화</button>
-              </div>
-              <div className="dx-chat-body">
-                {dxMessages.map((message, index) => (
-                  <div className={`dx-msg ${message.role}`} key={`${message.role}-${index}`}>
-                    <div className="dx-avatar">{message.role === 'agent' ? <Bot size={16} /> : <UserRound size={15} />}</div>
-                    <div className="dx-bubble">{message.text}</div>
+                <div className="dx-session-list">
+                  {isLoadingDxSessions && <div className="dx-session-empty">이력을 불러오는 중입니다.</div>}
+                  {!isLoadingDxSessions && dxSessions.length === 0 && <div className="dx-session-empty">저장된 채팅 이력이 없습니다.</div>}
+                  {!isLoadingDxSessions && dxSessions.map((session) => (
+                    <button className={`dx-session-item ${activeDxSessionId === session.session_id ? 'active' : ''}`} type="button" key={session.session_id} onClick={() => openDxSession(session.session_id)}>
+                      <strong>{session.title}</strong>
+                      <small><Clock3 size={11} /> {formatDxSessionDate(session.updated_at)}<em className={session.status === '과제 발굴 완료' ? 'done' : 'progress'}>{session.status}</em></small>
+                      <span className="dx-session-delete" role="button" tabIndex="0" aria-label={`${session.title} 이력 삭제`} onClick={(event) => deleteDxSession(session.session_id, event)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') deleteDxSession(session.session_id, event); }}>
+                        <Trash2 size={13} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </aside>
+
+              <section className="dx-chat-panel" aria-label="DX 과제 발굴 채팅">
+                <div className="dx-chat-header">
+                  <span className="dx-agent-dot" />
+                  <div>
+                    <strong>DX 과제 발굴 Agent</strong>
                   </div>
-                ))}
-                {isDxTyping && (
-                  <div className="dx-msg agent dx-typing-msg">
-                    <div className="dx-avatar"><Bot size={16} /></div>
-                    <div className="dx-typing-bubble" aria-label="챗봇 입력 중">
-                      <span />
-                      <span />
-                      <span />
+                </div>
+                <div className="dx-chat-body">
+                  {dxMessages.map((message, index) => (
+                    <div className={`dx-msg ${message.role}`} key={`${message.role}-${index}`}>
+                      <div className="dx-avatar">{message.role === 'agent' ? <Bot size={16} /> : <UserRound size={15} />}</div>
+                      <div className="dx-bubble">{message.text}</div>
                     </div>
-                  </div>
-                )}
-              </div>
-              {dxError && <div className="dx-chat-error">{dxError}</div>}
-              <form className="dx-input-bar" onSubmit={submitDxMessage}>
-                <textarea value={dxInput} onChange={(event) => setDxInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submitDxMessage(event); } }} placeholder="해결하고 싶은 업무 과제를 자유롭게 설명해 주세요." rows="1" disabled={isDxTyping} />
-                <button className="primary-btn" type="submit" aria-label="전송" disabled={isDxTyping || !dxInput.trim()}><Send size={16} /></button>
-              </form>
-            </section>
+                  ))}
+                  {isDxTyping && (
+                    <div className="dx-msg agent dx-typing-msg">
+                      <div className="dx-avatar"><Bot size={16} /></div>
+                      <div className="dx-typing-bubble" aria-label="챗봇 입력 중">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {dxError && <div className="dx-chat-error">{dxError}</div>}
+                <form className="dx-input-bar" onSubmit={submitDxMessage}>
+                  <textarea value={dxInput} onChange={(event) => setDxInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submitDxMessage(event); } }} placeholder="해결하고 싶은 업무 과제를 자유롭게 설명해 주세요." rows="1" disabled={isDxTyping} />
+                  <button className="primary-btn" type="submit" aria-label="전송" disabled={isDxTyping || !dxInput.trim()}><Send size={16} /></button>
+                </form>
+              </section>
+            </div>
 
             {isDxResultVisible && (
             <section className="dx-results visible" aria-label="DX 과제 발굴 결과">
@@ -1466,10 +1579,11 @@ function App() {
                 <section className="dx-rec-panel">
                   <div className="dx-rec-head"><span className="dx-rec-icon ds">D</span><strong>추천 Data</strong></div>
                   <div className="dx-rec-list">
-                    {dxDataRecommendations.map((item) => (
-                      <article className="dx-rec-card" key={item.name}>
+                    {dxRecommendedDataIds.length === 0 && <div className="dx-rec-empty">추천 Data는 추천 로직 연동 후 표시됩니다.</div>}
+                    {dxRecommendedDataIds.map((id) => (
+                      <article className="dx-rec-card" key={id}>
                         <div className="dx-rec-card-ico ds">D</div>
-                        <div><h3>{item.name}</h3><p>{item.desc}</p><div>{item.tags.map((tag) => <span className="dx-rec-tag ds" key={tag}>{tag}</span>)}</div></div>
+                        <div><h3>{id}</h3><p>추천 Data ID</p></div>
                       </article>
                     ))}
                   </div>
@@ -1477,10 +1591,11 @@ function App() {
                 <section className="dx-rec-panel">
                   <div className="dx-rec-head"><span className="dx-rec-icon ai">AI</span><strong>추천 AI 자산</strong></div>
                   <div className="dx-rec-list">
-                    {dxAssetRecommendations.map((item) => (
-                      <article className="dx-rec-card" key={item.name}>
+                    {dxRecommendedAssetIds.length === 0 && <div className="dx-rec-empty">추천 AI 자산은 추천 로직 연동 후 표시됩니다.</div>}
+                    {dxRecommendedAssetIds.map((id) => (
+                      <article className="dx-rec-card" key={id}>
                         <div className="dx-rec-card-ico ai">AI</div>
-                        <div><h3>{item.name}</h3><p>{item.desc}</p><div>{item.tags.map((tag) => <span className="dx-rec-tag ai" key={tag}>{tag}</span>)}</div></div>
+                        <div><h3>{id}</h3><p>추천 AI 자산 ID</p></div>
                       </article>
                     ))}
                   </div>

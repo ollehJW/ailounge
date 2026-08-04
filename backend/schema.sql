@@ -87,3 +87,30 @@ CREATE INDEX IF NOT EXISTS idx_ideas_user_created_at ON ideas(user_id, created_a
 CREATE INDEX IF NOT EXISTS idx_ideas_status ON ideas(status);
 CREATE INDEX IF NOT EXISTS idx_idea_attachments_idea_id ON idea_attachments(idea_id);
 
+
+CREATE TABLE IF NOT EXISTS dx_discovery_sessions (
+    session_id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '과제 발굴 중...',
+    status TEXT NOT NULL DEFAULT '과제 발굴 중',
+    fields_json TEXT NOT NULL DEFAULT '{}',
+    recommended_data_ids_json TEXT NOT NULL DEFAULT '[]',
+    recommended_asset_ids_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS dx_discovery_messages (
+    message_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES dx_discovery_sessions(session_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dx_discovery_sessions_user_updated_at ON dx_discovery_sessions(user_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_dx_discovery_messages_session_seq ON dx_discovery_messages(session_id, seq);

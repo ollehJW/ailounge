@@ -121,6 +121,36 @@ class DxDiscoveryChatResponse(BaseModel):
     fields: dict[str, str | list[str] | list[dict[str, str]]] = Field(default_factory=dict)
 
 
+class DxDiscoveryMessageResponse(BaseModel):
+    message_id: str
+    session_id: str
+    role: str
+    content: str
+    seq: int
+    created_at: str
+
+
+class DxDiscoverySessionResponse(BaseModel):
+    session_id: str
+    user_id: str
+    title: str
+    status: str
+    fields: dict[str, str | list[str] | list[dict[str, str]]] = Field(default_factory=dict)
+    recommended_data_ids: list[str] = Field(default_factory=list)
+    recommended_asset_ids: list[str] = Field(default_factory=list)
+    created_at: str
+    updated_at: str
+    completed_at: str | None = None
+
+
+class DxDiscoverySessionDetailResponse(DxDiscoverySessionResponse):
+    messages: list[DxDiscoveryMessageResponse] = Field(default_factory=list)
+
+
+class DxDiscoverySessionCreateResponse(DxDiscoverySessionDetailResponse):
+    pass
+
+
 class AiUsagePostCreateRequest(BaseModel):
     title: str = Field(min_length=1)
     category: str = Field(min_length=1)
@@ -251,6 +281,112 @@ def normalize_dx_fields(raw_fields: object) -> dict[str, str | list[str] | list[
     return fields
 
 
+DX_IN_PROGRESS_STATUS = "과제 발굴 중"
+DX_COMPLETE_STATUS = "과제 발굴 완료"
+DX_DEFAULT_TITLE = "과제 발굴 중..."
+
+
+def load_json_value(value: str | None, fallback: object) -> object:
+    if not value:
+        return fallback
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return fallback
+
+
+def merge_dx_fields(
+    existing: dict[str, str | list[str] | list[dict[str, str]]],
+    incoming: dict[str, str | list[str] | list[dict[str, str]]],
+) -> dict[str, str | list[str] | list[dict[str, str]]]:
+    merged = dict(existing)
+    for key, value in incoming.items():
+        if isinstance(value, list):
+            if value:
+                merged[key] = value
+        elif str(value).strip():
+            merged[key] = value
+    return merged
+
+
+def dx_session_from_row(row: sqlite3.Row) -> DxDiscoverySessionResponse:
+    fields = normalize_dx_fields(load_json_value(row["fields_json"], {}))
+    data_ids = load_json_value(row["recommended_data_ids_json"], [])
+    asset_ids = load_json_value(row["recommended_asset_ids_json"], [])
+    return DxDiscoverySessionResponse(
+        session_id=row["session_id"],
+        user_id=row["user_id"],
+        title=row["title"],
+        status=row["status"],
+        fields=fields,
+        recommended_data_ids=[str(item) for item in data_ids] if isinstance(data_ids, list) else [],
+        recommended_asset_ids=[str(item) for item in asset_ids] if isinstance(asset_ids, list) else [],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+        completed_at=row["completed_at"],
+    )
+
+
+def dx_message_from_row(row: sqlite3.Row) -> DxDiscoveryMessageResponse:
+    return DxDiscoveryMessageResponse(
+        message_id=row["message_id"],
+        session_id=row["session_id"],
+        role=row["role"],
+        content=row["content"],
+        seq=int(row["seq"]),
+        created_at=row["created_at"],
+    )
+
+
+def fetch_dx_session(con: sqlite3.Connection, session_id: str, user_id: str) -> sqlite3.Row:
+    row = con.execute(
+        """
+        SELECT session_id, user_id, title, status, fields_json, recommended_data_ids_json,
+               recommended_asset_ids_json, created_at, updated_at, completed_at
+        FROM dx_discovery_sessions
+        WHERE session_id = ? AND user_id = ?
+        """,
+        (session_id, user_id),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="DX 과제 발굴 세션을 찾을 수 없습니다.")
+    return row
+
+
+def fetch_dx_messages(con: sqlite3.Connection, session_id: str) -> list[DxDiscoveryMessageResponse]:
+    rows = con.execute(
+        """
+        SELECT message_id, session_id, role, content, seq, created_at
+        FROM dx_discovery_messages
+        WHERE session_id = ?
+        ORDER BY seq ASC
+        """,
+        (session_id,),
+    ).fetchall()
+    return [dx_message_from_row(row) for row in rows]
+
+
+def next_dx_message_seq(con: sqlite3.Connection, session_id: str) -> int:
+    value = con.execute("SELECT COALESCE(MAX(seq), 0) + 1 FROM dx_discovery_messages WHERE session_id = ?", (session_id,)).fetchone()[0]
+    return int(value)
+
+
+def run_dx_agent(messages: list[DxChatMessage]) -> DxDiscoveryChatResponse:
+    conversation = format_dx_conversation(messages)
+    prompt = read_prompt("dx_discovery_agent.txt").replace("{{conversation}}", conversation)
+    try:
+        raw_response = chat_completion(prompt, temperature=0)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"LLM 응답을 생성하지 못했습니다: {exc}")
+
+    data = extract_json_object(raw_response)
+    return DxDiscoveryChatResponse(
+        reply=str(data.get("reply") or "다음 정보를 조금 더 알려주세요."),
+        is_complete=bool(data.get("is_complete")),
+        fields=normalize_dx_fields(data.get("fields")),
+    )
+
+
 def get_connection() -> sqlite3.Connection:
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
@@ -347,6 +483,38 @@ def init_db() -> None:
         )
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_usage_posts_created_at ON ai_usage_posts(created_at)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_usage_posts_like_count ON ai_usage_posts(like_count)")
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS dx_discovery_sessions (
+                session_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '과제 발굴 중...',
+                status TEXT NOT NULL DEFAULT '과제 발굴 중',
+                fields_json TEXT NOT NULL DEFAULT '{}',
+                recommended_data_ids_json TEXT NOT NULL DEFAULT '[]',
+                recommended_asset_ids_json TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                completed_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS dx_discovery_messages (
+                message_id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                seq INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES dx_discovery_sessions(session_id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute("CREATE INDEX IF NOT EXISTS idx_dx_discovery_sessions_user_updated_at ON dx_discovery_sessions(user_id, updated_at)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_dx_discovery_messages_session_seq ON dx_discovery_messages(session_id, seq)")
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS ideas (
@@ -873,19 +1041,138 @@ def chat_dx_discovery(
     payload: DxDiscoveryChatRequest,
     _: Annotated[UserResponse, Depends(get_current_user)],
 ) -> DxDiscoveryChatResponse:
-    conversation = format_dx_conversation(payload.messages)
-    prompt = read_prompt("dx_discovery_agent.txt").replace("{{conversation}}", conversation)
-    try:
-        raw_response = chat_completion(prompt, temperature=0)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"LLM 응답을 생성하지 못했습니다: {exc}")
+    return run_dx_agent(payload.messages)
 
-    data = extract_json_object(raw_response)
-    return DxDiscoveryChatResponse(
-        reply=str(data.get("reply") or "다음 정보를 조금 더 알려주세요."),
-        is_complete=bool(data.get("is_complete")),
-        fields=normalize_dx_fields(data.get("fields")),
-    )
+
+@app.get("/api/dx-discovery/sessions", response_model=list[DxDiscoverySessionResponse])
+def list_dx_discovery_sessions(current_user: Annotated[UserResponse, Depends(get_current_user)]) -> list[DxDiscoverySessionResponse]:
+    with get_connection() as con:
+        rows = con.execute(
+            """
+            SELECT session_id, user_id, title, status, fields_json, recommended_data_ids_json,
+                   recommended_asset_ids_json, created_at, updated_at, completed_at
+            FROM dx_discovery_sessions
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+            """,
+            (current_user.user_id,),
+        ).fetchall()
+        return [dx_session_from_row(row) for row in rows]
+
+
+@app.post("/api/dx-discovery/sessions", response_model=DxDiscoverySessionCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_dx_discovery_session(current_user: Annotated[UserResponse, Depends(get_current_user)]) -> DxDiscoverySessionCreateResponse:
+    now = utc_now()
+    session_id = str(uuid.uuid4())
+    with get_connection() as con:
+        con.execute(
+            """
+            INSERT INTO dx_discovery_sessions (
+                session_id, user_id, title, status, fields_json, recommended_data_ids_json,
+                recommended_asset_ids_json, created_at, updated_at, completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+            """,
+            (session_id, current_user.user_id, DX_DEFAULT_TITLE, DX_IN_PROGRESS_STATUS, "{}", "[]", "[]", now, now),
+        )
+        row = fetch_dx_session(con, session_id, current_user.user_id)
+        session = dx_session_from_row(row)
+        return DxDiscoverySessionCreateResponse(**session.model_dump(), messages=[])
+
+
+@app.get("/api/dx-discovery/sessions/{session_id}", response_model=DxDiscoverySessionDetailResponse)
+def get_dx_discovery_session(
+    session_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> DxDiscoverySessionDetailResponse:
+    with get_connection() as con:
+        row = fetch_dx_session(con, session_id, current_user.user_id)
+        session = dx_session_from_row(row)
+        return DxDiscoverySessionDetailResponse(**session.model_dump(), messages=fetch_dx_messages(con, session_id))
+
+
+@app.delete("/api/dx-discovery/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_dx_discovery_session(
+    session_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> None:
+    with get_connection() as con:
+        result = con.execute(
+            "DELETE FROM dx_discovery_sessions WHERE session_id = ? AND user_id = ?",
+            (session_id, current_user.user_id),
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="DX 과제 발굴 세션을 찾을 수 없습니다.")
+
+
+@app.post("/api/dx-discovery/sessions/{session_id}/chat", response_model=DxDiscoverySessionDetailResponse)
+def chat_dx_discovery_session(
+    session_id: str,
+    payload: DxDiscoveryChatRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> DxDiscoverySessionDetailResponse:
+    user_message = next((message for message in reversed(payload.messages) if message.role == "user" and message.text.strip()), None)
+    if user_message is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="사용자 메시지를 입력하세요.")
+
+    now = utc_now()
+    with get_connection() as con:
+        session_row = fetch_dx_session(con, session_id, current_user.user_id)
+        seq = next_dx_message_seq(con, session_id)
+        con.execute(
+            """
+            INSERT INTO dx_discovery_messages (message_id, session_id, role, content, seq, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (str(uuid.uuid4()), session_id, "user", user_message.text.strip(), seq, now),
+        )
+        history_rows = con.execute(
+            """
+            SELECT role, content
+            FROM dx_discovery_messages
+            WHERE session_id = ?
+            ORDER BY seq ASC
+            """,
+            (session_id,),
+        ).fetchall()
+        history = [DxChatMessage(role=row["role"], text=row["content"]) for row in history_rows]
+
+    agent_response = run_dx_agent(history)
+    agent_message_time = utc_now()
+    existing_fields = normalize_dx_fields(load_json_value(session_row["fields_json"], {}))
+    merged_fields = merge_dx_fields(existing_fields, agent_response.fields)
+    project_title = str(merged_fields.get("project_title") or "").strip()
+    next_status = DX_COMPLETE_STATUS if agent_response.is_complete and project_title else DX_IN_PROGRESS_STATUS
+    next_title = project_title if project_title else DX_DEFAULT_TITLE
+    completed_at = agent_message_time if next_status == DX_COMPLETE_STATUS else None
+
+    with get_connection() as con:
+        seq = next_dx_message_seq(con, session_id)
+        con.execute(
+            """
+            INSERT INTO dx_discovery_messages (message_id, session_id, role, content, seq, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (str(uuid.uuid4()), session_id, "agent", agent_response.reply, seq, agent_message_time),
+        )
+        con.execute(
+            """
+            UPDATE dx_discovery_sessions
+            SET title = ?, status = ?, fields_json = ?, updated_at = ?, completed_at = ?
+            WHERE session_id = ? AND user_id = ?
+            """,
+            (
+                next_title,
+                next_status,
+                json.dumps(merged_fields, ensure_ascii=False),
+                agent_message_time,
+                completed_at,
+                session_id,
+                current_user.user_id,
+            ),
+        )
+        row = fetch_dx_session(con, session_id, current_user.user_id)
+        session = dx_session_from_row(row)
+        return DxDiscoverySessionDetailResponse(**session.model_dump(), messages=fetch_dx_messages(con, session_id))
 
 
 @app.get("/api/ideas", response_model=list[IdeaResponse])
