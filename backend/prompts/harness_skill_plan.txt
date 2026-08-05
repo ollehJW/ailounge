@@ -1,0 +1,83 @@
+You are planning reusable Claude skills for spreading an internal AI asset to other business areas.
+
+Return ONLY valid JSON. Do not wrap it in Markdown fences.
+The JSON schema must be:
+{
+  "asset_summary": "short Korean summary of the original asset as a reference case",
+  "reusable_patterns": ["Korean reusable pattern summary"],
+  "candidates": [
+    {
+      "slug": "generic-skill-slug",
+      "title": "Korean skill title",
+      "skill_type": "guide | skeleton | both",
+      "reusable_pattern": "Korean explanation of the reusable pattern this skill captures",
+      "required_inputs": ["Korean required input 1", "Korean required input 2"],
+      "reference_files": ["repo/relative/path.ext"],
+      "diffusion_score": 0,
+      "recommended": true,
+      "reason": "Korean explanation of the score and recommendation"
+    }
+  ],
+  "selected_skill_slugs": ["slug1", "slug2"]
+}
+
+Candidate schema constraints:
+- Each candidate object must contain ONLY these keys:
+  slug, title, skill_type, reusable_pattern, required_inputs, reference_files, diffusion_score, recommended, reason.
+- skill_type must be exactly one of: "guide", "skeleton", "both".
+  - "guide": the skill's reusable value is process/adaptation guidance and validation checklists — no generalizable automation code logic is being extracted.
+  - "skeleton": the skill's reusable value is a config-driven code template that generalizes the asset's core automation logic (e.g., session handling, download-event handling, per-row status tracking, retry scaffolding) so only portal-specific selectors/URLs/mappings need to be swapped in.
+  - "both": the skill should ship both adaptation guidance and a config-driven skeleton script together.
+- Do not include applicable_scenarios, recommended_scripts, scores, score_breakdown, target_users, expected_outputs, source_evidence, original_asset_reference, risk_level, or other extra keys inside candidates.
+- Keep candidate objects compact enough for UI display and downstream skill generation.
+
+reference_files requirements:
+- reference_files must contain repository-relative file paths from the provided Repository tree.
+- Select only the files that are useful for generating this specific skill.
+- Prefer 3 to 6 files per candidate.
+- Prefer package/config files, README/guide files, core execution scripts, workflow logic, validation logic, and business logic.
+- If skill_type is "skeleton" or "both", include the core automation entry script(s) that implement the actual logic to be templatized (e.g., login handling, browser session setup, download-event handling) even if they are portal-specific today — the skill-generation step needs the real logic to extract a generic, config-driven skeleton from it.
+- Do not include .git files, lockfiles, binary files, images, generated artifacts, node_modules, dist/build outputs, or large data files.
+- These files will be the only repository text excerpts provided when generating the final skill, so choose carefully.
+
+Planning goal:
+- Write user-facing plan text in Korean, including asset_summary, reusable_patterns, title, reusable_pattern, required_inputs, and reason.
+- Keep slugs, reference file paths, skill_type values, and JSON keys in English.
+- Extract reusable diffusion skills from the asset.
+- Do not generate skill files yet.
+- Identify 3 to 5 candidate skills, then select only the 1 to 2 highest-value skills.
+- Prefer skills that another user can adapt to a different organization, process, portal, document type, dataset, or workflow.
+- Treat the original asset as a reference implementation, not as the entire skill boundary.
+- For each candidate, decide skill_type based on what actually drives its reusable value:
+  - If the value is mainly "what to decide and how to validate" with no generalizable code, use "guide".
+  - If the asset's automation logic (session/download/retry/status handling) is generic enough to templatize independent of specific selectors, use "skeleton" or "both".
+  - Do not default every candidate to "guide" — actively check whether the underlying code logic in the repository is reusable enough to templatize.
+- In reason, briefly state which parts (guide content vs. skeleton content) drive the diffusion_score when skill_type is "both".
+
+Diffusion score rubric:
+- diffusion_score is 0-100.
+- Reward reusable patterns that can spread across multiple teams/processes.
+- Reward meaningful time/cost/quality impact.
+- Reward patterns that can be adapted by changing inputs, mappings, URLs, file types, or workflow steps.
+- Reward candidates whose implementation and validation steps are clear from the asset/repository.
+- Reward candidates where skill_type is "skeleton" or "both" and the underlying automation logic (session handling, download-event handling, per-row retry/status tracking, error capture) is genuinely generic, rather than only offering prose guidance.
+- Penalize candidates that are too tied to the original system, department, private endpoint, or original data columns.
+- Penalize candidates with high credential, restricted data, personal information, or access-control risk.
+- Penalize a "skeleton" or "both" classification if the only reusable value is actually a finished, single-portal automation script with no generalizable structure — reclassify as "guide" instead of inflating the score.
+- recommended=true only when diffusion_score is high and risks are manageable.
+- selected_skill_slugs must contain only recommended candidates and should usually contain 1 or 2 slugs.
+
+Naming guidance:
+- Prefer generic reusable pattern names.
+- Good (guide-oriented): portal-document-collection, input-list-driven-automation, download-result-validation, workflow-data-standardization.
+- Good (skeleton-oriented): config-driven-browser-collector, automation-session-and-download-scaffold.
+- Bad: original asset name, original portal/system name, original department code, original data column names.
+
+Asset metadata:
+{{ASSET_META_JSON}}
+
+Repository tree:
+{{REPO_TREE}}
+
+Repository text file excerpts:
+{{REPO_FILES}}

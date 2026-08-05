@@ -669,9 +669,21 @@ function App() {
   };
 
   const getAssetFieldValue = (name) => assetRegistryRef.current?.querySelector(`[name="${name}"]`)?.value.trim() || '';
+  const hasAssetField = (name) => Boolean(assetRegistryRef.current?.querySelector(`[name="${name}"]`));
   const collectAssetRows = (selector, keys) => Array.from(assetRegistryRef.current?.querySelectorAll(selector) || [])
     .map((row) => Object.fromEntries(keys.map((key) => [key, row.querySelector(`[data-field="${key}"]`)?.value.trim() || ''])))
     .filter((row) => Object.values(row).some(Boolean));
+  const syncAssetSpecRows = (payload) => {
+    setAssetModelItems((items) => (payload.models.length ? payload.models.map((item, index) => createAssetTechItem({ ...items[index], ...item })) : items));
+    setAssetStackItems((items) => (payload.tech_stacks.length ? payload.tech_stacks.map((item, index) => createAssetTechItem({ ...items[index], ...item })) : items));
+    setAssetBeforeAfterItems((items) => (
+      payload.before_after_metrics.length ? payload.before_after_metrics.map((item, index) => createAssetTechItem({ ...items[index], ...item })) : items
+    ));
+    setAssetKpiItems((items) => (
+      payload.performance_metrics.length ? payload.performance_metrics.map((item, index) => createAssetTechItem({ ...items[index], ...item })) : items
+    ));
+    setAssetImageItems((items) => items.map((item, index) => ({ ...item, ...(payload.slides[index] || {}) })));
+  };
   const assetRowsComplete = (selector, requiredKeys) => {
     const rows = Array.from(assetRegistryRef.current?.querySelectorAll(selector) || []);
     return rows.length > 0 && rows.every((row) => requiredKeys.every((key) => row.querySelector(`[data-field="${key}"]`)?.value.trim()));
@@ -754,12 +766,15 @@ function App() {
       repo_url: getAssetFieldValue('repo_url'),
       repo_branch: getAssetFieldValue('repo_branch'),
     };
+    if (assetRegistryStep === 0) syncAssetSpecRows(currentStepPayload);
     setAssetDraft((current) => {
       const next = { ...current };
       Object.entries(currentStepPayload).forEach(([key, value]) => {
         const isEmptyArray = Array.isArray(value) && value.length === 0;
+        const shouldForceDataValue = ['has_data', 'has_train_validation_split'].includes(key)
+          || (['data_type', 'data_description'].includes(key) && (assetRegistryStep === 0 || hasAssetField(key)));
         if (value !== '' && !isEmptyArray) next[key] = value;
-        if (['has_data', 'data_type', 'data_description'].includes(key)) next[key] = value;
+        if (shouldForceDataValue) next[key] = value;
       });
       return next;
     });
