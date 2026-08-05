@@ -5064,8 +5064,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .asset-reg-upload-grid,
-.asset-reg-tech-grid,
-.asset-reg-skill-result {
+.asset-reg-tech-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -5355,40 +5354,6 @@ a { color: inherit; text-decoration: none; }
   margin-top: 10px;
 }
 
-.asset-reg-connect-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.asset-reg-connect-options button {
-  min-height: 102px;
-  border: 1px solid #e2e8f2;
-  background: #fff;
-  text-align: left;
-  padding: 14px;
-}
-
-.asset-reg-connect-options button.active {
-  border-color: var(--wia-blue);
-  background: #f2f6ff;
-  box-shadow: inset 0 0 0 1px var(--wia-blue);
-}
-
-.asset-reg-connect-options b {
-  display: block;
-  color: #172033;
-  font-size: 13px;
-}
-
-.asset-reg-connect-options span {
-  display: block;
-  margin-top: 5px;
-  color: #707a8b;
-  font-size: 11.5px;
-}
-
 .asset-reg-repo-grid {
   display: grid;
   grid-template-columns: 1.5fr .7fr 92px;
@@ -5439,10 +5404,26 @@ a { color: inherit; text-decoration: none; }
   gap: 14px;
 }
 
+.asset-reg-submit-notice {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.asset-reg-skill-trigger.loading {
+  border-color: #bcd0f4;
+  background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 100%);
+}
+
 .asset-reg-skill-trigger div,
 .asset-reg-submit-notice div {
   display: grid;
   gap: 4px;
+}
+
+.asset-reg-submit-notice div {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
 }
 
 .asset-reg-skill-trigger b,
@@ -5456,6 +5437,192 @@ a { color: inherit; text-decoration: none; }
   color: #657082;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.asset-reg-skill-generate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 132px;
+}
+
+.asset-reg-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: assetSpin .8s linear infinite;
+}
+
+.asset-reg-skill-loading {
+  margin-top: 14px;
+  border: 1px solid #d9e7ff;
+  background: #f6f9ff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.asset-reg-skill-loading .asset-reg-spinner {
+  border-color: rgba(6, 41, 131, .18);
+  border-top-color: var(--wia-blue);
+}
+
+.asset-reg-skill-loading b {
+  color: #172033;
+  font-size: 13px;
+}
+
+.asset-reg-skill-loading p {
+  margin: 3px 0 0;
+  color: #657082;
+  font-size: 12px;
+}
+
+@keyframes assetSpin {
+  to { transform: rotate(360deg); }
+}
+
+.asset-reg-skill-result {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.asset-reg-skill-section {
+  border: 1px solid #e3eaf4;
+  background: #f9fbfe;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.asset-reg-skill-result-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.asset-reg-skill-result-head b {
+  color: #172033;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.asset-reg-copy-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.asset-reg-copy-btn {
+  border: 1px solid #d8e2f0;
+  background: #fff;
+  color: var(--wia-blue);
+  padding: 5px 10px;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+
+.asset-reg-copy-btn:hover {
+  border-color: var(--wia-blue);
+  background: #f2f6ff;
+}
+
+.asset-reg-copy-pill {
+  border: 1px solid #bfe3cd;
+  background: #eefaf3;
+  color: #18864f;
+  padding: 5px 10px;
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+
+.asset-reg-skill-explorer {
+  border: 1px solid #dce5f2;
+  background: #fff;
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  min-height: 280px;
+}
+
+.asset-reg-skill-tree {
+  border-right: 1px solid #dce5f2;
+  background: #f7f9fd;
+  padding: 12px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.asset-reg-skill-tree-head {
+  color: #172033;
+  font-size: 12px;
+  font-weight: 950;
+  margin-bottom: 6px;
+}
+
+.asset-reg-skill-tree-head span {
+  margin-left: 6px;
+  color: var(--wia-blue);
+  font-size: 10.5px;
+}
+
+.asset-reg-skill-tree button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #4b5568;
+  padding: 8px 9px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.asset-reg-skill-tree button:hover,
+.asset-reg-skill-tree button.active {
+  border-color: #cfdcf0;
+  background: #fff;
+  color: var(--wia-blue);
+}
+
+.asset-reg-skill-viewer {
+  min-width: 0;
+  background: #101828;
+  color: #d7e2f1;
+  padding: 14px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+}
+
+.asset-reg-skill-viewer > div {
+  color: #9db5e2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.asset-reg-skill-viewer pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow: auto;
+  color: #e7eefb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.asset-reg-skill-viewer p {
+  margin: 0;
+  color: #9aa8bd;
+  font-size: 12px;
 }
 
 .asset-reg-prompt-box {
@@ -5543,9 +5710,8 @@ a { color: inherit; text-decoration: none; }
   .asset-reg-upload-grid,
   .asset-reg-tech-grid,
   .asset-reg-perf-grid,
-  .asset-reg-connect-options,
   .asset-reg-repo-grid,
-  .asset-reg-skill-result,
+  .asset-reg-skill-explorer,
   .asset-reg-perf-row,
   .asset-reg-perf-row.kpi,
   .asset-reg-perf-item,

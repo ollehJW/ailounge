@@ -139,6 +139,55 @@ const assetGuideExamples = {
   data: '예: MES 불량 이력 데이터와 불량 유형 매핑 기준표를 사용합니다. MES 데이터는 라인명, 발생일시, 품번, 공정명, 불량 유형 코드, 불량 내용 메모, 조치 결과 컬럼을 포함하며, 기준표는 공정별 코드와 표준 불량 유형의 매핑 정보를 담습니다.',
 };
 
+const assetSkillFiles = [
+  {
+    path: 'SKILL.md',
+    type: 'file',
+    content: `# 품질 리포트 자동화 Skill
+
+MES 불량 데이터를 표준 포맷으로 정리하고, 불량 유형 매핑 및 주간 보고서 초안을 생성합니다.
+
+## 사용 흐름
+1. 라인별 MES 다운로드 파일을 업로드합니다.
+2. 표준 불량 유형 매핑 기준을 확인합니다.
+3. 집계표와 보고 코멘트 초안을 생성합니다.`,
+  },
+  {
+    path: 'references/usage_guide.md',
+    type: 'file',
+    content: `# 사용 가이드
+
+- 입력 데이터는 CSV 또는 XLSX 형식을 권장합니다.
+- 필수 컬럼: 라인명, 발생일시, 품번, 공정명, 불량 유형 코드, 불량 내용, 조치 결과
+- 매핑 기준표가 없으면 기존 보고서 기준으로 임시 분류 체계를 생성합니다.`,
+  },
+  {
+    path: 'scripts/run_quality_report.py',
+    type: 'file',
+    content: `import pandas as pd
+
+
+def build_weekly_quality_report(mes_file, mapping_file):
+    defects = pd.read_excel(mes_file)
+    mapping = pd.read_excel(mapping_file)
+    merged = defects.merge(mapping, on='불량 유형 코드', how='left')
+    summary = merged.groupby(['라인명', '표준 불량 유형']).size().reset_index(name='불량 건수')
+    return summary
+
+
+if __name__ == '__main__':
+    report = build_weekly_quality_report('mes_defects.xlsx', 'defect_mapping.xlsx')
+    report.to_excel('weekly_quality_summary.xlsx', index=False)`,
+  },
+  {
+    path: 'prompts/diffusion_prompt.md',
+    type: 'file',
+    content: '이 자산의 입력 데이터 구조, 실행 절차, 검증 기준을 확인한 뒤 적용 조직의 업무 흐름에 맞춰 활용 방안을 제안하세요. 데이터 경로, 컬럼명, 표준 불량 유형 기준은 사용자 환경에 맞게 질문으로 확인하세요.',
+  },
+];
+
+const assetDiffusionPrompt = '이 자산의 입력 데이터 구조, 실행 절차, 검증 기준을 확인한 뒤 적용 조직의 업무 흐름에 맞춰 활용 방안을 제안하세요. 현업 데이터 경로, 컬럼명, 표준 분류 기준, 보고서 양식이 다르면 먼저 확인 질문을 하고, 적용 가능한 단계별 확산 계획을 작성하세요.';
+
 const emptyAiUsageForm = {
   title: '',
   category: '확산 사례',
@@ -334,6 +383,10 @@ function App() {
   const [assetBeforeAfterItems, setAssetBeforeAfterItems] = useState(() => [createAssetTechItem()]);
   const [assetKpiItems, setAssetKpiItems] = useState(() => [createAssetTechItem()]);
   const [assetImageItems, setAssetImageItems] = useState(() => [createAssetImageItem()]);
+  const [skillGenerationStatus, setSkillGenerationStatus] = useState('idle');
+  const [selectedSkillFilePath, setSelectedSkillFilePath] = useState('');
+  const [isDiffusionPromptCopied, setIsDiffusionPromptCopied] = useState(false);
+  const [assetSubmitAgreements, setAssetSubmitAgreements] = useState({ share: false, factual: false, security: false });
   const [openAssetGuides, setOpenAssetGuides] = useState({});
   const [assetTagInput, setAssetTagInput] = useState('');
   const [assetTags, setAssetTags] = useState([]);
@@ -537,6 +590,40 @@ function App() {
       [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
       return next;
     });
+  };
+  const startSkillGeneration = () => {
+    if (skillGenerationStatus === 'loading') return;
+    setSkillGenerationStatus('loading');
+    setSelectedSkillFilePath('');
+    window.setTimeout(() => {
+      setSkillGenerationStatus('done');
+      setSelectedSkillFilePath(assetSkillFiles[0].path);
+    }, 5000);
+  };
+  const selectedSkillFile = assetSkillFiles.find((file) => file.path === selectedSkillFilePath);
+  const isAssetSubmitEnabled = Object.values(assetSubmitAgreements).every(Boolean);
+  const toggleAssetSubmitAgreement = (key) => {
+    setAssetSubmitAgreements((items) => ({ ...items, [key]: !items[key] }));
+  };
+  const copyAssetDiffusionPrompt = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(assetDiffusionPrompt);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = assetDiffusionPrompt;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+    } catch {
+      // Some local HTTP contexts block clipboard access; still show user feedback for the click.
+    }
+    setIsDiffusionPromptCopied(true);
+    window.setTimeout(() => setIsDiffusionPromptCopied(false), 1500);
   };
   const toggleAssetGuide = (guideKey) => {
     setOpenAssetGuides((items) => ({ ...items, [guideKey]: !items[guideKey] }));
@@ -1725,7 +1812,7 @@ function App() {
                     <button className="asset-reg-dashed-add" type="button" onClick={addAssetImageItem}>+ 이미지 추가</button>
                   </div>
                 </div>
-                <footer className="asset-reg-nav"><span /><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(1)}>작성 완료</button></footer>
+                <footer className="asset-reg-nav"><span /><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(1)}>다음</button></footer>
               </section>
             )}
 
@@ -1733,10 +1820,9 @@ function App() {
               <section className="asset-reg-card">
                 <header className="asset-reg-card-head"><span>Step 2 / 4</span><h2>자산 연동</h2><p>GitHub 또는 GitLab 저장소를 연결하면 코드 구조가 자산에 자동으로 연결됩니다.</p></header>
                 <div className="asset-reg-card-body">
-                  <div className="asset-reg-connect-options"><button className="active" type="button"><b>GitLab</b><span>사내 GitLab 저장소</span></button><button type="button"><b>GitHub</b><span>외부 협업 저장소</span></button><button type="button"><b>ZIP Upload</b><span>저장소 없는 패키지</span></button></div>
                   <div className="asset-reg-repo-panel"><div className="asset-reg-repo-grid"><input placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" /><input placeholder="브랜치명 (예: main)" /><button type="button">연결</button></div><div className="asset-reg-file-tree"><div>📁 저장소 <span>main</span></div><ul><li>README.md</li><li>src/model.py</li><li>configs/train.yaml</li><li>requirements.txt</li><li>skill/SKILL.md</li></ul></div></div>
                 </div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(0)}>← 이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(2)}>다음</button></footer>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(0)}>이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(2)}>다음</button></footer>
               </section>
             )}
 
@@ -1744,23 +1830,53 @@ function App() {
               <section className="asset-reg-card">
                 <header className="asset-reg-card-head"><span>Step 3 / 4</span><h2>Skill 생성</h2><p>LLM이 연동된 저장소의 코드·README를 분석하여 Claude Skill 파일과 확산 프롬프트를 자동 생성합니다.</p></header>
                 <div className="asset-reg-card-body">
-                  <div className="asset-reg-skill-trigger"><div><Sparkles size={18} /><b>LLM 기반 자동 생성</b><span>저장소 구조, README, 설정 파일을 분석해 Skill 정의 파일과 확산 프롬프트를 작성합니다.</span></div><button className="primary-btn" type="button">✦ Skill 자동 생성</button></div>
-                  <div className="asset-reg-skill-result"><section><h3>생성된 Skill 파일 구조</h3><div className="asset-reg-file-tree"><div>📁 저장소 루트 <span>LLM 생성</span></div><ul><li>SKILL.md</li><li>references/usage_guide.md</li><li>prompts/diffusion_prompt.md</li></ul></div></section><section><h3>확산 프롬프트</h3><div className="asset-reg-prompt-box">이 자산의 입력 데이터 구조, 실행 절차, 검증 기준을 확인한 뒤 적용 조직의 업무 흐름에 맞춰 활용 방안을 제안하세요.</div></section></div>
+                  <div className={`asset-reg-skill-trigger ${skillGenerationStatus === 'loading' ? 'loading' : ''}`}>
+                    <div><Sparkles size={18} /><b>LLM 기반 자동 생성</b><span>저장소 구조, README, 설정 파일을 분석해 Skill 정의 파일과 확산 프롬프트를 작성합니다.</span></div>
+                    <button className="primary-btn asset-reg-skill-generate" type="button" disabled={skillGenerationStatus === 'loading'} onClick={startSkillGeneration}>
+                      {skillGenerationStatus === 'loading' && <span className="asset-reg-spinner" />}
+                      {skillGenerationStatus === 'loading' ? '생성중...' : skillGenerationStatus === 'done' ? '다시 생성' : '✦ Skill 자동 생성'}
+                    </button>
+                  </div>
+                  {skillGenerationStatus === 'loading' && (
+                    <div className="asset-reg-skill-loading"><span className="asset-reg-spinner" /><div><b>Skill 파일을 생성하고 있습니다</b><p>저장소 구조, README, 설정 파일을 분석 중입니다. 잠시만 기다려주세요.</p></div></div>
+                  )}
+                  {skillGenerationStatus === 'done' && (
+                    <div className="asset-reg-skill-result">
+                      <section className="asset-reg-skill-section">
+                        <div className="asset-reg-skill-result-head"><span>📂</span><b>생성된 Skill 파일 구조</b></div>
+                        <div className="asset-reg-skill-explorer">
+                          <div className="asset-reg-skill-tree">
+                            <div className="asset-reg-skill-tree-head">📁 저장소 루트 <span>LLM 생성</span></div>
+                            {assetSkillFiles.map((file) => (
+                              <button className={selectedSkillFilePath === file.path ? 'active' : ''} type="button" key={file.path} onClick={() => setSelectedSkillFilePath(file.path)}>📄 {file.path}</button>
+                            ))}
+                          </div>
+                          <div className="asset-reg-skill-viewer">
+                            {selectedSkillFile ? <><div>{selectedSkillFile.path}</div><pre>{selectedSkillFile.content}</pre></> : <p>← 파일을 클릭하면 내용이 표시됩니다</p>}
+                          </div>
+                        </div>
+                      </section>
+                      <section className="asset-reg-skill-section">
+                        <div className="asset-reg-skill-result-head"><span>📝</span><b>확산 프롬프트</b><div className="asset-reg-copy-actions">{isDiffusionPromptCopied && <em className="asset-reg-copy-pill">복사 되었습니다.</em>}<button className="asset-reg-copy-btn" type="button" onClick={copyAssetDiffusionPrompt}>Copy</button></div></div>
+                        <div className="asset-reg-prompt-box">{assetDiffusionPrompt}</div>
+                      </section>
+                    </div>
+                  )}
                 </div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(1)}>← 이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(3)}>다음</button></footer>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(1)}>이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(3)}>다음</button></footer>
               </section>
             )}
 
             {!isAssetRegistrySubmitted && assetRegistryStep === 3 && (
               <section className="asset-reg-card">
                 <header className="asset-reg-card-head"><span>Step 4 / 4</span><h2>최종 제출</h2><p>아래 내용을 확인하고 동의하면 최종 제출이 가능합니다.</p></header>
-                <div className="asset-reg-card-body"><div className="asset-reg-submit-notice"><Clock3 size={20} /><div><b>승인까지 약 7일이 소요됩니다</b><span>제출된 자산은 거버넌스 검토를 거친 후 카탈로그에 공개됩니다. 검토 결과는 등록 담당자 이메일로 안내됩니다.</span></div></div><div className="asset-reg-agree-list"><label><input type="checkbox" /> 과제 정보 및 코드가 사내 AI 자산 카탈로그를 통해 팀 내 공유될 수 있음을 확인하였습니다.</label><label><input type="checkbox" /> 등록 자산의 내용이 사실임을 확인하며, 부정확한 정보 등록에 대한 책임을 인지합니다.</label></div></div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(2)}>← 이전</button><button className="primary-btn" type="button" onClick={() => setIsAssetRegistrySubmitted(true)}>최종 제출</button></footer>
+                <div className="asset-reg-card-body"><div className="asset-reg-submit-notice"><Clock3 size={20} /><div><b>승인까지 약 7일이 소요됩니다</b><span>제출된 자산은 거버넌스 검토(보안·라이선스·품질 게이트)를 거친 후 AI Studio에 공개됩니다. 검토 결과는 등록 담당자 이메일로 안내됩니다.</span></div></div><div className="asset-reg-agree-list"><label><input type="checkbox" checked={assetSubmitAgreements.share} onChange={() => toggleAssetSubmitAgreement('share')} /> 과제 정보 및 코드가 AI Studio를 통해 전사 모든 부서에 공유될 수 있음을 확인하였습니다.</label><label><input type="checkbox" checked={assetSubmitAgreements.factual} onChange={() => toggleAssetSubmitAgreement('factual')} /> 등록 자산의 주요 정보가 실제 구현 내용과 사용 결과를 바탕으로 작성되었음을 확인합니다.</label><label><input type="checkbox" checked={assetSubmitAgreements.security} onChange={() => toggleAssetSubmitAgreement('security')} /> 등록 자산에 개인정보, 영업비밀, 외부 반출 제한 정보가 포함되지 않았음을 확인합니다.</label></div></div>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(2)}>이전</button><button className="primary-btn" type="button" disabled={!isAssetSubmitEnabled} onClick={() => setIsAssetRegistrySubmitted(true)}>제출</button></footer>
               </section>
             )}
 
             {isAssetRegistrySubmitted && (
-              <section className="asset-reg-done-card"><div>✓</div><h2>제출이 완료되었습니다</h2><p>AI 자산 등록 요청이 접수되었습니다. 거버넌스 검토 후 카탈로그에 공개되며, 결과는 이메일로 안내됩니다.</p><button className="line-btn" type="button" onClick={() => { setIsAssetRegistrySubmitted(false); setAssetRegistryStep(0); setIsAssetNoData(false); setSelectedAssetTasks([]); setSelectedAssetImplementations([]); setAssetModelItems([createAssetTechItem()]); setAssetStackItems([createAssetTechItem()]); setAssetBeforeAfterItems([createAssetTechItem()]); setAssetKpiItems([createAssetTechItem()]); setAssetImageItems([createAssetImageItem()]); setOpenAssetGuides({}); setAssetTagInput(''); setAssetTags([]); }}>새 자산 등록</button></section>
+              <section className="asset-reg-done-card"><div>✓</div><h2>제출이 완료되었습니다</h2><p>AI 자산 등록 요청이 접수되었습니다. 거버넌스 검토 후 카탈로그에 공개되며, 결과는 이메일로 안내됩니다.</p><button className="line-btn" type="button" onClick={() => { setIsAssetRegistrySubmitted(false); setAssetRegistryStep(0); setIsAssetNoData(false); setSelectedAssetTasks([]); setSelectedAssetImplementations([]); setAssetModelItems([createAssetTechItem()]); setAssetStackItems([createAssetTechItem()]); setAssetBeforeAfterItems([createAssetTechItem()]); setAssetKpiItems([createAssetTechItem()]); setAssetImageItems([createAssetImageItem()]); setSkillGenerationStatus('idle'); setSelectedSkillFilePath(''); setIsDiffusionPromptCopied(false); setAssetSubmitAgreements({ share: false, factual: false, security: false }); setOpenAssetGuides({}); setAssetTagInput(''); setAssetTags([]); }}>새 자산 등록</button></section>
             )}
           </section>
         )}
