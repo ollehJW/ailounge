@@ -127,7 +127,7 @@ const createAssetImageItem = () => ({ id: crypto.randomUUID ? crypto.randomUUID(
 const assetRegistrySteps = [
   ['자산 명세서 작성', '담당자 정보, 자산 개요, 과제 정의, 데이터, 기술·성능 지표를 작성합니다.'],
   ['자산 연동', 'GitHub/GitLab 저장소를 연결해 실제 코드·데이터 구조를 확인합니다.'],
-  ['Skill 생성', 'LLM이 저장소를 분석해 Skill 파일과 확산 프롬프트를 자동 생성합니다.'],
+  ['확산 패키지 생성', 'LLM이 저장소를 분석해 Skill 파일과 확산 프롬프트를 자동 생성합니다.'],
   ['최종 제출 및 승인', '필독 사항 동의 후 제출하면 거버넌스 검토를 거쳐 카탈로그에 공개됩니다.'],
 ];
 
@@ -1828,7 +1828,7 @@ function App() {
 
             {!isAssetRegistrySubmitted && assetRegistryStep === 2 && (
               <section className="asset-reg-card">
-                <header className="asset-reg-card-head"><span>Step 3 / 4</span><h2>Skill 생성</h2><p>LLM이 연동된 저장소의 코드·README를 분석하여 Claude Skill 파일과 확산 프롬프트를 자동 생성합니다.</p></header>
+                <header className="asset-reg-card-head"><span>Step 3 / 4</span><h2>확산 패키지 생성</h2><p>LLM이 연동된 저장소의 코드·README를 분석하여 Claude Skill 파일과 확산 프롬프트를 자동 생성합니다.</p></header>
                 <div className="asset-reg-card-body">
                   <div className={`asset-reg-skill-trigger ${skillGenerationStatus === 'loading' ? 'loading' : ''}`}>
                     <div><Sparkles size={18} /><b>LLM 기반 자동 생성</b><span>저장소 구조, README, 설정 파일을 분석해 Skill 정의 파일과 확산 프롬프트를 작성합니다.</span></div>
