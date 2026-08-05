@@ -4792,6 +4792,51 @@ a { color: inherit; text-decoration: none; }
   border-left: 4px solid var(--wia-blue);
   background: linear-gradient(90deg, #f3f7ff 0%, #ffffff 100%);
   box-shadow: 0 1px 0 rgba(16, 24, 40, .03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.asset-reg-section-label > span {
+  color: #172033;
+  font-weight: 950;
+}
+
+.asset-reg-section-label > em {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e2e8f2;
+  background: #fff;
+  color: #8a94a6;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.asset-reg-section-label.complete {
+  border-left-color: #2f7d52;
+  background: linear-gradient(90deg, #eefaf2 0%, #ffffff 100%);
+}
+
+.asset-reg-section-label.complete > em {
+  border-color: #bfe0ca;
+  background: #e6f5eb;
+  color: #2f7d52;
+}
+
+.asset-reg-section-label.incomplete {
+  border-left-color: #c24141;
+}
+
+.asset-reg-section-label.incomplete > em {
+  border-color: #f1c4c4;
+  background: #fff5f5;
+  color: #c24141;
 }
 
 .asset-reg-section-label:first-child {
@@ -5063,11 +5108,48 @@ a { color: inherit; text-decoration: none; }
   font-weight: 850;
 }
 
+.asset-reg-subsection-title {
+  margin: 2px 0 -2px;
+  color: #354154;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.asset-reg-subsection-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 -2px;
+}
+
+.asset-reg-subsection-title-row .asset-reg-subsection-title {
+  margin: 0;
+}
+
+.asset-reg-inline-check {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+  color: #5f6b7d;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.asset-reg-inline-check input {
+  accent-color: var(--wia-blue);
+}
+
 .asset-reg-upload-grid,
 .asset-reg-tech-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.asset-reg-upload-grid.single {
+  grid-template-columns: 1fr;
 }
 
 .asset-reg-perf-grid {
@@ -5093,9 +5175,50 @@ a { color: inherit; text-decoration: none; }
   color: #657082;
 }
 
+.asset-reg-upload-grid label,
+.asset-reg-slide-thumb {
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.asset-reg-upload-grid label:hover,
+.asset-reg-slide-thumb:hover {
+  border-color: #6f8fc2;
+  background: #f7fbff;
+  box-shadow: 0 10px 24px -20px rgba(30, 74, 135, 0.65);
+  transform: translateY(-1px);
+}
+
+.asset-reg-upload-grid label:focus-within,
+.asset-reg-slide-thumb:focus-within {
+  outline: 2px solid rgba(70, 118, 185, 0.22);
+  outline-offset: 2px;
+}
+
 .asset-reg-upload-grid input,
 .asset-reg-image-drop input {
   display: none;
+}
+
+.asset-reg-upload-action {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: 1px solid #c8d5e8;
+  background: #eef5ff;
+  color: #315f9c;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.asset-reg-upload-grid label:hover .asset-reg-upload-action,
+.asset-reg-slide-thumb:hover .asset-reg-upload-action {
+  border-color: #6f8fc2;
+  background: #315f9c;
+  color: #fff;
 }
 
 .asset-reg-upload-grid b,
@@ -5108,6 +5231,12 @@ a { color: inherit; text-decoration: none; }
 .asset-reg-image-drop span {
   color: #707a8b;
   font-size: 11.5px;
+}
+
+.asset-reg-upload-grid em {
+  color: #8a94a5;
+  font-size: 11px;
+  font-style: normal;
 }
 
 .asset-reg-slide-images {
@@ -5140,12 +5269,11 @@ a { color: inherit; text-decoration: none; }
   border: 1px dashed #cfd8e7;
   background: #fff;
   min-height: 132px;
-  padding: 10px;
+  padding: 34px 10px 10px;
   display: grid;
   align-content: center;
   gap: 7px;
   color: #657082;
-  cursor: pointer;
 }
 
 .asset-reg-slide-thumb input {
@@ -5356,7 +5484,7 @@ a { color: inherit; text-decoration: none; }
 
 .asset-reg-repo-grid {
   display: grid;
-  grid-template-columns: 1.5fr .7fr 92px;
+  grid-template-columns: 1.5fr .7fr 112px;
   gap: 10px;
 }
 
@@ -5365,6 +5493,11 @@ a { color: inherit; text-decoration: none; }
   background: var(--wia-blue);
   color: #fff;
   font-weight: 900;
+}
+
+.asset-reg-repo-grid button:disabled {
+  opacity: .62;
+  cursor: wait;
 }
 
 .asset-reg-file-tree {
@@ -5391,6 +5524,88 @@ a { color: inherit; text-decoration: none; }
 .asset-reg-file-tree ul {
   margin: 0;
   padding-left: 18px;
+}
+
+.asset-reg-file-tree li {
+  margin: 2px 0;
+  color: #cbd8ea;
+}
+
+.asset-reg-file-tree li span {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 34px;
+  margin: 0 8px 0 0;
+  border: 1px solid rgba(157, 181, 226, .28);
+  color: #9db5e2;
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1.45;
+}
+
+.asset-reg-file-tree li.directory > span {
+  color: #f4c56f;
+  border-color: rgba(244, 197, 111, .32);
+}
+
+.asset-reg-file-tree p {
+  margin: 0;
+  color: #9aa9bd;
+}
+
+.asset-reg-repo-error-modal {
+  position: relative;
+  width: min(480px, calc(100vw - 32px));
+  border: 1px solid #e4eaf3;
+  background: #fff;
+  padding: 30px;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .22);
+  text-align: center;
+}
+
+.asset-reg-repo-error-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  border: 1px solid #f0b9b9;
+  background: #fff5f5;
+  color: #c24141;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.asset-reg-repo-error-modal > span {
+  color: #c24141;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.asset-reg-repo-error-modal h2 {
+  margin: 8px 0 16px;
+  color: #172033;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.asset-reg-repo-error-message {
+  margin: 0 0 18px;
+  border: 1px solid #f3c7c7;
+  background: #fff8f8;
+  color: #8f3030;
+  padding: 13px 14px;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.65;
+  text-align: left;
+}
+
+.asset-reg-repo-error-modal .primary-btn {
+  min-width: 132px;
 }
 
 .asset-reg-skill-trigger,
@@ -5649,6 +5864,16 @@ a { color: inherit; text-decoration: none; }
   align-items: flex-start;
   color: #354154;
   font-size: 13px;
+}
+
+.asset-reg-submit-error {
+  margin: 12px 0 0;
+  border: 1px solid #f0b9b9;
+  background: #fff5f5;
+  color: #c24141;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 800;
 }
 
 .asset-reg-nav {

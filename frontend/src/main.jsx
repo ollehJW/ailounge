@@ -122,8 +122,8 @@ const dxTaskDefinition = {
 
 const assetTaskTypes = ['예측', '탐지', '분류', '검색', '질의응답', '요약', '생성', '추출', '추천', '분석', '최적화', '자동화'];
 const assetImplementationTypes = ['ML', 'DL', 'Computer Vision', 'LLM', 'RAG', 'Agent', 'Rule-Based', 'Hybrid'];
-const createAssetTechItem = () => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}` });
-const createAssetImageItem = () => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, fileName: '', previewUrl: '' });
+const createAssetTechItem = (overrides = {}) => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, ...overrides });
+const createAssetImageItem = (overrides = {}) => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, fileName: '', previewUrl: '', file: null, caption: '', description: '', ...overrides });
 const assetRegistrySteps = [
   ['자산 명세서 작성', '담당자 정보, 자산 개요, 과제 정의, 데이터, 기술·성능 지표를 작성합니다.'],
   ['자산 연동', 'GitHub/GitLab 저장소를 연결해 실제 코드·데이터 구조를 확인합니다.'],
@@ -383,10 +383,26 @@ function App() {
   const [assetBeforeAfterItems, setAssetBeforeAfterItems] = useState(() => [createAssetTechItem()]);
   const [assetKpiItems, setAssetKpiItems] = useState(() => [createAssetTechItem()]);
   const [assetImageItems, setAssetImageItems] = useState(() => [createAssetImageItem()]);
+  const [assetTrainFiles, setAssetTrainFiles] = useState([]);
+  const [assetValidationFiles, setAssetValidationFiles] = useState([]);
+  const [assetSampleFiles, setAssetSampleFiles] = useState([]);
+  const [hasAssetTrainValidationSplit, setHasAssetTrainValidationSplit] = useState(false);
   const [skillGenerationStatus, setSkillGenerationStatus] = useState('idle');
   const [selectedSkillFilePath, setSelectedSkillFilePath] = useState('');
   const [isDiffusionPromptCopied, setIsDiffusionPromptCopied] = useState(false);
   const [assetSubmitAgreements, setAssetSubmitAgreements] = useState({ share: false, factual: false, security: false });
+  const [isSubmittingAsset, setIsSubmittingAsset] = useState(false);
+  const [assetSubmitError, setAssetSubmitError] = useState('');
+  const [assetDraft, setAssetDraft] = useState({});
+  const [assetDraftId, setAssetDraftId] = useState('');
+  const [assetRepoTree, setAssetRepoTree] = useState([]);
+  const [isCloningAssetRepo, setIsCloningAssetRepo] = useState(false);
+  const [isStagingAssetSpec, setIsStagingAssetSpec] = useState(false);
+  const [assetRepoErrorMessage, setAssetRepoErrorMessage] = useState('');
+  const [isAssetSampleLoaded, setIsAssetSampleLoaded] = useState(false);
+  const [isAssetSpecReady, setIsAssetSpecReady] = useState(false);
+  const [assetSpecSectionStatus, setAssetSpecSectionStatus] = useState({});
+  const [assetSampleVersion, setAssetSampleVersion] = useState(0);
   const [openAssetGuides, setOpenAssetGuides] = useState({});
   const [assetTagInput, setAssetTagInput] = useState('');
   const [assetTags, setAssetTags] = useState([]);
@@ -455,6 +471,7 @@ function App() {
   const aiUsageEditorRef = useRef(null);
   const aiUsageSelectionRef = useRef(null);
   const aiIdeaFileInputRef = useRef(null);
+  const assetRegistryRef = useRef(null);
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${authToken}` }), [authToken]);
   const isAdminView = Boolean(authUser?.is_admin);
@@ -578,7 +595,7 @@ function App() {
     setAssetImageItems((items) => items.map((item) => {
       if (item.id !== id) return item;
       if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-      return { ...item, fileName: file.name, previewUrl };
+      return { ...item, fileName: file.name, previewUrl, file };
     }));
   };
   const moveAssetImageItem = (id, direction) => {
@@ -649,6 +666,328 @@ function App() {
   };
   const removeAssetTag = (tag) => {
     setAssetTags((items) => items.filter((item) => item !== tag));
+  };
+
+  const getAssetFieldValue = (name) => assetRegistryRef.current?.querySelector(`[name="${name}"]`)?.value.trim() || '';
+  const collectAssetRows = (selector, keys) => Array.from(assetRegistryRef.current?.querySelectorAll(selector) || [])
+    .map((row) => Object.fromEntries(keys.map((key) => [key, row.querySelector(`[data-field="${key}"]`)?.value.trim() || ''])))
+    .filter((row) => Object.values(row).some(Boolean));
+  const assetRowsComplete = (selector, requiredKeys) => {
+    const rows = Array.from(assetRegistryRef.current?.querySelectorAll(selector) || []);
+    return rows.length > 0 && rows.every((row) => requiredKeys.every((key) => row.querySelector(`[data-field="${key}"]`)?.value.trim()));
+  };
+  const getAssetSpecSectionStatus = () => {
+    const fieldReady = (name) => Boolean(getAssetFieldValue(name));
+    const owner = ['owner_name', 'owner_job_title', 'owner_org', 'owner_email'].every(fieldReady);
+    const basic = ['asset_name', 'asset_description', 'business_area', 'maturity_level'].every(fieldReady)
+      && selectedAssetTasks.length > 0
+      && selectedAssetImplementations.length > 0
+      && assetTags.length > 0;
+    const definition = ['problem_definition', 'as_is_workflow', 'to_be_workflow', 'ai_effect'].every(fieldReady);
+    const data = isAssetNoData || (
+      fieldReady('data_type')
+      && fieldReady('data_description')
+      && (hasAssetTrainValidationSplit ? Boolean(assetTrainFiles[0] && assetValidationFiles[0]) : Boolean(assetSampleFiles[0]))
+    );
+    const tech = assetRowsComplete('.asset-reg-model-item', ['model_name', 'description'])
+      && assetRowsComplete('.asset-reg-stack-item', ['stack_name', 'description']);
+    const metrics = assetRowsComplete('.asset-reg-before-after-item', ['metric_name', 'before_value', 'after_value', 'improvement_rate'])
+      && assetRowsComplete('.asset-reg-kpi-item', ['metric_name', 'value', 'description']);
+    const slideRows = Array.from(assetRegistryRef.current?.querySelectorAll('.asset-reg-slide-image-card') || []);
+    const screens = assetImageItems.length > 0
+      && assetImageItems.every((item) => item.file)
+      && slideRows.length === assetImageItems.length
+      && slideRows.every((row) => row.querySelector('[data-field="caption"]')?.value.trim() && row.querySelector('[data-field="description"]')?.value.trim());
+    return { owner, basic, definition, data, tech, metrics, screens };
+  };
+  const getAssetSpecMissingFields = () => {
+    const status = getAssetSpecSectionStatus();
+    const labels = { owner: '담당자 정보', basic: '자산 기본 정보', definition: '과제 정의', data: '데이터', tech: '적용 기술', metrics: '성능 지표', screens: '자산 활용 화면' };
+    return Object.entries(status).filter(([, ready]) => !ready).map(([key]) => labels[key]);
+  };
+  const refreshAssetSpecReady = () => {
+    window.requestAnimationFrame(() => {
+      const status = getAssetSpecSectionStatus();
+      setAssetSpecSectionStatus(status);
+      setIsAssetSpecReady(Object.values(status).every(Boolean));
+    });
+  };
+  const renderAssetSectionLabel = (label, statusKey) => {
+    const ready = Boolean(assetSpecSectionStatus[statusKey]);
+    return (
+      <div className={`asset-reg-section-label ${ready ? 'complete' : 'incomplete'}`}>
+        <span>{label}</span>
+        <em>{ready ? '✓' : '×'}</em>
+      </div>
+    );
+  };
+  const captureAssetDraft = () => {
+    const currentStepPayload = {
+      owner_name: getAssetFieldValue('owner_name'),
+      owner_job_title: getAssetFieldValue('owner_job_title'),
+      owner_org: getAssetFieldValue('owner_org'),
+      owner_email: getAssetFieldValue('owner_email'),
+      asset_name: getAssetFieldValue('asset_name'),
+      description: getAssetFieldValue('asset_description'),
+      business_area: getAssetFieldValue('business_area'),
+      maturity_level: getAssetFieldValue('maturity_level'),
+      task_types: selectedAssetTasks,
+      implementation_types: selectedAssetImplementations,
+      tags: assetTags,
+      problem_definition: getAssetFieldValue('problem_definition'),
+      as_is_workflow: getAssetFieldValue('as_is_workflow'),
+      to_be_workflow: getAssetFieldValue('to_be_workflow'),
+      ai_effect: getAssetFieldValue('ai_effect'),
+      has_data: !isAssetNoData,
+      has_train_validation_split: hasAssetTrainValidationSplit,
+      data_type: isAssetNoData ? '' : getAssetFieldValue('data_type'),
+      data_description: isAssetNoData ? '' : getAssetFieldValue('data_description'),
+      models: collectAssetRows('.asset-reg-model-item', ['model_name', 'description', 'reference_url']),
+      tech_stacks: collectAssetRows('.asset-reg-stack-item', ['stack_name', 'description', 'reference_url']),
+      before_after_metrics: collectAssetRows('.asset-reg-before-after-item', ['metric_name', 'before_value', 'after_value', 'improvement_rate']),
+      performance_metrics: collectAssetRows('.asset-reg-kpi-item', ['metric_name', 'value', 'description']),
+      slides: Array.from(assetRegistryRef.current?.querySelectorAll('.asset-reg-slide-image-card') || []).map((row, index) => ({
+        caption: row.querySelector('[data-field="caption"]')?.value.trim() || '',
+        description: row.querySelector('[data-field="description"]')?.value.trim() || '',
+        sort_order: index + 1,
+      })),
+      repo_url: getAssetFieldValue('repo_url'),
+      repo_branch: getAssetFieldValue('repo_branch'),
+    };
+    setAssetDraft((current) => {
+      const next = { ...current };
+      Object.entries(currentStepPayload).forEach(([key, value]) => {
+        const isEmptyArray = Array.isArray(value) && value.length === 0;
+        if (value !== '' && !isEmptyArray) next[key] = value;
+        if (['has_data', 'data_type', 'data_description'].includes(key)) next[key] = value;
+      });
+      return next;
+    });
+    return currentStepPayload;
+  };
+  const goToAssetRegistryStep = (step) => {
+    captureAssetDraft();
+    setAssetRegistryStep(step);
+  };
+  const resetAssetRegistry = () => {
+    setIsAssetRegistrySubmitted(false);
+    setAssetRegistryStep(0);
+    setIsAssetNoData(false);
+    setSelectedAssetTasks([]);
+    setSelectedAssetImplementations([]);
+    setAssetModelItems([createAssetTechItem()]);
+    setAssetStackItems([createAssetTechItem()]);
+    setAssetBeforeAfterItems([createAssetTechItem()]);
+    setAssetKpiItems([createAssetTechItem()]);
+    setAssetImageItems([createAssetImageItem()]);
+    setAssetTrainFiles([]);
+    setAssetValidationFiles([]);
+    setAssetSampleFiles([]);
+    setHasAssetTrainValidationSplit(false);
+    setSkillGenerationStatus('idle');
+    setSelectedSkillFilePath('');
+    setIsDiffusionPromptCopied(false);
+    setAssetSubmitAgreements({ share: false, factual: false, security: false });
+    setOpenAssetGuides({});
+    setAssetTagInput('');
+    setAssetTags([]);
+    setAssetSubmitError('');
+    setAssetDraft({});
+    setAssetDraftId('');
+    setAssetRepoTree([]);
+    setIsCloningAssetRepo(false);
+    setIsStagingAssetSpec(false);
+    setAssetRepoErrorMessage('');
+    setIsAssetSampleLoaded(false);
+    setIsAssetSpecReady(false);
+    setAssetSpecSectionStatus({});
+    setAssetSampleVersion((version) => version + 1);
+  };
+  const fetchAssetSampleFile = async (fileInfo) => {
+    if (!fileInfo?.url) return null;
+    const response = await fetch(`${API_BASE}${fileInfo.url}`, { headers: authHeaders });
+    if (!response.ok) throw await apiError(response, '샘플 파일을 불러오지 못했습니다.');
+    const blob = await response.blob();
+    return new File([blob], fileInfo.original_name || fileInfo.stored_name || 'sample.file', { type: fileInfo.content_type || blob.type || 'application/octet-stream' });
+  };
+  // TODO: Remove this sample preset loader after AI asset registration QA/testing is complete.
+  const loadAssetSamplePreset = async () => {
+    if (isAssetSampleLoaded || !authToken) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/sample`, { headers: authHeaders });
+      if (!response.ok) return;
+      const sample = await response.json();
+      const payload = sample.payload || {};
+      const nextDraft = { ...payload, asset_id: '', repo_url: '', repo_branch: '' };
+      delete nextDraft.staged_by;
+      delete nextDraft.staged_at;
+      nextDraft.owner_email = nextDraft.owner_email || nextDraft.user_email || 'jongwook.lee@hyundai-wia.com';
+      delete nextDraft.user_id;
+      delete nextDraft.user_email;
+      setAssetDraft(nextDraft);
+      setAssetDraftId('');
+      setSelectedAssetTasks(Array.isArray(payload.task_types) ? payload.task_types : []);
+      setSelectedAssetImplementations(Array.isArray(payload.implementation_types) ? payload.implementation_types : []);
+      setAssetTags(Array.isArray(payload.tags) ? payload.tags : []);
+      setIsAssetNoData(!payload.has_data);
+      setHasAssetTrainValidationSplit(Boolean(payload.has_train_validation_split));
+      setAssetModelItems((Array.isArray(payload.models) && payload.models.length ? payload.models : [{}]).map((item) => createAssetTechItem(item)));
+      setAssetStackItems((Array.isArray(payload.tech_stacks) && payload.tech_stacks.length ? payload.tech_stacks : [{}]).map((item) => createAssetTechItem(item)));
+      setAssetBeforeAfterItems((Array.isArray(payload.before_after_metrics) && payload.before_after_metrics.length ? payload.before_after_metrics : [{}]).map((item) => createAssetTechItem(item)));
+      setAssetKpiItems((Array.isArray(payload.performance_metrics) && payload.performance_metrics.length ? payload.performance_metrics : [{}]).map((item) => createAssetTechItem(item)));
+      const sortedSlides = Array.isArray(sample.slides) ? [...sample.slides].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) : [];
+      const slideItems = await Promise.all(sortedSlides.map(async (slide) => {
+        const file = await fetchAssetSampleFile(slide);
+        return createAssetImageItem({
+          fileName: file?.name || slide.original_name || '',
+          previewUrl: file ? URL.createObjectURL(file) : '',
+          file,
+          caption: slide.caption || '',
+          description: slide.description || '',
+        });
+      }));
+      setAssetImageItems(slideItems.length ? slideItems : [createAssetImageItem()]);
+      const dataFiles = Array.isArray(sample.data_files) ? sample.data_files : [];
+      const sampleFile = dataFiles.find((file) => file.role === 'sample');
+      const trainFile = dataFiles.find((file) => file.role === 'train');
+      const validationFile = dataFiles.find((file) => file.role === 'validation');
+      setAssetSampleFiles(sampleFile ? [await fetchAssetSampleFile(sampleFile)].filter(Boolean) : []);
+      setAssetTrainFiles(trainFile ? [await fetchAssetSampleFile(trainFile)].filter(Boolean) : []);
+      setAssetValidationFiles(validationFile ? [await fetchAssetSampleFile(validationFile)].filter(Boolean) : []);
+      setAssetSampleVersion((version) => version + 1);
+    } finally {
+      setIsAssetSampleLoaded(true);
+    }
+  };
+  useEffect(() => {
+    if (activePage === 'registry') loadAssetSamplePreset();
+  }, [activePage, isAssetSampleLoaded, authToken]);
+  useEffect(() => {
+    if (activePage !== 'registry' || assetRegistryStep !== 0) return undefined;
+    const timer = window.setTimeout(refreshAssetSpecReady, 0);
+    return () => window.clearTimeout(timer);
+  }, [activePage, assetRegistryStep, selectedAssetTasks, selectedAssetImplementations, assetTags, isAssetNoData, hasAssetTrainValidationSplit, assetTrainFiles, assetValidationFiles, assetSampleFiles, assetImageItems, assetModelItems, assetStackItems, assetBeforeAfterItems, assetKpiItems, assetDraft, assetSampleVersion]);
+  const buildAssetFormData = (formPayload) => {
+    const formData = new FormData();
+    formData.append('payload_json', JSON.stringify(formPayload));
+    assetImageItems.forEach((item) => { if (item.file) formData.append('slides', item.file); });
+    assetTrainFiles.forEach((file) => formData.append('train_files', file));
+    assetValidationFiles.forEach((file) => formData.append('validation_files', file));
+    assetSampleFiles.forEach((file) => formData.append('sample_files', file));
+    return formData;
+  };
+  const buildAssetPayload = (livePayload = {}) => ({
+    ...assetDraft,
+    ...livePayload,
+    asset_id: assetDraftId || assetDraft.asset_id || livePayload.asset_id || '',
+    task_types: selectedAssetTasks.length ? selectedAssetTasks : assetDraft.task_types || [],
+    implementation_types: selectedAssetImplementations.length ? selectedAssetImplementations : assetDraft.implementation_types || [],
+    tags: assetTags.length ? assetTags : assetDraft.tags || [],
+    skill_files: skillGenerationStatus === 'done' ? assetSkillFiles.map(({ path, content }) => ({ path, content })) : [],
+    diffusion_prompt: skillGenerationStatus === 'done' ? assetDiffusionPrompt : '',
+  });
+  const attachAssetSlidesMeta = (payload, livePayload = {}) => {
+    payload.slides = assetImageItems
+      .map((item, index) => ({ item, meta: (livePayload.slides || assetDraft.slides || [])[index] || {} }))
+      .filter(({ item }) => item.file)
+      .map(({ meta }, index) => ({ caption: meta.caption || '', description: meta.description || '', sort_order: index + 1 }));
+    return payload;
+  };
+  const validateAssetUploadSizes = () => {
+    const maxAssetDataFileSize = 10 * 1024 * 1024;
+    if (assetTrainFiles[0]?.size > maxAssetDataFileSize) throw new Error('학습 샘플 데이터는 10MB 이하 파일 1개만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.');
+    if (assetValidationFiles[0]?.size > maxAssetDataFileSize) throw new Error('검증 샘플 데이터는 10MB 이하 파일 1개만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.');
+    if (assetSampleFiles[0]?.size > maxAssetDataFileSize) throw new Error('샘플 데이터는 10MB 이하 파일 1개만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.');
+  };
+  const stageAssetSpecification = async () => {
+    setAssetSubmitError('');
+    const missingFields = getAssetSpecMissingFields();
+    if (missingFields.length > 0) {
+      setAssetSubmitError(`필수 항목을 모두 입력하세요. (${missingFields.slice(0, 3).join(', ')}${missingFields.length > 3 ? ' 외' : ''})`);
+      setIsAssetSpecReady(false);
+    setAssetSpecSectionStatus({});
+      return;
+    }
+    setIsStagingAssetSpec(true);
+    try {
+      const livePayload = captureAssetDraft();
+      const payload = attachAssetSlidesMeta(buildAssetPayload(livePayload), livePayload);
+      validateAssetUploadSizes();
+      const response = await fetch(`${API_BASE}/api/assets/staging`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: buildAssetFormData(payload),
+      });
+      if (!response.ok) throw await apiError(response, 'AI 자산 임시 저장에 실패했습니다.');
+      const stagedAsset = await response.json();
+      const stagedPayload = { ...payload, asset_id: stagedAsset.asset_id };
+      setAssetDraftId(stagedAsset.asset_id);
+      setAssetDraft((current) => ({ ...current, ...stagedPayload }));
+      setAssetRegistryStep(1);
+    } catch (error) {
+      setAssetSubmitError(error.message);
+    } finally {
+      setIsStagingAssetSpec(false);
+    }
+  };
+  const cloneAssetRepository = async () => {
+    const livePayload = captureAssetDraft();
+    const repoUrl = livePayload.repo_url || assetDraft.repo_url || '';
+    const repoBranch = livePayload.repo_branch || assetDraft.repo_branch || '';
+    if (!repoUrl) {
+      setAssetRepoErrorMessage('Git URL을 입력하세요.');
+      return;
+    }
+    setIsCloningAssetRepo(true);
+    setAssetRepoErrorMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/repository/clone`, {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo_url: repoUrl, repo_branch: repoBranch || null, asset_id: assetDraftId || assetDraft.asset_id || null }),
+      });
+      if (!response.ok) throw await apiError(response, 'Git 저장소를 연결하지 못했습니다.');
+      const data = await response.json();
+      setAssetDraftId(data.asset_id);
+      setAssetRepoTree(data.tree || []);
+      setAssetDraft((current) => ({ ...current, asset_id: data.asset_id, repo_url: repoUrl, repo_branch: repoBranch }));
+    } catch (error) {
+      setAssetRepoTree([]);
+      setAssetRepoErrorMessage(error.message);
+    } finally {
+      setIsCloningAssetRepo(false);
+    }
+  };
+  const renderAssetRepoTree = (items) => (
+    <ul>
+      {items.map((item) => (
+        <li key={item.path} className={item.type === 'directory' ? 'directory' : 'file'}>
+          <span>{item.type === 'directory' ? 'DIR' : 'FILE'}</span>{item.name}
+          {item.children?.length > 0 && renderAssetRepoTree(item.children)}
+        </li>
+      ))}
+    </ul>
+  );
+  const submitAssetRegistration = async () => {
+    setAssetSubmitError('');
+    setIsSubmittingAsset(true);
+    try {
+      const livePayload = assetRegistryStep === 0 || assetRegistryStep === 1 ? captureAssetDraft() : {};
+      const payload = attachAssetSlidesMeta(buildAssetPayload(livePayload), livePayload);
+      validateAssetUploadSizes();
+      const response = await fetch(`${API_BASE}/api/assets`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: buildAssetFormData(payload),
+      });
+      if (!response.ok) throw await apiError(response, 'AI 자산 등록에 실패했습니다.');
+      await response.json();
+      setIsAssetRegistrySubmitted(true);
+    } catch (error) {
+      setAssetSubmitError(error.message);
+    } finally {
+      setIsSubmittingAsset(false);
+    }
   };
 
   const applyDxSessionDetail = (detail) => {
@@ -1602,7 +1941,7 @@ function App() {
 
       <main className="main" aria-label="콘텐츠 영역">
         {!isAdminView && activePage === 'registry' && (
-          <section className="content asset-registry-page" aria-label="AI 자산 등록">
+          <section className="content asset-registry-page" aria-label="AI 자산 등록" ref={assetRegistryRef}>
             <div className="asset-reg-head">
               <span>ASSET REGISTRY</span>
               <h1>AI 자산 등록<b>·</b></h1>
@@ -1639,28 +1978,28 @@ function App() {
             )}
 
             {!isAssetRegistrySubmitted && assetRegistryStep === 0 && (
-              <section className="asset-reg-card">
+              <section className="asset-reg-card" key={`asset-spec-${assetSampleVersion}`}>
                 <header className="asset-reg-card-head">
                   <span>Step 1 / 4</span>
                   <h2>자산 명세서 작성</h2>
                   <p>담당자 정보, 자산 기본 정보, 과제 정의, 데이터, 기술 및 성능 지표를 순서대로 작성합니다.</p>
                 </header>
-                <div className="asset-reg-card-body">
-                  <div className="asset-reg-section-label">담당자 정보</div>
+                <div className="asset-reg-card-body" onInput={refreshAssetSpecReady} onChange={refreshAssetSpecReady}>
+                  {renderAssetSectionLabel('담당자 정보', 'owner')}
                   <div className="asset-reg-form-grid">
-                    <label><span>이름 *</span><input placeholder="예: 홍길동" /></label>
-                    <label><span>직급 *</span><input placeholder="예: 책임매니저" /></label>
-                    <label><span>조직명 *</span><input placeholder="예: DX추진랩" /></label>
-                    <label><span>이메일 *</span><input type="email" placeholder="예: gildong@hyundai-wia.com" /></label>
+                    <label><span>이름 *</span><input name="owner_name" defaultValue={assetDraft.owner_name || authUser.displayed_name || ''} placeholder="예: 홍길동" /></label>
+                    <label><span>직급 *</span><input name="owner_job_title" defaultValue={assetDraft.owner_job_title || authUser.job_title || ''} placeholder="예: 책임매니저" /></label>
+                    <label><span>조직명 *</span><input name="owner_org" defaultValue={assetDraft.owner_org || authUser.org_name || ''} placeholder="예: DX추진랩" /></label>
+                    <label><span>이메일 *</span><input name="owner_email" type="email" defaultValue={assetDraft.owner_email || 'jongwook.lee@hyundai-wia.com'} placeholder="예: gildong@hyundai-wia.com" /></label>
                   </div>
 
-                  <div className="asset-reg-section-label">자산 기본 정보</div>
+                  {renderAssetSectionLabel('자산 기본 정보', 'basic')}
                   <div className="asset-reg-form-grid">
-                    <label className="full"><span>자산명 *</span><input placeholder="예: 가공품 표면 결함 자동 검출 모델" /></label>
-                    <label className="full"><span>설명 *</span><textarea rows="3" placeholder="이 자산이 해결하는 문제와 핵심 기능을 2-3문장으로 설명하세요." /></label>
+                    <label className="full"><span>자산명 *</span><input name="asset_name" defaultValue={assetDraft.asset_name || ''} placeholder="예: 가공품 표면 결함 자동 검출 모델" /></label>
+                    <label className="full"><span>설명 *</span><textarea name="asset_description" defaultValue={assetDraft.description || ''} rows="3" placeholder="이 자산이 해결하는 문제와 핵심 기능을 2-3문장으로 설명하세요." /></label>
                     <div className="asset-reg-two-row full">
-                      <label><span>업무 영역 *</span><select><option>선택</option><option>생산·제조</option><option>품질</option><option>R&D·설계</option><option>SCM·구매·물류</option><option>영업·마케팅</option><option>경영지원</option><option>안전·환경·보건</option><option>IT·DX</option><option>공통</option></select></label>
-                      <label><span>자산 성숙도 *</span><select><option>아이디어</option><option>PoC</option><option>Pilot</option><option>운영</option></select></label>
+                      <label><span>업무 영역 *</span><select name="business_area" defaultValue={assetDraft.business_area || ''}><option value="">선택</option><option>생산·제조</option><option>품질</option><option>R&D·설계</option><option>SCM·구매·물류</option><option>영업·마케팅</option><option>경영지원</option><option>안전·환경·보건</option><option>IT·DX</option><option>공통</option></select></label>
+                      <label><span>자산 성숙도 *</span><select name="maturity_level" defaultValue={assetDraft.maturity_level || '아이디어'}><option>아이디어</option><option>PoC</option><option>Pilot</option><option>운영</option></select></label>
                     </div>
                     <div className="asset-reg-chip-field full">
                       <div className="asset-reg-chip-label"><span>Task 유형 *</span><small>복수 선택 가능</small></div>
@@ -1679,7 +2018,7 @@ function App() {
                       </div>
                     </div>
                     <div className="asset-reg-tag-field full">
-                      <label><span>태그</span><input value={assetTagInput} placeholder="태그 입력 후 Enter" onChange={(event) => setAssetTagInput(event.target.value)} onKeyDown={handleAssetTagKeyDown} onBlur={addAssetTag} /></label>
+                      <label><span>태그 *</span><input value={assetTagInput} placeholder="태그 입력 후 Enter" onChange={(event) => setAssetTagInput(event.target.value)} onKeyDown={handleAssetTagKeyDown} onBlur={addAssetTag} /></label>
                       {assetTags.length > 0 && (
                         <div className="asset-reg-tag-list">
                           {assetTags.map((tag) => (
@@ -1690,58 +2029,68 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="asset-reg-section-label">과제 정의</div>
+                  {renderAssetSectionLabel('과제 정의', 'definition')}
                   <div className="asset-reg-textarea-stack">
                     <div className="asset-reg-guided-field">
                       <div className="asset-reg-field-label"><span>문제 정의 *</span><button type="button" aria-label="문제 정의 작성 예시 보기" onClick={() => toggleAssetGuide('problem')}>?</button></div>
-                      <textarea rows="3" placeholder="현재 어떤 문제가 발생하고 있는지 설명하세요." />
+                      <textarea name="problem_definition" defaultValue={assetDraft.problem_definition || ''} rows="3" placeholder="현재 어떤 문제가 발생하고 있는지 설명하세요." />
                       {openAssetGuides.problem && <div className="asset-reg-guide-example">{assetGuideExamples.problem}</div>}
                     </div>
                     <div className="asset-reg-guided-field">
                       <div className="asset-reg-field-label"><span>As-Is Workflow *</span><button type="button" aria-label="As-Is Workflow 작성 예시 보기" onClick={() => toggleAssetGuide('asIs')}>?</button></div>
-                      <textarea rows="3" placeholder="AI 도입 이전의 현재 업무 방식을 설명하세요." />
+                      <textarea name="as_is_workflow" defaultValue={assetDraft.as_is_workflow || ''} rows="3" placeholder="AI 도입 이전의 현재 업무 방식을 설명하세요." />
                       {openAssetGuides.asIs && <div className="asset-reg-guide-example">{assetGuideExamples.asIs}</div>}
                     </div>
                     <div className="asset-reg-guided-field">
                       <div className="asset-reg-field-label"><span>To-Be Workflow *</span><button type="button" aria-label="To-Be Workflow 작성 예시 보기" onClick={() => toggleAssetGuide('toBe')}>?</button></div>
-                      <textarea rows="3" placeholder="AI 도입 후 목표하는 업무 방식을 설명하세요." />
+                      <textarea name="to_be_workflow" defaultValue={assetDraft.to_be_workflow || ''} rows="3" placeholder="AI 도입 후 목표하는 업무 방식을 설명하세요." />
                       {openAssetGuides.toBe && <div className="asset-reg-guide-example">{assetGuideExamples.toBe}</div>}
                     </div>
                     <div className="asset-reg-guided-field">
                       <div className="asset-reg-field-label"><span>AI 개선 효과 *</span><button type="button" aria-label="AI 개선 효과 작성 예시 보기" onClick={() => toggleAssetGuide('effect')}>?</button></div>
-                      <textarea rows="3" placeholder="기대하는 정량·정성 효과를 구체적으로 작성하세요." />
+                      <textarea name="ai_effect" defaultValue={assetDraft.ai_effect || ''} rows="3" placeholder="기대하는 정량·정성 효과를 구체적으로 작성하세요." />
                       {openAssetGuides.effect && <div className="asset-reg-guide-example">{assetGuideExamples.effect}</div>}
                     </div>
                   </div>
 
-                  <div className="asset-reg-section-label">데이터</div>
+                  {renderAssetSectionLabel('데이터 *', 'data')}
                   <div className={`asset-reg-data-box ${isAssetNoData ? 'disabled' : ''}`}>
                     <label className="asset-reg-check"><input type="checkbox" checked={isAssetNoData} onChange={(event) => setIsAssetNoData(event.target.checked)} /> 데이터 없음 (해당 자산에 첨부할 데이터가 없습니다)</label>
-                    <label><span>Data 유형</span><select disabled={isAssetNoData}><option>선택</option><option>테이블·정형데이터</option><option>시계열 데이터</option><option>센서·IoT 데이터</option><option>문서·텍스트</option><option>이미지</option><option>영상</option><option>음성</option><option>로그</option><option>CAD·도면</option><option>코드</option><option>웹·외부 데이터</option><option>복합 데이터</option></select></label>
+                    <label><span>Data 유형</span><select name="data_type" defaultValue={assetDraft.data_type || ''} disabled={isAssetNoData}><option value="">선택</option><option>테이블·정형데이터</option><option>시계열 데이터</option><option>센서·IoT 데이터</option><option>문서·텍스트</option><option>이미지</option><option>영상</option><option>음성</option><option>로그</option><option>CAD·도면</option><option>코드</option><option>웹·외부 데이터</option><option>복합 데이터</option></select></label>
                     <div className="asset-reg-guided-field">
                       <div className="asset-reg-field-label"><span>데이터 설명</span><button type="button" aria-label="데이터 설명 작성 예시 보기" onClick={() => toggleAssetGuide('data')}>?</button></div>
-                      <textarea rows="3" placeholder="데이터의 구조, 수집 방식, 레이블 기준 등을 설명하세요." disabled={isAssetNoData} />
+                      <textarea name="data_description" defaultValue={assetDraft.data_description || ''} rows="3" placeholder="데이터의 구조, 수집 방식, 레이블 기준 등을 설명하세요." disabled={isAssetNoData} />
                       {openAssetGuides.data && <div className="asset-reg-guide-example">{assetGuideExamples.data}</div>}
                     </div>
-                    <div className="asset-reg-upload-grid">
-                      <label><input type="file" disabled={isAssetNoData} /><b>학습 샘플 데이터</b><span>CSV · Parquet · XLSX · JSON · ZIP</span></label>
-                      <label><input type="file" disabled={isAssetNoData} /><b>검증 샘플 데이터</b><span>CSV · Parquet · XLSX · JSON · ZIP</span></label>
+                    <div className="asset-reg-subsection-title-row">
+                      <div className="asset-reg-subsection-title">데이터 첨부</div>
+                      <label className="asset-reg-inline-check"><input type="checkbox" checked={hasAssetTrainValidationSplit} disabled={isAssetNoData} onChange={(event) => { setHasAssetTrainValidationSplit(event.target.checked); setAssetTrainFiles([]); setAssetValidationFiles([]); setAssetSampleFiles([]); }} /> 학습 / 검증 구분</label>
+                    </div>
+                    <div className={`asset-reg-upload-grid ${hasAssetTrainValidationSplit ? '' : 'single'}`}>
+                      {hasAssetTrainValidationSplit ? (
+                        <>
+                          <label><input name="train_files" type="file" disabled={isAssetNoData} onChange={(event) => setAssetTrainFiles(event.target.files?.[0] ? [event.target.files[0]] : [])} /><small className="asset-reg-upload-action">파일 선택</small><b>학습 샘플 데이터</b><span>{assetTrainFiles[0]?.name || 'CSV · Parquet · XLSX · JSON · ZIP · 파일 1개 · 최대 10MB'}</span><em>여러 데이터는 ZIP으로 묶어 업로드하세요.</em></label>
+                          <label><input name="validation_files" type="file" disabled={isAssetNoData} onChange={(event) => setAssetValidationFiles(event.target.files?.[0] ? [event.target.files[0]] : [])} /><small className="asset-reg-upload-action">파일 선택</small><b>검증 샘플 데이터</b><span>{assetValidationFiles[0]?.name || 'CSV · Parquet · XLSX · JSON · ZIP · 파일 1개 · 최대 10MB'}</span><em>여러 데이터는 ZIP으로 묶어 업로드하세요.</em></label>
+                        </>
+                      ) : (
+                        <label><input name="sample_files" type="file" disabled={isAssetNoData} onChange={(event) => setAssetSampleFiles(event.target.files?.[0] ? [event.target.files[0]] : [])} /><small className="asset-reg-upload-action">파일 선택</small><b>샘플 데이터</b><span>{assetSampleFiles[0]?.name || 'CSV · Parquet · XLSX · JSON · ZIP · 파일 1개 · 최대 10MB'}</span><em>여러 데이터는 ZIP으로 묶어 업로드하세요.</em></label>
+                      )}
                     </div>
                   </div>
 
-                  <div className="asset-reg-section-label">적용 기술</div>
+                  {renderAssetSectionLabel('적용 기술', 'tech')}
                   <div className="asset-reg-tech-stack">
                     <section className="asset-reg-tech-block">
                       <h3>모델 / 알고리즘 *</h3>
                       {assetModelItems.map((item, index) => (
-                        <div className="asset-reg-tech-item" key={item.id}>
+                        <div className="asset-reg-tech-item asset-reg-model-item" key={item.id}>
                           <div className="asset-reg-tech-item-head">
                             <span>Model Note {index + 1}</span>
                             {assetModelItems.length > 1 && <button type="button" aria-label="모델 항목 삭제" onClick={() => removeAssetModelItem(item.id)}>삭제</button>}
                           </div>
-                          <input placeholder="모델명 (예: XGBoost)" />
-                          <input placeholder="설명 (예: 센서 피처 기반 불량 확률 예측 모델)" />
-                          <input placeholder="참조 URL (선택)" />
+                          <input data-field="model_name" defaultValue={item.model_name || ''} placeholder="모델명 (예: XGBoost)" />
+                          <input data-field="description" defaultValue={item.description || ''} placeholder="설명 (예: 센서 피처 기반 불량 확률 예측 모델)" />
+                          <input data-field="reference_url" defaultValue={item.reference_url || ''} placeholder="참조 URL (선택)" />
                         </div>
                       ))}
                       <button className="asset-reg-dashed-add" type="button" onClick={addAssetModelItem}>+ 모델 추가</button>
@@ -1749,27 +2098,27 @@ function App() {
                     <section className="asset-reg-tech-block">
                       <h3>기술 스택 *</h3>
                       {assetStackItems.map((item, index) => (
-                        <div className="asset-reg-tech-item" key={item.id}>
+                        <div className="asset-reg-tech-item asset-reg-stack-item" key={item.id}>
                           <div className="asset-reg-tech-item-head">
                             <span>Stack Note {index + 1}</span>
                             {assetStackItems.length > 1 && <button type="button" aria-label="스택 항목 삭제" onClick={() => removeAssetStackItem(item.id)}>삭제</button>}
                           </div>
-                          <input placeholder="라이브러리·프레임워크명 (예: PyTorch)" />
-                          <input placeholder="용도 설명 (예: 이미지 모델 학습 및 추론)" />
-                          <input placeholder="참조 URL (선택)" />
+                          <input data-field="stack_name" defaultValue={item.stack_name || ''} placeholder="라이브러리·프레임워크명 (예: PyTorch)" />
+                          <input data-field="description" defaultValue={item.description || ''} placeholder="용도 설명 (예: 이미지 모델 학습 및 추론)" />
+                          <input data-field="reference_url" defaultValue={item.reference_url || ''} placeholder="참조 URL (선택)" />
                         </div>
                       ))}
                       <button className="asset-reg-dashed-add" type="button" onClick={addAssetStackItem}>+ 스택 추가</button>
                     </section>
                   </div>
 
-                  <div className="asset-reg-section-label">성능 지표</div>
+                  {renderAssetSectionLabel('성능 지표', 'metrics')}
                   <div className="asset-reg-perf-grid">
                     <div>
                       <h3>Before / After 비교 * <small>(예: 처리시간, 수작업 시간, 오류 건수)</small></h3>
                       {assetBeforeAfterItems.map((item, index) => (
-                        <div className="asset-reg-perf-item" key={item.id}>
-                          <div className="asset-reg-perf-row"><input placeholder="측정 항목 (예: 처리시간)" /><input placeholder="이전 값 (예: 4시간)" /><input placeholder="이후 값 (예: 1시간)" /><input placeholder="개선율 (예: 75%)" /></div>
+                        <div className="asset-reg-perf-item asset-reg-before-after-item" key={item.id}>
+                          <div className="asset-reg-perf-row"><input data-field="metric_name" defaultValue={item.metric_name || ''} placeholder="측정 항목 (예: 처리시간)" /><input data-field="before_value" defaultValue={item.before_value || ''} placeholder="이전 값 (예: 4시간)" /><input data-field="after_value" defaultValue={item.after_value || ''} placeholder="이후 값 (예: 1시간)" /><input data-field="improvement_rate" defaultValue={item.improvement_rate || ''} placeholder="개선율 (예: 75%)" /></div>
                           {assetBeforeAfterItems.length > 1 && <button type="button" aria-label={`Before / After 항목 ${index + 1} 삭제`} onClick={() => removeAssetBeforeAfterItem(item.id)}>삭제</button>}
                         </div>
                       ))}
@@ -1778,8 +2127,8 @@ function App() {
                     <div>
                       <h3>성능 지표 * <small>(예: 정확도, F1-score, 응답시간)</small></h3>
                       {assetKpiItems.map((item, index) => (
-                        <div className="asset-reg-perf-item" key={item.id}>
-                          <div className="asset-reg-perf-row kpi"><input placeholder="지표명 (예: 정확도)" /><input placeholder="값 (예: 94.2%)" /><input placeholder="설명 (예: 검증 데이터 기준)" /></div>
+                        <div className="asset-reg-perf-item asset-reg-kpi-item" key={item.id}>
+                          <div className="asset-reg-perf-row kpi"><input data-field="metric_name" defaultValue={item.metric_name || ''} placeholder="지표명 (예: 정확도)" /><input data-field="value" defaultValue={item.value || ''} placeholder="값 (예: 94.2%)" /><input data-field="description" defaultValue={item.description || ''} placeholder="설명 (예: 검증 데이터 기준)" /></div>
                           {assetKpiItems.length > 1 && <button type="button" aria-label={`성능 지표 ${index + 1} 삭제`} onClick={() => removeAssetKpiItem(item.id)}>삭제</button>}
                         </div>
                       ))}
@@ -1787,7 +2136,7 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="asset-reg-section-label">적용 이미지</div>
+                  {renderAssetSectionLabel('자산 활용 화면 *', 'screens')}
                   <p className="asset-reg-section-guide">이 자산이 실제 업무에서 어떻게 활용되는지 보여주는 시연 이미지를 업로드하세요.<br />자산 카드의 적용 탭에 슬라이드로 표시됩니다.</p>
                   <div className="asset-reg-slide-images">
                     {assetImageItems.map((item, index) => (
@@ -1795,12 +2144,13 @@ function App() {
                         <div className="asset-reg-slide-order">{String(index + 1).padStart(2, '0')}</div>
                         <label className="asset-reg-slide-thumb">
                           <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => updateAssetImageFile(item.id, event.target.files?.[0])} />
-                          {item.previewUrl ? <img src={item.previewUrl} alt={item.fileName || '적용 이미지 미리보기'} /> : <b>이미지 선택</b>}
+                          <small className="asset-reg-upload-action">{item.previewUrl ? '이미지 변경' : '이미지 선택'}</small>
+                          {item.previewUrl ? <img src={item.previewUrl} alt={item.fileName || '자산 활용 화면 미리보기'} /> : <b>이미지 첨부</b>}
                           <span>{item.fileName || 'PNG · JPG · GIF · WEBP'}</span>
                         </label>
                         <div className="asset-reg-slide-info">
-                          <input placeholder="캡션 (예: 불량 검출 결과 화면)" />
-                          <textarea rows="3" placeholder="설명 (예: 표면 이미지에서 스크래치 영역을 박스로 표시하고, 불량 확률을 함께 보여줍니다.)" />
+                          <input data-field="caption" defaultValue={item.caption || ''} placeholder="캡션 (예: 불량 검출 결과 화면)" />
+                          <textarea data-field="description" defaultValue={item.description || ''} rows="3" placeholder="설명 (예: 표면 이미지에서 스크래치 영역을 박스로 표시하고, 불량 확률을 함께 보여줍니다.)" />
                         </div>
                         <div className="asset-reg-slide-actions">
                           <button type="button" disabled={index === 0} onClick={() => moveAssetImageItem(item.id, -1)}>↑</button>
@@ -1812,7 +2162,8 @@ function App() {
                     <button className="asset-reg-dashed-add" type="button" onClick={addAssetImageItem}>+ 이미지 추가</button>
                   </div>
                 </div>
-                <footer className="asset-reg-nav"><span /><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(1)}>다음</button></footer>
+                {assetSubmitError && <p className="asset-reg-submit-error asset-reg-step-error">{assetSubmitError}</p>}
+                <footer className="asset-reg-nav"><span /><button className="primary-btn" type="button" disabled={!isAssetSpecReady || isStagingAssetSpec} onClick={stageAssetSpecification}>{isStagingAssetSpec ? '임시 저장 중...' : '다음'}</button></footer>
               </section>
             )}
 
@@ -1820,9 +2171,19 @@ function App() {
               <section className="asset-reg-card">
                 <header className="asset-reg-card-head"><span>Step 2 / 4</span><h2>자산 연동</h2><p>GitHub 또는 GitLab 저장소를 연결하면 코드 구조가 자산에 자동으로 연결됩니다.</p></header>
                 <div className="asset-reg-card-body">
-                  <div className="asset-reg-repo-panel"><div className="asset-reg-repo-grid"><input placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" /><input placeholder="브랜치명 (예: main)" /><button type="button">연결</button></div><div className="asset-reg-file-tree"><div>📁 저장소 <span>main</span></div><ul><li>README.md</li><li>src/model.py</li><li>configs/train.yaml</li><li>requirements.txt</li><li>skill/SKILL.md</li></ul></div></div>
+                  <div className="asset-reg-repo-panel">
+                    <div className="asset-reg-repo-grid">
+                      <input name="repo_url" defaultValue={assetDraft.repo_url || ''} placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" />
+                      <input name="repo_branch" defaultValue={assetDraft.repo_branch || ''} placeholder="브랜치명 (예: main)" />
+                      <button type="button" disabled={isCloningAssetRepo} onClick={cloneAssetRepository}>{isCloningAssetRepo ? '연결 중...' : '연결'}</button>
+                    </div>
+                    <div className="asset-reg-file-tree">
+                      <div>저장소 구조 <span>{assetDraft.repo_branch || 'default branch'}</span></div>
+                      {isCloningAssetRepo ? <p>Git 저장소를 가져오는 중입니다.</p> : assetRepoTree.length ? renderAssetRepoTree(assetRepoTree) : <p>Git을 연결하면 이 영역에 폴더 구조가 표시됩니다.</p>}
+                    </div>
+                  </div>
                 </div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(0)}>이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(2)}>다음</button></footer>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => goToAssetRegistryStep(0)}>이전</button><button className="primary-btn" type="button" onClick={() => goToAssetRegistryStep(2)}>다음</button></footer>
               </section>
             )}
 
@@ -1863,20 +2224,20 @@ function App() {
                     </div>
                   )}
                 </div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(1)}>이전</button><button className="primary-btn" type="button" onClick={() => setAssetRegistryStep(3)}>다음</button></footer>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => goToAssetRegistryStep(1)}>이전</button><button className="primary-btn" type="button" onClick={() => goToAssetRegistryStep(3)}>다음</button></footer>
               </section>
             )}
 
             {!isAssetRegistrySubmitted && assetRegistryStep === 3 && (
               <section className="asset-reg-card">
                 <header className="asset-reg-card-head"><span>Step 4 / 4</span><h2>최종 제출</h2><p>아래 내용을 확인하고 동의하면 최종 제출이 가능합니다.</p></header>
-                <div className="asset-reg-card-body"><div className="asset-reg-submit-notice"><Clock3 size={20} /><div><b>승인까지 약 7일이 소요됩니다</b><span>제출된 자산은 거버넌스 검토(보안·라이선스·품질 게이트)를 거친 후 AI Studio에 공개됩니다. 검토 결과는 등록 담당자 이메일로 안내됩니다.</span></div></div><div className="asset-reg-agree-list"><label><input type="checkbox" checked={assetSubmitAgreements.share} onChange={() => toggleAssetSubmitAgreement('share')} /> 과제 정보 및 코드가 AI Studio를 통해 전사 모든 부서에 공유될 수 있음을 확인하였습니다.</label><label><input type="checkbox" checked={assetSubmitAgreements.factual} onChange={() => toggleAssetSubmitAgreement('factual')} /> 등록 자산의 주요 정보가 실제 구현 내용과 사용 결과를 바탕으로 작성되었음을 확인합니다.</label><label><input type="checkbox" checked={assetSubmitAgreements.security} onChange={() => toggleAssetSubmitAgreement('security')} /> 등록 자산에 개인정보, 영업비밀, 외부 반출 제한 정보가 포함되지 않았음을 확인합니다.</label></div></div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => setAssetRegistryStep(2)}>이전</button><button className="primary-btn" type="button" disabled={!isAssetSubmitEnabled} onClick={() => setIsAssetRegistrySubmitted(true)}>제출</button></footer>
+                <div className="asset-reg-card-body"><div className="asset-reg-submit-notice"><Clock3 size={20} /><div><b>승인까지 약 7일이 소요됩니다</b><span>제출된 자산은 거버넌스 검토(보안·라이선스·품질 게이트)를 거친 후 AI Studio에 공개됩니다. 검토 결과는 등록 담당자 이메일로 안내됩니다.</span></div></div><div className="asset-reg-agree-list"><label><input type="checkbox" checked={assetSubmitAgreements.share} onChange={() => toggleAssetSubmitAgreement('share')} /> 과제 정보 및 코드가 AI Studio를 통해 전사 모든 부서에 공유될 수 있음을 확인하였습니다.</label><label><input type="checkbox" checked={assetSubmitAgreements.factual} onChange={() => toggleAssetSubmitAgreement('factual')} /> 등록 자산의 주요 정보가 실제 구현 내용과 사용 결과를 바탕으로 작성되었음을 확인합니다.</label><label><input type="checkbox" checked={assetSubmitAgreements.security} onChange={() => toggleAssetSubmitAgreement('security')} /> 등록 자산에 개인정보, 영업비밀, 외부 반출 제한 정보가 포함되지 않았음을 확인합니다.</label></div>{assetSubmitError && <p className="asset-reg-submit-error">{assetSubmitError}</p>}</div>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => goToAssetRegistryStep(2)}>이전</button><button className="primary-btn" type="button" disabled={!isAssetSubmitEnabled || isSubmittingAsset} onClick={submitAssetRegistration}>{isSubmittingAsset ? '제출 중...' : '제출'}</button></footer>
               </section>
             )}
 
             {isAssetRegistrySubmitted && (
-              <section className="asset-reg-done-card"><div>✓</div><h2>제출이 완료되었습니다</h2><p>AI 자산 등록 요청이 접수되었습니다. 거버넌스 검토 후 카탈로그에 공개되며, 결과는 이메일로 안내됩니다.</p><button className="line-btn" type="button" onClick={() => { setIsAssetRegistrySubmitted(false); setAssetRegistryStep(0); setIsAssetNoData(false); setSelectedAssetTasks([]); setSelectedAssetImplementations([]); setAssetModelItems([createAssetTechItem()]); setAssetStackItems([createAssetTechItem()]); setAssetBeforeAfterItems([createAssetTechItem()]); setAssetKpiItems([createAssetTechItem()]); setAssetImageItems([createAssetImageItem()]); setSkillGenerationStatus('idle'); setSelectedSkillFilePath(''); setIsDiffusionPromptCopied(false); setAssetSubmitAgreements({ share: false, factual: false, security: false }); setOpenAssetGuides({}); setAssetTagInput(''); setAssetTags([]); }}>새 자산 등록</button></section>
+              <section className="asset-reg-done-card"><div>✓</div><h2>제출이 완료되었습니다</h2><p>AI 자산 등록 요청이 접수되었습니다. 거버넌스 검토 후 카탈로그에 공개되며, 결과는 이메일로 안내됩니다.</p><button className="line-btn" type="button" onClick={resetAssetRegistry}>새 자산 등록</button></section>
             )}
           </section>
         )}
@@ -3019,6 +3380,17 @@ function App() {
             )}
           </section>
         )}
+      {assetRepoErrorMessage && (
+        <div className="news-modal-backdrop" role="presentation" onMouseDown={() => setAssetRepoErrorMessage('')}>
+          <article className="asset-reg-repo-error-modal" role="dialog" aria-modal="true" aria-label="Git 저장소 연결 실패" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="asset-reg-repo-error-icon">!</div>
+            <span>Git 연결 실패</span>
+            <h2>저장소를 연결하지 못했습니다</h2>
+            <div className="asset-reg-repo-error-message">{assetRepoErrorMessage}</div>
+            <button className="primary-btn" type="button" onClick={() => setAssetRepoErrorMessage('')}>확인</button>
+          </article>
+        </div>
+      )}
       </main>
     </div>
   );

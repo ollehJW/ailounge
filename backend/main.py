@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -26,8 +27,12 @@ DB_PATH = BASE_DIR / "app.db"
 NEWS_WORKSPACE = BASE_DIR / "workspace" / "tech_news"
 USAGE_POSTS_WORKSPACE = BASE_DIR / "workspace" / "usage_posts"
 IDEAS_WORKSPACE = BASE_DIR / "workspace" / "ideas"
+ASSETS_WORKSPACE = BASE_DIR / "workspace" / "assets"
+STAGING_WORKSPACE = BASE_DIR / "staging" / "assets"
+SAMPLE_ASSET_DIR = BASE_DIR.parent / "sample"
 PROMPTS_DIR = BASE_DIR / "prompts"
 PBKDF2_ITERATIONS = 210_000
+MAX_ASSET_DATA_FILE_SIZE = 10 * 1024 * 1024
 
 app = FastAPI(title="AI Lounge API")
 
@@ -208,6 +213,43 @@ class IdeaResponse(BaseModel):
     updated_at: str
     reviewed_at: str | None = None
     review_comment: str | None = None
+
+class AiAssetResponse(BaseModel):
+    asset_id: str
+    asset_name: str
+    description: str
+    business_area: str
+    maturity_level: str
+    approval_status: str
+    created_by: str
+    created_at: str
+    updated_at: str
+
+
+class AssetRepositoryCloneRequest(BaseModel):
+    repo_url: str = Field(min_length=1)
+    repo_branch: str | None = None
+    asset_id: str | None = None
+
+
+class AssetRepositoryTreeItem(BaseModel):
+    name: str
+    path: str
+    type: str
+    children: list["AssetRepositoryTreeItem"] = Field(default_factory=list)
+
+
+class AssetRepositoryCloneResponse(BaseModel):
+    asset_id: str
+    repo_url: str
+    repo_branch: str | None = None
+    tree: list[AssetRepositoryTreeItem] = Field(default_factory=list)
+
+
+class AssetStagingResponse(BaseModel):
+    asset_id: str
+    meta_path: str
+    updated_at: str
 
 
 def utc_now() -> str:
@@ -561,9 +603,103 @@ def init_db() -> None:
         con.execute("CREATE INDEX IF NOT EXISTS idx_ideas_user_created_at ON ideas(user_id, created_at)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ideas_status ON ideas(status)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_idea_attachments_idea_id ON idea_attachments(idea_id)")
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_assets (
+                asset_id TEXT PRIMARY KEY,
+                asset_name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                business_area TEXT NOT NULL,
+                maturity_level TEXT NOT NULL,
+                task_types_json TEXT NOT NULL DEFAULT '[]',
+                implementation_types_json TEXT NOT NULL DEFAULT '[]',
+                tags_json TEXT NOT NULL DEFAULT '[]',
+                problem_definition TEXT NOT NULL,
+                as_is_workflow TEXT NOT NULL,
+                to_be_workflow TEXT NOT NULL,
+                ai_effect TEXT NOT NULL,
+                has_data INTEGER NOT NULL DEFAULT 1,
+                has_train_validation_split INTEGER NOT NULL DEFAULT 0,
+                data_type TEXT,
+                data_description TEXT,
+                models_json TEXT NOT NULL DEFAULT '[]',
+                tech_stacks_json TEXT NOT NULL DEFAULT '[]',
+                before_after_metrics_json TEXT NOT NULL DEFAULT '[]',
+                performance_metrics_json TEXT NOT NULL DEFAULT '[]',
+                repo_url TEXT,
+                repo_branch TEXT,
+                skill_status TEXT NOT NULL DEFAULT 'not_created',
+                skill_zip_path TEXT,
+                diffusion_prompt TEXT,
+                skill_generated_at TEXT,
+                approval_status TEXT NOT NULL DEFAULT 'submitted',
+                created_by TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                submitted_at TEXT,
+                reviewed_at TEXT,
+                reviewed_by TEXT,
+                review_comment TEXT,
+                FOREIGN KEY (created_by) REFERENCES user(user_id) ON DELETE RESTRICT
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_slides (
+                slide_id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                caption TEXT,
+                description TEXT,
+                sort_order INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_data_files (
+                data_file_id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                data_role TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                file_size INTEGER,
+                content_type TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_skill_files (
+                skill_file_id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
+            )
+            """
+        )
+        asset_columns = {row[1] for row in con.execute("PRAGMA table_info(ai_assets)")}
+        if "has_train_validation_split" not in asset_columns:
+            con.execute("ALTER TABLE ai_assets ADD COLUMN has_train_validation_split INTEGER NOT NULL DEFAULT 0")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_created_at ON ai_assets(created_at)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_approval_status ON ai_assets(approval_status)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_slides_asset_order ON ai_asset_slides(asset_id, sort_order)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_data_files_asset_role ON ai_asset_data_files(asset_id, data_role)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_skill_files_asset_path ON ai_asset_skill_files(asset_id, file_path)")
         NEWS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         USAGE_POSTS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         IDEAS_WORKSPACE.mkdir(parents=True, exist_ok=True)
+        ASSETS_WORKSPACE.mkdir(parents=True, exist_ok=True)
+        STAGING_WORKSPACE.mkdir(parents=True, exist_ok=True)
 
 
 def hash_password(password: str) -> str:
@@ -650,6 +786,104 @@ def idea_dir(idea_id: str) -> Path:
 
 def idea_attachments_dir(idea_id: str) -> Path:
     return idea_dir(idea_id) / "attachments"
+
+def asset_dir(asset_id: str) -> Path:
+    return ASSETS_WORKSPACE / asset_id
+
+
+def asset_slides_dir(asset_id: str) -> Path:
+    return asset_dir(asset_id) / "slides"
+
+
+def asset_skills_dir(asset_id: str) -> Path:
+    return asset_dir(asset_id) / "skills"
+
+
+def asset_data_dir(asset_id: str, role: str) -> Path:
+    return asset_dir(asset_id) / "data" / role
+
+
+def staging_dir(asset_id: str) -> Path:
+    return STAGING_WORKSPACE / asset_id
+
+
+def staging_repo_dir(asset_id: str) -> Path:
+    return staging_dir(asset_id) / "repo"
+
+
+def staging_slides_dir(asset_id: str) -> Path:
+    return staging_dir(asset_id) / "slides"
+
+
+def staging_data_dir(asset_id: str, role: str) -> Path:
+    return staging_dir(asset_id) / "data" / role
+
+
+def staging_meta_path(asset_id: str) -> Path:
+    return staging_dir(asset_id) / "meta.json"
+
+
+def safe_upload_filename(original_name: str, fallback_suffix: str = ".file") -> str:
+    suffix = Path(original_name).suffix.lower()
+    if not suffix or len(suffix) > 20:
+        suffix = fallback_suffix
+    return f"{uuid.uuid4().hex}{suffix}"
+
+
+def require_text(payload: dict, key: str, label: str) -> str:
+    value = str(payload.get(key) or "").strip()
+    if not value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{label}을 입력하세요.")
+    return value
+
+
+def json_text(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def validate_asset_id(value: str | None) -> str:
+    if not value:
+        return str(uuid.uuid4())
+    try:
+        return str(uuid.UUID(value))
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자산 ID 형식이 올바르지 않습니다.")
+
+
+def list_repository_tree(root: Path, base: Path | None = None, depth: int = 0, max_depth: int = 5) -> list[AssetRepositoryTreeItem]:
+    base = base or root
+    if depth > max_depth or not root.exists():
+        return []
+    items: list[AssetRepositoryTreeItem] = []
+    try:
+        children = sorted(root.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower()))
+    except OSError:
+        return items
+    for child in children:
+        if child.name in {".git", "__pycache__", ".venv", "node_modules"}:
+            continue
+        rel_path = child.relative_to(base).as_posix()
+        if child.is_dir():
+            items.append(AssetRepositoryTreeItem(name=child.name, path=rel_path, type="directory", children=list_repository_tree(child, base, depth + 1, max_depth)))
+        else:
+            items.append(AssetRepositoryTreeItem(name=child.name, path=rel_path, type="file"))
+        if len(items) >= 160:
+            break
+    return items
+
+
+def git_clone_error_message(stderr: str) -> str:
+    message = (stderr or "").strip()
+    lowered = message.lower()
+    if any(token in lowered for token in ["authentication failed", "could not read username", "permission denied", "access denied", "publickey"]):
+        return "Private repository이거나 접근 권한이 없어 Git을 가져올 수 없습니다. 저장소 권한 또는 인증 정보를 확인하세요."
+    if any(token in lowered for token in ["repository not found", "not found", "couldn't find remote ref", "remote branch"]):
+        return "저장소 또는 브랜치를 찾을 수 없습니다. Git URL과 브랜치명이 올바른지 확인하세요."
+    if any(token in lowered for token in ["could not resolve host", "failed to connect", "connection timed out", "network is unreachable"]):
+        return "Git 서버에 연결할 수 없습니다. 네트워크 또는 저장소 주소를 확인하세요."
+    if message:
+        return f"Git을 가져오지 못했습니다. {message.splitlines()[-1][:180]}"
+    return "Git을 가져오지 못했습니다. 저장소 주소와 접근 권한을 확인하세요."
 
 
 def text_from_html(content_html: str) -> str:
@@ -942,6 +1176,400 @@ def delete_user(user_id: str, current_user: Annotated[UserResponse, Depends(requ
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없습니다.")
 
 
+
+# TODO: Remove this sample preset API after AI asset registration QA/testing is complete.
+@app.get("/api/assets/sample")
+def get_sample_asset(_: Annotated[UserResponse, Depends(get_current_user)]) -> dict:
+    meta_path = SAMPLE_ASSET_DIR / "meta.json"
+    if not meta_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="샘플 자산 정보를 찾을 수 없습니다.")
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="샘플 자산 정보 형식이 올바르지 않습니다.")
+    if not isinstance(meta, dict):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="샘플 자산 정보 형식이 올바르지 않습니다.")
+    for slide in meta.get("slides", []):
+        if isinstance(slide, dict) and slide.get("stored_name"):
+            slide["url"] = f"/api/assets/sample/files/slides/{slide['stored_name']}"
+    for data_file in meta.get("data_files", []):
+        if isinstance(data_file, dict) and data_file.get("role") and data_file.get("stored_name"):
+            data_file["url"] = f"/api/assets/sample/files/data/{data_file['role']}/{data_file['stored_name']}"
+    return meta
+
+
+@app.get("/api/assets/sample/files/{file_path:path}")
+def get_sample_asset_file(file_path: str, _: Annotated[UserResponse, Depends(get_current_user)]) -> FileResponse:
+    path = (SAMPLE_ASSET_DIR / file_path).resolve()
+    sample_root = SAMPLE_ASSET_DIR.resolve()
+    if not path.is_file() or sample_root not in path.parents:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="샘플 파일을 찾을 수 없습니다.")
+    return FileResponse(path, filename=path.name)
+
+
+@app.post("/api/assets/repository/clone", response_model=AssetRepositoryCloneResponse)
+def clone_ai_asset_repository(
+    request: AssetRepositoryCloneRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetRepositoryCloneResponse:
+    repo_url = request.repo_url.strip()
+    repo_branch = (request.repo_branch or "").strip() or None
+    if not re.match(r"^(https?://|ssh://|git@)", repo_url):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Git URL 형식이 올바르지 않습니다. http(s), ssh, git@ 형식의 저장소 주소를 입력하세요.")
+
+    asset_id = validate_asset_id(request.asset_id)
+    folder = staging_repo_dir(asset_id)
+    with get_connection() as con:
+        existing = con.execute("SELECT 1 FROM ai_assets WHERE asset_id = ?", (asset_id,)).fetchone()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 제출된 자산의 저장소는 다시 연결할 수 없습니다.")
+
+    shutil.rmtree(folder, ignore_errors=True)
+    command = ["git", "clone", "--depth", "1"]
+    if repo_branch:
+        command.extend(["--branch", repo_branch, "--single-branch"])
+    command.extend([repo_url, str(folder)])
+    staging_dir(asset_id).mkdir(parents=True, exist_ok=True)
+    try:
+        git_env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"}
+        result = subprocess.run(command, cwd=BASE_DIR, env=git_env, text=True, capture_output=True, timeout=90, check=False)
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Git 저장소를 가져오는 시간이 초과되었습니다. 저장소 크기나 네트워크 상태를 확인하세요.")
+    except FileNotFoundError:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="서버에 git 명령어가 설치되어 있지 않습니다.")
+
+    if result.returncode != 0:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=git_clone_error_message(result.stderr))
+
+    return AssetRepositoryCloneResponse(asset_id=asset_id, repo_url=repo_url, repo_branch=repo_branch, tree=list_repository_tree(folder))
+
+
+@app.post("/api/assets/staging", response_model=AssetStagingResponse)
+def stage_ai_asset(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    payload_json: Annotated[str, Form()],
+    slides: list[UploadFile] = File(default=[]),
+    train_files: list[UploadFile] = File(default=[]),
+    validation_files: list[UploadFile] = File(default=[]),
+    sample_files: list[UploadFile] = File(default=[]),
+) -> AssetStagingResponse:
+    try:
+        payload = json.loads(payload_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자산 등록 데이터를 해석할 수 없습니다.")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자산 등록 데이터 형식이 올바르지 않습니다.")
+
+    asset_id = validate_asset_id(str(payload.get("asset_id") or "").strip() or None)
+    payload["asset_id"] = asset_id
+    user_email = str(payload.get("owner_email") or "jongwook.lee@hyundai-wia.com").strip() or "jongwook.lee@hyundai-wia.com"
+    payload["user_id"] = current_user.user_id
+    payload["user_email"] = user_email
+    payload["staged_by"] = current_user.user_id
+    now = utc_now()
+    payload["staged_at"] = now
+
+    has_train_validation_split = bool(payload.get("has_train_validation_split", False))
+    train_uploads = [upload for upload in train_files if upload.filename]
+    validation_uploads = [upload for upload in validation_files if upload.filename]
+    sample_uploads = [upload for upload in sample_files if upload.filename]
+    if len(train_uploads) > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="학습 샘플 데이터는 1개 파일만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+    if len(validation_uploads) > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="검증 샘플 데이터는 1개 파일만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+    if len(sample_uploads) > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="샘플 데이터는 1개 파일만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+    if has_train_validation_split:
+        sample_uploads = []
+    else:
+        train_uploads = []
+        validation_uploads = []
+
+    root = staging_dir(asset_id)
+    slides_folder = staging_slides_dir(asset_id)
+    train_folder = staging_data_dir(asset_id, "train")
+    validation_folder = staging_data_dir(asset_id, "validation")
+    sample_folder = staging_data_dir(asset_id, "sample")
+    root.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(slides_folder, ignore_errors=True)
+    shutil.rmtree(root / "data", ignore_errors=True)
+    slides_folder.mkdir(parents=True, exist_ok=True)
+    if train_uploads:
+        train_folder.mkdir(parents=True, exist_ok=True)
+    if validation_uploads:
+        validation_folder.mkdir(parents=True, exist_ok=True)
+    if sample_uploads:
+        sample_folder.mkdir(parents=True, exist_ok=True)
+
+    staged_slides: list[dict[str, object]] = []
+    staged_data: list[dict[str, object]] = []
+    slide_meta = payload.get("slides") if isinstance(payload.get("slides"), list) else []
+    for index, upload in enumerate(slides):
+        if not upload.filename:
+            continue
+        if upload.content_type and not upload.content_type.startswith("image/"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자산 활용 화면은 이미지 파일만 업로드할 수 있습니다.")
+        original_name = Path(upload.filename).name
+        stored_name = safe_upload_filename(original_name, ".png")
+        target = slides_folder / stored_name
+        with target.open("wb") as out_file:
+            shutil.copyfileobj(upload.file, out_file)
+        meta = slide_meta[index] if index < len(slide_meta) and isinstance(slide_meta[index], dict) else {}
+        staged_slides.append({
+            "original_name": original_name,
+            "stored_name": stored_name,
+            "path": f"staging/assets/{asset_id}/slides/{stored_name}",
+            "caption": str(meta.get("caption") or "").strip(),
+            "description": str(meta.get("description") or "").strip(),
+            "sort_order": index + 1,
+            "content_type": upload.content_type,
+            "size": target.stat().st_size,
+        })
+
+    for role, role_label, uploads, target_folder in (("train", "학습 샘플 데이터", train_uploads, train_folder), ("validation", "검증 샘플 데이터", validation_uploads, validation_folder), ("sample", "샘플 데이터", sample_uploads, sample_folder)):
+        for upload in uploads:
+            original_name = Path(upload.filename).name
+            stored_name = safe_upload_filename(original_name)
+            target = target_folder / stored_name
+            with target.open("wb") as out_file:
+                shutil.copyfileobj(upload.file, out_file)
+            size = target.stat().st_size
+            if size > MAX_ASSET_DATA_FILE_SIZE:
+                target.unlink(missing_ok=True)
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{role_label}는 10MB 이하 파일 1개만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+            staged_data.append({
+                "role": role,
+                "original_name": original_name,
+                "stored_name": stored_name,
+                "path": f"staging/assets/{asset_id}/data/{role}/{stored_name}",
+                "size": size,
+                "content_type": upload.content_type,
+            })
+
+    meta = {"asset_id": asset_id, "user_id": current_user.user_id, "user_email": user_email, "updated_at": now, "payload": payload, "slides": staged_slides, "data_files": staged_data}
+    staging_meta_path(asset_id).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return AssetStagingResponse(asset_id=asset_id, meta_path=f"staging/assets/{asset_id}/meta.json", updated_at=now)
+
+
+@app.post("/api/assets", response_model=AiAssetResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_asset(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    payload_json: Annotated[str, Form()],
+    slides: list[UploadFile] = File(default=[]),
+    train_files: list[UploadFile] = File(default=[]),
+    validation_files: list[UploadFile] = File(default=[]),
+    sample_files: list[UploadFile] = File(default=[]),
+) -> AiAssetResponse:
+    try:
+        payload = json.loads(payload_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자산 등록 데이터를 해석할 수 없습니다.")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자산 등록 데이터 형식이 올바르지 않습니다.")
+
+    asset_name = require_text(payload, "asset_name", "자산명")
+    description = require_text(payload, "description", "설명")
+    business_area = require_text(payload, "business_area", "업무 영역")
+    maturity_level = require_text(payload, "maturity_level", "자산 성숙도")
+    problem_definition = require_text(payload, "problem_definition", "문제 정의")
+    as_is_workflow = require_text(payload, "as_is_workflow", "As-Is Workflow")
+    to_be_workflow = require_text(payload, "to_be_workflow", "To-Be Workflow")
+    ai_effect = require_text(payload, "ai_effect", "AI 개선 효과")
+
+    task_types = payload.get("task_types") if isinstance(payload.get("task_types"), list) else []
+    implementation_types = payload.get("implementation_types") if isinstance(payload.get("implementation_types"), list) else []
+    if not task_types:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Task 유형을 1개 이상 선택하세요.")
+    if not implementation_types:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="구현 방식을 1개 이상 선택하세요.")
+
+    has_data = bool(payload.get("has_data", True))
+    data_type = str(payload.get("data_type") or "").strip() or None
+    data_description = str(payload.get("data_description") or "").strip() or None
+    if has_data and not data_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Data 유형을 선택하세요.")
+
+    has_train_validation_split = bool(payload.get("has_train_validation_split", False))
+    train_uploads = [upload for upload in train_files if upload.filename]
+    validation_uploads = [upload for upload in validation_files if upload.filename]
+    sample_uploads = [upload for upload in sample_files if upload.filename]
+    if len(train_uploads) > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="학습 샘플 데이터는 1개 파일만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+    if len(validation_uploads) > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="검증 샘플 데이터는 1개 파일만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+    if len(sample_uploads) > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="샘플 데이터는 1개 파일만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+    if has_train_validation_split:
+        sample_uploads = []
+    else:
+        train_uploads = []
+        validation_uploads = []
+
+    asset_id = validate_asset_id(str(payload.get("asset_id") or "").strip() or None)
+    with get_connection() as con:
+        existing = con.execute("SELECT 1 FROM ai_assets WHERE asset_id = ?", (asset_id,)).fetchone()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 제출된 자산입니다.")
+    folder = asset_dir(asset_id)
+    slides_folder = asset_slides_dir(asset_id)
+    skills_folder = asset_skills_dir(asset_id)
+    train_folder = asset_data_dir(asset_id, "train")
+    validation_folder = asset_data_dir(asset_id, "validation")
+    sample_folder = asset_data_dir(asset_id, "sample")
+    folder.mkdir(parents=True, exist_ok=True)
+    slides_folder.mkdir(parents=True, exist_ok=True)
+    skills_folder.mkdir(parents=True, exist_ok=True)
+    if train_uploads:
+        train_folder.mkdir(parents=True, exist_ok=True)
+    if validation_uploads:
+        validation_folder.mkdir(parents=True, exist_ok=True)
+    if sample_uploads:
+        sample_folder.mkdir(parents=True, exist_ok=True)
+
+    now = utc_now()
+    slide_rows: list[tuple[str, str, str, str, str, str, int, str]] = []
+    data_rows: list[tuple[str, str, str, str, str, int, str | None, str]] = []
+    skill_rows: list[tuple[str, str, str, str, str, str]] = []
+    try:
+        slide_meta = payload.get("slides") if isinstance(payload.get("slides"), list) else []
+        for index, upload in enumerate(slides):
+            if not upload.filename:
+                continue
+            if upload.content_type and not upload.content_type.startswith("image/"):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="적용 이미지는 이미지 파일만 업로드할 수 있습니다.")
+            slide_id = str(uuid.uuid4())
+            original_name = Path(upload.filename).name
+            stored_name = safe_upload_filename(original_name, ".png")
+            target = slides_folder / stored_name
+            with target.open("wb") as out_file:
+                shutil.copyfileobj(upload.file, out_file)
+            meta = slide_meta[index] if index < len(slide_meta) and isinstance(slide_meta[index], dict) else {}
+            rel_path = f"workspace/assets/{asset_id}/slides/{stored_name}"
+            slide_rows.append((slide_id, asset_id, original_name, rel_path, str(meta.get("caption") or "").strip(), str(meta.get("description") or "").strip(), index + 1, now))
+
+        for role, role_label, uploads, target_folder in (("train", "학습 샘플 데이터", train_uploads, train_folder), ("validation", "검증 샘플 데이터", validation_uploads, validation_folder), ("sample", "샘플 데이터", sample_uploads, sample_folder)):
+            for upload in uploads:
+                data_file_id = str(uuid.uuid4())
+                original_name = Path(upload.filename).name
+                stored_name = safe_upload_filename(original_name)
+                target = target_folder / stored_name
+                with target.open("wb") as out_file:
+                    shutil.copyfileobj(upload.file, out_file)
+                size = target.stat().st_size
+                if size > MAX_ASSET_DATA_FILE_SIZE:
+                    target.unlink(missing_ok=True)
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{role_label}는 10MB 이하 파일 1개만 업로드할 수 있습니다. 여러 데이터는 ZIP으로 묶어 업로드하세요.")
+                rel_path = f"workspace/assets/{asset_id}/data/{role}/{stored_name}"
+                data_rows.append((data_file_id, asset_id, role, original_name, rel_path, size, upload.content_type, now))
+
+        skill_files = payload.get("skill_files") if isinstance(payload.get("skill_files"), list) else []
+        for item in skill_files:
+            if not isinstance(item, dict):
+                continue
+            file_path = str(item.get("path") or "").strip()
+            content = str(item.get("content") or "")
+            if not file_path:
+                continue
+            skill_rows.append((str(uuid.uuid4()), asset_id, file_path, content, now, now))
+
+        if skill_rows:
+            import zipfile
+            zip_path = skills_folder / "skill.zip"
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for _, _, file_path, content, _, _ in skill_rows:
+                    zf.writestr(file_path, content)
+            skill_status = "created"
+            skill_zip_path = f"workspace/assets/{asset_id}/skills/skill.zip"
+            skill_generated_at = now
+        else:
+            skill_status = "not_created"
+            skill_zip_path = None
+            skill_generated_at = None
+
+        with get_connection() as con:
+            con.execute(
+                """
+                INSERT INTO ai_assets (
+                    asset_id, asset_name, description, business_area, maturity_level,
+                    task_types_json, implementation_types_json, tags_json,
+                    problem_definition, as_is_workflow, to_be_workflow, ai_effect,
+                    has_data, has_train_validation_split, data_type, data_description,
+                    models_json, tech_stacks_json, before_after_metrics_json, performance_metrics_json,
+                    repo_url, repo_branch, skill_status, skill_zip_path, diffusion_prompt, skill_generated_at,
+                    approval_status, created_by, created_at, updated_at, submitted_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?, ?, ?)
+                """,
+                (
+                    asset_id,
+                    asset_name,
+                    description,
+                    business_area,
+                    maturity_level,
+                    json_text(task_types),
+                    json_text(implementation_types),
+                    json_text(payload.get("tags") if isinstance(payload.get("tags"), list) else []),
+                    problem_definition,
+                    as_is_workflow,
+                    to_be_workflow,
+                    ai_effect,
+                    1 if has_data else 0,
+                    1 if has_train_validation_split else 0,
+                    data_type,
+                    data_description,
+                    json_text(payload.get("models") if isinstance(payload.get("models"), list) else []),
+                    json_text(payload.get("tech_stacks") if isinstance(payload.get("tech_stacks"), list) else []),
+                    json_text(payload.get("before_after_metrics") if isinstance(payload.get("before_after_metrics"), list) else []),
+                    json_text(payload.get("performance_metrics") if isinstance(payload.get("performance_metrics"), list) else []),
+                    str(payload.get("repo_url") or "").strip() or None,
+                    str(payload.get("repo_branch") or "").strip() or None,
+                    skill_status,
+                    skill_zip_path,
+                    str(payload.get("diffusion_prompt") or "").strip() or None,
+                    skill_generated_at,
+                    current_user.user_id,
+                    now,
+                    now,
+                    now,
+                ),
+            )
+            con.executemany(
+                """
+                INSERT INTO ai_asset_slides (slide_id, asset_id, file_name, file_path, caption, description, sort_order, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                slide_rows,
+            )
+            con.executemany(
+                """
+                INSERT INTO ai_asset_data_files (data_file_id, asset_id, data_role, file_name, file_path, file_size, content_type, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                data_rows,
+            )
+            con.executemany(
+                """
+                INSERT INTO ai_asset_skill_files (skill_file_id, asset_id, file_path, content, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                skill_rows,
+            )
+            row = con.execute(
+                """
+                SELECT asset_id, asset_name, description, business_area, maturity_level,
+                       approval_status, created_by, created_at, updated_at
+                FROM ai_assets
+                WHERE asset_id = ?
+                """,
+                (asset_id,),
+            ).fetchone()
+            return AiAssetResponse(**dict(row))
+    except Exception:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise
+
 def fetch_idea_attachments(con: sqlite3.Connection, idea_id: str) -> list[IdeaAttachmentResponse]:
     rows = con.execute(
         """
@@ -1231,7 +1859,7 @@ def create_idea(
     idea_id = str(uuid.uuid4())
     folder = idea_dir(idea_id)
     attachments_folder = idea_attachments_dir(idea_id)
-    folder.mkdir(parents=True, exist_ok=False)
+    folder.mkdir(parents=True, exist_ok=True)
     attachments_folder.mkdir(parents=True, exist_ok=True)
 
     saved_attachments: list[tuple[str, str, str, int, str | None, str]] = []
@@ -1463,7 +2091,7 @@ def create_ai_usage_post(
 
     usage_post_id = str(uuid.uuid4())
     folder = usage_post_dir(usage_post_id)
-    folder.mkdir(parents=True, exist_ok=False)
+    folder.mkdir(parents=True, exist_ok=True)
     try:
         normalized_html = normalize_usage_post_content(usage_post_id, content_html)
         usage_post_content_path(usage_post_id).write_text(normalized_html, encoding="utf-8")
@@ -1740,7 +2368,7 @@ def create_news(
     news_id = str(uuid.uuid4())
     now = utc_now()
     folder = news_dir(news_id)
-    folder.mkdir(parents=True, exist_ok=False)
+    folder.mkdir(parents=True, exist_ok=True)
     markdown_path(news_id).write_text(markdown, encoding="utf-8")
     cover_filename = save_cover_image(news_id, cover_image)
 
