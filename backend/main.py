@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -12,14 +13,15 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from llm_client import chat_completion
+from harness_generator import iter_generate_skill_package, plan_skill_candidates
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -29,6 +31,8 @@ USAGE_POSTS_WORKSPACE = BASE_DIR / "workspace" / "usage_posts"
 IDEAS_WORKSPACE = BASE_DIR / "workspace" / "ideas"
 ASSETS_WORKSPACE = BASE_DIR / "workspace" / "assets"
 STAGING_WORKSPACE = BASE_DIR / "staging" / "assets"
+TEMPLATES_DIR = BASE_DIR / "templates"
+ASSET_REGISTRATION_TEMPLATE = TEMPLATES_DIR / "asset_registration.html"
 SAMPLE_ASSET_DIR = BASE_DIR.parent / "sample"
 PROMPTS_DIR = BASE_DIR / "prompts"
 PBKDF2_ITERATIONS = 210_000
@@ -196,6 +200,15 @@ class IdeaStatusUpdateRequest(BaseModel):
     review_comment: str = Field(min_length=1)
 
 
+class AssetStatusUpdateRequest(BaseModel):
+    status: str = Field(min_length=1)
+    review_comment: str = Field(min_length=1)
+
+
+class AssetActivationRequest(BaseModel):
+    is_active: bool
+
+
 class IdeaResponse(BaseModel):
     idea_id: str
     title: str
@@ -221,9 +234,20 @@ class AiAssetResponse(BaseModel):
     business_area: str
     maturity_level: str
     approval_status: str
+    view_count: int = 0
+    diffusion_attempt_count: int = 0
+    diffusion_completed_count: int = 0
+    is_active: bool = True
     created_by: str
+    owner_name: str | None = None
+    owner_org: str | None = None
+    owner_job_title: str | None = None
     created_at: str
     updated_at: str
+    submitted_at: str | None = None
+    reviewed_at: str | None = None
+    reviewed_by: str | None = None
+    review_comment: str | None = None
 
 
 class AssetRepositoryCloneRequest(BaseModel):
@@ -250,6 +274,18 @@ class AssetStagingResponse(BaseModel):
     asset_id: str
     meta_path: str
     updated_at: str
+
+
+class AssetSkillPlanResponse(BaseModel):
+    asset_id: str
+    asset_summary: str = ''
+    reusable_patterns: list[str] = Field(default_factory=list)
+    candidates: list[dict[str, Any]] = Field(default_factory=list)
+    selected_skill_slugs: list[str] = Field(default_factory=list)
+
+
+class AssetSkillGenerateRequest(BaseModel):
+    selected_skill_slugs: list[str] = Field(default_factory=list)
 
 
 def utc_now() -> str:
@@ -432,6 +468,7 @@ def run_dx_agent(messages: list[DxChatMessage]) -> DxDiscoveryChatResponse:
 def get_connection() -> sqlite3.Connection:
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys = ON")
     return con
 
 
@@ -633,6 +670,10 @@ def init_db() -> None:
                 diffusion_prompt TEXT,
                 skill_generated_at TEXT,
                 approval_status TEXT NOT NULL DEFAULT 'submitted',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                view_count INTEGER NOT NULL DEFAULT 0,
+                diffusion_attempt_count INTEGER NOT NULL DEFAULT 0,
+                diffusion_completed_count INTEGER NOT NULL DEFAULT 0,
                 created_by TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
@@ -688,8 +729,22 @@ def init_db() -> None:
             """
         )
         asset_columns = {row[1] for row in con.execute("PRAGMA table_info(ai_assets)")}
+        asset_column_migrations = {
+            "approval_status": "TEXT NOT NULL DEFAULT " + chr(39) + "submitted" + chr(39),
+            "submitted_at": "TEXT",
+            "reviewed_at": "TEXT",
+            "reviewed_by": "TEXT",
+            "review_comment": "TEXT",
+            "is_active": "INTEGER NOT NULL DEFAULT 1",
+        }
+        for column_name, column_type in asset_column_migrations.items():
+            if column_name not in asset_columns:
+                con.execute(f"ALTER TABLE ai_assets ADD COLUMN {column_name} {column_type}")
         if "has_train_validation_split" not in asset_columns:
             con.execute("ALTER TABLE ai_assets ADD COLUMN has_train_validation_split INTEGER NOT NULL DEFAULT 0")
+        for metric_column in ("view_count", "diffusion_attempt_count", "diffusion_completed_count"):
+            if metric_column not in asset_columns:
+                con.execute(f"ALTER TABLE ai_assets ADD COLUMN {metric_column} INTEGER NOT NULL DEFAULT 0")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_created_at ON ai_assets(created_at)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_approval_status ON ai_assets(approval_status)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_slides_asset_order ON ai_asset_slides(asset_id, sort_order)")
@@ -700,6 +755,13 @@ def init_db() -> None:
         IDEAS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         ASSETS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         STAGING_WORKSPACE.mkdir(parents=True, exist_ok=True)
+        for asset_row in con.execute("SELECT asset_id FROM ai_assets").fetchall():
+            asset_id = str(asset_row["asset_id"])
+            if finalize_submitted_asset_storage(asset_id):
+                con.execute(
+                    "UPDATE ai_assets SET skill_zip_path = ? WHERE asset_id = ?",
+                    (f"workspace/assets/{asset_id}/skill.zip", asset_id),
+                )
 
 
 def hash_password(password: str) -> str:
@@ -823,6 +885,45 @@ def staging_meta_path(asset_id: str) -> Path:
     return staging_dir(asset_id) / "meta.json"
 
 
+def finalize_submitted_asset_storage(asset_id: str) -> bool:
+    source_root = staging_dir(asset_id)
+    source_skills = source_root / "skills"
+    workspace_root = asset_dir(asset_id)
+    workspace_skills = asset_skills_dir(asset_id)
+    workspace_root.mkdir(parents=True, exist_ok=True)
+
+    if source_skills.is_dir():
+        shutil.copytree(source_skills, workspace_skills, dirs_exist_ok=True)
+
+    legacy_zip = workspace_skills / "skill.zip"
+    root_zip = workspace_root / "skill.zip"
+    if legacy_zip.is_file():
+        if root_zip.exists():
+            legacy_zip.unlink()
+        else:
+            shutil.move(str(legacy_zip), str(root_zip))
+
+    if source_root.exists():
+        shutil.rmtree(source_root)
+    return root_zip.is_file()
+
+
+def load_staging_meta_for_user(asset_id: str, current_user: UserResponse) -> dict:
+    meta_path = staging_meta_path(asset_id)
+    if not meta_path.exists():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자산 명세서 임시 저장 정보가 없습니다. 먼저 자산 명세서 작성 단계에서 다음을 눌러 저장하세요.")
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="자산 임시 저장 정보 형식이 올바르지 않습니다.")
+    if not isinstance(meta, dict):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="자산 임시 저장 정보 형식이 올바르지 않습니다.")
+    owner_id = str(meta.get("user_id") or meta.get("payload", {}).get("user_id") or "")
+    if owner_id and owner_id != current_user.user_id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 자산의 확산 패키지를 생성할 권한이 없습니다.")
+    return meta
+
+
 def safe_upload_filename(original_name: str, fallback_suffix: str = ".file") -> str:
     suffix = Path(original_name).suffix.lower()
     if not suffix or len(suffix) > 20:
@@ -870,6 +971,30 @@ def list_repository_tree(root: Path, base: Path | None = None, depth: int = 0, m
         if len(items) >= 160:
             break
     return items
+
+
+def repository_tree_payload(root: Path) -> list[dict[str, Any]]:
+    items = list_repository_tree(root)
+    return [item.model_dump() if hasattr(item, "model_dump") else item.dict() for item in items]
+
+
+def read_json_object(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def asset_file_data_uri(path_value: str, asset_id: str) -> str:
+    path = (BASE_DIR / path_value).resolve()
+    root = asset_dir(asset_id).resolve()
+    if not path.is_file() or root not in path.parents:
+        return ""
+    mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return f"data:{mime_type};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
 def git_clone_error_message(stderr: str) -> str:
@@ -1349,10 +1474,360 @@ def stage_ai_asset(
                 "content_type": upload.content_type,
             })
 
-    meta = {"asset_id": asset_id, "user_id": current_user.user_id, "user_email": user_email, "updated_at": now, "payload": payload, "slides": staged_slides, "data_files": staged_data}
-    staging_meta_path(asset_id).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    meta_path = staging_meta_path(asset_id)
+    created_at = now
+    if meta_path.is_file():
+        try:
+            existing_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            if isinstance(existing_meta, dict) and existing_meta.get("created_at"):
+                created_at = str(existing_meta["created_at"])
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    meta = {
+        "asset_id": asset_id,
+        "user_id": current_user.user_id,
+        "user_email": user_email,
+        "created_at": created_at,
+        "updated_at": now,
+        "payload": payload,
+        "slides": staged_slides,
+        "data_files": staged_data,
+    }
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     return AssetStagingResponse(asset_id=asset_id, meta_path=f"staging/assets/{asset_id}/meta.json", updated_at=now)
 
+
+@app.post("/api/assets/{asset_id}/skill-plan", response_model=AssetSkillPlanResponse)
+def create_ai_asset_skill_plan(
+    asset_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetSkillPlanResponse:
+    asset_id = validate_asset_id(asset_id)
+    load_staging_meta_for_user(asset_id, current_user)
+    try:
+        plan = plan_skill_candidates(staging_dir(asset_id), staging_dir(asset_id) / "skills")
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Skill 후보 생성 결과를 검증하지 못했습니다. {error}")
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Skill 후보 생성에 실패했습니다. {error}")
+    return AssetSkillPlanResponse(
+        asset_id=asset_id,
+        asset_summary=str(plan.get("asset_summary") or ""),
+        reusable_patterns=[str(item) for item in plan.get("reusable_patterns", [])] if isinstance(plan.get("reusable_patterns"), list) else [],
+        candidates=plan.get("candidates", []) if isinstance(plan.get("candidates"), list) else [],
+        selected_skill_slugs=[str(item) for item in plan.get("selected_skill_slugs", [])] if isinstance(plan.get("selected_skill_slugs"), list) else [],
+    )
+
+
+@app.post("/api/assets/{asset_id}/skills/generate")
+def create_ai_asset_skills(
+    asset_id: str,
+    request: AssetSkillGenerateRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> StreamingResponse:
+    asset_id = validate_asset_id(asset_id)
+    load_staging_meta_for_user(asset_id, current_user)
+    plan_path = staging_dir(asset_id) / "skills" / "skill_plan.json"
+    if not plan_path.exists():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Skill 후보 Planning 결과가 없습니다. 먼저 Skill 자동 생성을 눌러 후보를 생성하세요.")
+    try:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Skill 후보 Planning 결과 형식이 올바르지 않습니다.")
+
+    def stream_events():
+        try:
+            for event in iter_generate_skill_package(
+                staging_dir(asset_id),
+                staging_dir(asset_id) / "skills",
+                plan,
+                request.selected_skill_slugs,
+            ):
+                if event.get("type") == "completed":
+                    event = {**event, "asset_id": asset_id, "generated_at": utc_now()}
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        except FileNotFoundError as error:
+            yield json.dumps({"type": "error", "message": str(error)}, ensure_ascii=False) + "\n"
+        except ValueError as error:
+            yield json.dumps({"type": "error", "message": f"Skill 생성 결과를 검증하지 못했습니다. {error}"}, ensure_ascii=False) + "\n"
+        except Exception as error:
+            yield json.dumps({"type": "error", "message": f"Skill 생성에 실패했습니다. {error}"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        stream_events(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/assets/mine", response_model=list[AiAssetResponse])
+def list_my_ai_assets(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> list[AiAssetResponse]:
+    with get_connection() as con:
+        rows = con.execute(
+            """
+            SELECT asset_id, asset_name, description, business_area, maturity_level,
+                   approval_status, is_active, view_count, diffusion_attempt_count, diffusion_completed_count,
+                   created_by, created_at, updated_at, reviewed_at, review_comment
+            FROM ai_assets
+            WHERE created_by = ?
+            ORDER BY submitted_at DESC, created_at DESC
+            """,
+            (current_user.user_id,),
+        ).fetchall()
+    return [AiAssetResponse(**dict(row)) for row in rows]
+
+
+@app.get("/api/admin/assets", response_model=list[AiAssetResponse])
+def list_admin_ai_assets(
+    _: Annotated[UserResponse, Depends(require_admin)],
+) -> list[AiAssetResponse]:
+    with get_connection() as con:
+        rows = con.execute(
+            """
+            SELECT a.asset_id, a.asset_name, a.description, a.business_area, a.maturity_level,
+                   a.approval_status, a.is_active, a.view_count, a.diffusion_attempt_count, a.diffusion_completed_count,
+                   a.created_by, u.displayed_name AS owner_name, u.org_name AS owner_org,
+                   u.job_title AS owner_job_title, a.created_at, a.updated_at, a.submitted_at,
+                   a.reviewed_at, a.reviewed_by, a.review_comment
+            FROM ai_assets a
+            JOIN user u ON u.user_id = a.created_by
+            ORDER BY COALESCE(a.submitted_at, a.created_at) DESC
+            """
+        ).fetchall()
+    return [AiAssetResponse(**dict(row)) for row in rows]
+
+
+@app.put("/api/admin/assets/{asset_id}/status", response_model=AiAssetResponse)
+def update_admin_ai_asset_status(
+    asset_id: str,
+    payload: AssetStatusUpdateRequest,
+    current_user: Annotated[UserResponse, Depends(require_admin)],
+) -> AiAssetResponse:
+    asset_id = validate_asset_id(asset_id)
+    clean_status = payload.status.strip().lower()
+    clean_comment = payload.review_comment.strip()
+    if clean_status not in {"approved", "rejected"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Approve 또는 Reject를 선택하세요.")
+    if not clean_comment:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="심사 메시지를 입력하세요.")
+
+    now = utc_now()
+    with get_connection() as con:
+        result = con.execute(
+            """
+            UPDATE ai_assets
+            SET approval_status = ?, updated_at = ?, reviewed_at = ?, reviewed_by = ?, review_comment = ?
+            WHERE asset_id = ? AND approval_status = ?
+            """,
+            (clean_status, now, now, current_user.user_id, clean_comment, asset_id, "submitted"),
+        )
+        if result.rowcount == 0:
+            existing = con.execute("SELECT approval_status FROM ai_assets WHERE asset_id = ?", (asset_id,)).fetchone()
+            if existing is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI 자산을 찾을 수 없습니다.")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 심사가 완료된 AI 자산입니다.")
+        row = con.execute(
+            """
+            SELECT a.asset_id, a.asset_name, a.description, a.business_area, a.maturity_level,
+                   a.approval_status, a.is_active, a.view_count, a.diffusion_attempt_count, a.diffusion_completed_count,
+                   a.created_by, u.displayed_name AS owner_name, u.org_name AS owner_org,
+                   u.job_title AS owner_job_title, a.created_at, a.updated_at, a.submitted_at,
+                   a.reviewed_at, a.reviewed_by, a.review_comment
+            FROM ai_assets a
+            JOIN user u ON u.user_id = a.created_by
+            WHERE a.asset_id = ?
+            """,
+            (asset_id,),
+        ).fetchone()
+    return AiAssetResponse(**dict(row))
+
+
+@app.put("/api/admin/assets/{asset_id}/activation", response_model=AiAssetResponse)
+def update_admin_ai_asset_activation(
+    asset_id: str,
+    payload: AssetActivationRequest,
+    _: Annotated[UserResponse, Depends(require_admin)],
+) -> AiAssetResponse:
+    asset_id = validate_asset_id(asset_id)
+    now = utc_now()
+    with get_connection() as con:
+        result = con.execute(
+            """
+            UPDATE ai_assets
+            SET is_active = ?, updated_at = ?
+            WHERE asset_id = ? AND approval_status = ?
+            """,
+            (1 if payload.is_active else 0, now, asset_id, "approved"),
+        )
+        if result.rowcount == 0:
+            existing = con.execute("SELECT approval_status FROM ai_assets WHERE asset_id = ?", (asset_id,)).fetchone()
+            if existing is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI 자산을 찾을 수 없습니다.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="승인된 운영 자산만 활성 상태를 변경할 수 있습니다.")
+        row = con.execute(
+            """
+            SELECT a.asset_id, a.asset_name, a.description, a.business_area, a.maturity_level,
+                   a.approval_status, a.is_active, a.view_count, a.diffusion_attempt_count, a.diffusion_completed_count,
+                   a.created_by, u.displayed_name AS owner_name, u.org_name AS owner_org,
+                   u.job_title AS owner_job_title, a.created_at, a.updated_at, a.submitted_at,
+                   a.reviewed_at, a.reviewed_by, a.review_comment
+            FROM ai_assets a
+            JOIN user u ON u.user_id = a.created_by
+            WHERE a.asset_id = ?
+            """,
+            (asset_id,),
+        ).fetchone()
+    return AiAssetResponse(**dict(row))
+
+
+@app.delete("/api/admin/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_ai_asset(
+    asset_id: str,
+    _: Annotated[UserResponse, Depends(require_admin)],
+) -> None:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        row = con.execute(
+            "SELECT approval_status FROM ai_assets WHERE asset_id = ?",
+            (asset_id,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI 자산을 찾을 수 없습니다.")
+        if row["approval_status"] != "approved":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="승인된 운영 자산만 삭제할 수 있습니다.")
+        con.execute("DELETE FROM ai_assets WHERE asset_id = ?", (asset_id,))
+
+    try:
+        shutil.rmtree(asset_dir(asset_id), ignore_errors=False)
+    except FileNotFoundError:
+        pass
+    except OSError as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"자산 정보는 삭제되었지만 workspace 파일을 제거하지 못했습니다: {error}",
+        )
+
+
+@app.get("/api/assets/{asset_id}/registration-document", response_class=HTMLResponse)
+def get_ai_asset_registration_document(
+    asset_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> HTMLResponse:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        asset_row = con.execute(
+            """
+            SELECT a.*, u.displayed_name AS owner_name, u.org_name AS owner_org,
+                   u.job_title AS owner_job_title
+            FROM ai_assets a
+            JOIN user u ON u.user_id = a.created_by
+            WHERE a.asset_id = ?
+            """,
+            (asset_id,),
+        ).fetchone()
+        if asset_row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI 자산을 찾을 수 없습니다.")
+        if asset_row["created_by"] != current_user.user_id and not current_user.is_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 자산 등록서를 조회할 권한이 없습니다.")
+        slide_rows = con.execute(
+            """
+            SELECT file_name, file_path, caption, description, sort_order
+            FROM ai_asset_slides WHERE asset_id = ? ORDER BY sort_order
+            """,
+            (asset_id,),
+        ).fetchall()
+        data_rows = con.execute(
+            """
+            SELECT data_role, file_name, file_path, file_size, content_type
+            FROM ai_asset_data_files WHERE asset_id = ? ORDER BY data_role, created_at
+            """,
+            (asset_id,),
+        ).fetchall()
+        skill_rows = con.execute(
+            """
+            SELECT file_path, content, updated_at
+            FROM ai_asset_skill_files WHERE asset_id = ? ORDER BY file_path
+            """,
+            (asset_id,),
+        ).fetchall()
+
+    asset = dict(asset_row)
+    for field in ("task_types_json", "implementation_types_json", "tags_json", "models_json", "tech_stacks_json", "before_after_metrics_json", "performance_metrics_json"):
+        try:
+            asset[field.removesuffix("_json")] = json.loads(asset.get(field) or "[]")
+        except json.JSONDecodeError:
+            asset[field.removesuffix("_json")] = []
+        asset.pop(field, None)
+
+    workspace_meta_path = asset_dir(asset_id) / "meta.json"
+    meta = read_json_object(workspace_meta_path)
+    if not meta:
+        meta = {"asset_id": asset_id, "payload": asset}
+
+    repo_tree_path = asset_dir(asset_id) / "repo_tree.json"
+    repo_tree_value = read_json_object(repo_tree_path).get("tree", [])
+    if not isinstance(repo_tree_value, list):
+        repo_tree_value = []
+
+    slides = []
+    for row in slide_rows:
+        item = dict(row)
+        item["data_uri"] = asset_file_data_uri(item["file_path"], asset_id)
+        slides.append(item)
+
+    skill_files = []
+    workspace_skills = asset_skills_dir(asset_id)
+    if workspace_skills.is_dir():
+        for file_path in sorted(path for path in workspace_skills.rglob("*") if path.is_file()):
+            if file_path.name == "skill.zip":
+                continue
+            try:
+                content = file_path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                content = "[Binary file]"
+            skill_files.append({
+                "file_path": file_path.relative_to(workspace_skills).as_posix(),
+                "content": content,
+                "updated_at": asset.get("skill_generated_at"),
+            })
+
+    if not skill_files:
+        skill_files = [dict(row) for row in skill_rows]
+
+    skill_zip = asset_dir(asset_id) / "skill.zip"
+    legacy_skill_zip = asset_skills_dir(asset_id) / "skill.zip"
+    if not skill_files and not skill_zip.is_file() and legacy_skill_zip.is_file():
+        skill_zip = legacy_skill_zip
+    if not skill_files and skill_zip.is_file():
+        import zipfile
+        with zipfile.ZipFile(skill_zip) as archive:
+            for name in sorted(archive.namelist()):
+                if name.endswith("/"):
+                    continue
+                try:
+                    content = archive.read(name).decode("utf-8")
+                except UnicodeDecodeError:
+                    content = "[Binary file]"
+                skill_files.append({"file_path": name, "content": content, "updated_at": asset.get("skill_generated_at")})
+
+    document_data = {
+        "asset": asset,
+        "meta": meta,
+        "data_files": [dict(row) for row in data_rows],
+        "slides": slides,
+        "repo_tree": repo_tree_value,
+        "skill_files": skill_files,
+    }
+    if not ASSET_REGISTRATION_TEMPLATE.is_file():
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="자산 등록서 HTML 템플릿을 찾을 수 없습니다.")
+    serialized = json.dumps(document_data, ensure_ascii=False).replace("</", r"<\/")
+    html_document = ASSET_REGISTRATION_TEMPLATE.read_text(encoding="utf-8").replace("__ASSET_DATA_JSON__", serialized)
+    return HTMLResponse(content=html_document, headers={"Cache-Control": "no-store"})
 
 @app.post("/api/assets", response_model=AiAssetResponse, status_code=status.HTTP_201_CREATED)
 def create_ai_asset(
@@ -1477,17 +1952,28 @@ def create_ai_asset(
 
         if skill_rows:
             import zipfile
-            zip_path = skills_folder / "skill.zip"
+            zip_path = folder / "skill.zip"
             with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
                 for _, _, file_path, content, _, _ in skill_rows:
                     zf.writestr(file_path, content)
             skill_status = "created"
-            skill_zip_path = f"workspace/assets/{asset_id}/skills/skill.zip"
+            skill_zip_path = f"workspace/assets/{asset_id}/skill.zip"
             skill_generated_at = now
         else:
             skill_status = "not_created"
             skill_zip_path = None
             skill_generated_at = None
+
+        registration_meta = read_json_object(staging_meta_path(asset_id))
+        registration_meta.update({
+            "asset_id": asset_id,
+            "user_id": current_user.user_id,
+            "submitted_at": now,
+            "payload": {key: value for key, value in payload.items() if key != "skill_files"},
+        })
+        (folder / "meta.json").write_text(json.dumps(registration_meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        repo_tree = repository_tree_payload(staging_repo_dir(asset_id)) if staging_repo_dir(asset_id).is_dir() else []
+        (folder / "repo_tree.json").write_text(json.dumps({"tree": repo_tree}, ensure_ascii=False, indent=2), encoding="utf-8")
 
         with get_connection() as con:
             con.execute(
@@ -1559,14 +2045,19 @@ def create_ai_asset(
             row = con.execute(
                 """
                 SELECT asset_id, asset_name, description, business_area, maturity_level,
-                       approval_status, created_by, created_at, updated_at
+                       approval_status, is_active, view_count, diffusion_attempt_count, diffusion_completed_count,
+                       created_by, created_at, updated_at
                 FROM ai_assets
                 WHERE asset_id = ?
                 """,
                 (asset_id,),
             ).fetchone()
-            return AiAssetResponse(**dict(row))
+            response = AiAssetResponse(**dict(row))
+        finalize_submitted_asset_storage(asset_id)
+        return response
     except Exception:
+        with get_connection() as cleanup_con:
+            cleanup_con.execute("DELETE FROM ai_assets WHERE asset_id = ?", (asset_id,))
         shutil.rmtree(folder, ignore_errors=True)
         raise
 

@@ -109,6 +109,12 @@ const aiIdeaStatusClass = {
   '미선정': 'rejected',
 };
 
+const assetApprovalStatusMeta = {
+  submitted: { label: '제출 완료', className: 'submitted' },
+  approved: { label: '승인', className: 'approved' },
+  rejected: { label: '반려', className: 'rejected' },
+};
+
 
 const dxInitialMessages = [
   { role: 'agent', text: '어떤 업무가 가장 힘드신가요? 편하게 이야기해주시면, 대화를 통해 과제를 구체화하고 과제 정의서와 참고할 Data·AI 자산까지 정리해드릴게요.' },
@@ -127,7 +133,7 @@ const createAssetImageItem = (overrides = {}) => ({ id: crypto.randomUUID ? cryp
 const assetRegistrySteps = [
   ['자산 명세서 작성', '담당자 정보, 자산 개요, 과제 정의, 데이터, 기술·성능 지표를 작성합니다.'],
   ['자산 연동', 'GitHub/GitLab 저장소를 연결해 실제 코드·데이터 구조를 확인합니다.'],
-  ['확산 패키지 생성', 'LLM이 저장소를 분석해 Skill 파일과 확산 프롬프트를 자동 생성합니다.'],
+  ['확산 패키지 생성', 'LLM이 저장소를 분석해 Claude Skill 파일을 자동 생성합니다.'],
   ['최종 제출 및 승인', '필독 사항 동의 후 제출하면 거버넌스 검토를 거쳐 카탈로그에 공개됩니다.'],
 ];
 
@@ -139,54 +145,47 @@ const assetGuideExamples = {
   data: '예: MES 불량 이력 데이터와 불량 유형 매핑 기준표를 사용합니다. MES 데이터는 라인명, 발생일시, 품번, 공정명, 불량 유형 코드, 불량 내용 메모, 조치 결과 컬럼을 포함하며, 기준표는 공정별 코드와 표준 불량 유형의 매핑 정보를 담습니다.',
 };
 
-const assetSkillFiles = [
-  {
-    path: 'SKILL.md',
-    type: 'file',
-    content: `# 품질 리포트 자동화 Skill
+const formatSkillFileSize = (content = '') => {
+  const bytes = new Blob([content]).size;
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+};
 
-MES 불량 데이터를 표준 포맷으로 정리하고, 불량 유형 매핑 및 주간 보고서 초안을 생성합니다.
+const buildSkillFileTree = (files) => {
+  const root = { type: 'directory', name: 'root', children: [] };
+  files.forEach((file) => {
+    const parts = file.path.split('/').filter(Boolean);
+    let current = root;
+    parts.forEach((part, index) => {
+      const isFile = index === parts.length - 1;
+      let node = current.children.find((child) => child.name === part && child.type === (isFile ? 'file' : 'directory'));
+      if (!node) {
+        node = isFile
+          ? { type: 'file', name: part, path: file.path, content: file.content, size: formatSkillFileSize(file.content) }
+          : { type: 'directory', name: part, children: [] };
+        current.children.push(node);
+      }
+      current = node;
+    });
+  });
 
-## 사용 흐름
-1. 라인별 MES 다운로드 파일을 업로드합니다.
-2. 표준 불량 유형 매핑 기준을 확인합니다.
-3. 집계표와 보고 코멘트 초안을 생성합니다.`,
-  },
-  {
-    path: 'references/usage_guide.md',
-    type: 'file',
-    content: `# 사용 가이드
+  const sortNodes = (nodes) => nodes
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    })
+    .map((node) => (node.type === 'directory' ? { ...node, children: sortNodes(node.children) } : node));
 
-- 입력 데이터는 CSV 또는 XLSX 형식을 권장합니다.
-- 필수 컬럼: 라인명, 발생일시, 품번, 공정명, 불량 유형 코드, 불량 내용, 조치 결과
-- 매핑 기준표가 없으면 기존 보고서 기준으로 임시 분류 체계를 생성합니다.`,
-  },
-  {
-    path: 'scripts/run_quality_report.py',
-    type: 'file',
-    content: `import pandas as pd
+  return sortNodes(root.children);
+};
 
+const getSkillFileIcon = (name) => {
+  if (name === 'CLAUDE.md' || name === 'SKILL.md' || name.endsWith('.md')) return '📄';
+  if (name.endsWith('.mjs') || name.endsWith('.js')) return '🟢';
+  if (name.endsWith('.py')) return '🐍';
+  return '📄';
+};
 
-def build_weekly_quality_report(mes_file, mapping_file):
-    defects = pd.read_excel(mes_file)
-    mapping = pd.read_excel(mapping_file)
-    merged = defects.merge(mapping, on='불량 유형 코드', how='left')
-    summary = merged.groupby(['라인명', '표준 불량 유형']).size().reset_index(name='불량 건수')
-    return summary
-
-
-if __name__ == '__main__':
-    report = build_weekly_quality_report('mes_defects.xlsx', 'defect_mapping.xlsx')
-    report.to_excel('weekly_quality_summary.xlsx', index=False)`,
-  },
-  {
-    path: 'prompts/diffusion_prompt.md',
-    type: 'file',
-    content: '이 자산의 입력 데이터 구조, 실행 절차, 검증 기준을 확인한 뒤 적용 조직의 업무 흐름에 맞춰 활용 방안을 제안하세요. 데이터 경로, 컬럼명, 표준 불량 유형 기준은 사용자 환경에 맞게 질문으로 확인하세요.',
-  },
-];
-
-const assetDiffusionPrompt = '이 자산의 입력 데이터 구조, 실행 절차, 검증 기준을 확인한 뒤 적용 조직의 업무 흐름에 맞춰 활용 방안을 제안하세요. 현업 데이터 경로, 컬럼명, 표준 분류 기준, 보고서 양식이 다르면 먼저 확인 질문을 하고, 적용 가능한 단계별 확산 계획을 작성하세요.';
 
 const emptyAiUsageForm = {
   title: '',
@@ -388,8 +387,34 @@ function App() {
   const [assetSampleFiles, setAssetSampleFiles] = useState([]);
   const [hasAssetTrainValidationSplit, setHasAssetTrainValidationSplit] = useState(false);
   const [skillGenerationStatus, setSkillGenerationStatus] = useState('idle');
+  const [myAiAssets, setMyAiAssets] = useState([]);
+  const [isLoadingMyAiAssets, setIsLoadingMyAiAssets] = useState(false);
+  const [myAiAssetsError, setMyAiAssetsError] = useState("");
+  const [assetFeedbackTarget, setAssetFeedbackTarget] = useState(null);
+  const [adminAssets, setAdminAssets] = useState([]);
+  const [isLoadingAdminAssets, setIsLoadingAdminAssets] = useState(false);
+  const [adminAssetsError, setAdminAssetsError] = useState("");
+  const [adminAssetTab, setAdminAssetTab] = useState("requests");
+  const [adminAssetQuery, setAdminAssetQuery] = useState("");
+  const [assetReviewTarget, setAssetReviewTarget] = useState(null);
+  const [assetReviewForm, setAssetReviewForm] = useState({ status: "", comment: "" });
+  const [isReviewingAsset, setIsReviewingAsset] = useState(false);
+  const [assetActivationId, setAssetActivationId] = useState("");
+  const [assetDeleteTarget, setAssetDeleteTarget] = useState(null);
+  const [isDeletingAsset, setIsDeletingAsset] = useState(false);
+  const [isAssetDocumentOpen, setIsAssetDocumentOpen] = useState(false);
+  const [assetDocumentHtml, setAssetDocumentHtml] = useState("");
+  const [assetDocumentTitle, setAssetDocumentTitle] = useState("");
+  const [assetDocumentError, setAssetDocumentError] = useState("");
+  const [assetDocumentLoadingId, setAssetDocumentLoadingId] = useState("");
+  const [isSkillProgressOpen, setIsSkillProgressOpen] = useState(false);
+  const [skillGenerationPhase, setSkillGenerationPhase] = useState('idle');
+  const [skillGenerationStepIndex, setSkillGenerationStepIndex] = useState(0);
+  const [assetSkillPlan, setAssetSkillPlan] = useState(null);
+  const [skillGenerationError, setSkillGenerationError] = useState('');
+  const [selectedSkillSlugs, setSelectedSkillSlugs] = useState([]);
+  const [generatedAssetSkillFiles, setGeneratedAssetSkillFiles] = useState([]);
   const [selectedSkillFilePath, setSelectedSkillFilePath] = useState('');
-  const [isDiffusionPromptCopied, setIsDiffusionPromptCopied] = useState(false);
   const [assetSubmitAgreements, setAssetSubmitAgreements] = useState({ share: false, factual: false, security: false });
   const [isSubmittingAsset, setIsSubmittingAsset] = useState(false);
   const [assetSubmitError, setAssetSubmitError] = useState('');
@@ -463,6 +488,23 @@ function App() {
   const [isSavingAiUsagePost, setIsSavingAiUsagePost] = useState(false);
   const [editingAiUsagePostId, setEditingAiUsagePostId] = useState('');
   const [hotAiUsageIndex, setHotAiUsageIndex] = useState(0);
+  const skillGenerationSteps = useMemo(() => {
+    const candidates = assetSkillPlan?.candidates || [];
+    return [
+      { id: 'claude', label: 'CLAUDE.md 생성' },
+      ...selectedSkillSlugs.map((slug) => {
+        const candidate = candidates.find((item) => item.slug === slug);
+        return { id: slug, label: `${candidate?.title || slug} 생성`, slug };
+      }),
+    ];
+  }, [assetSkillPlan, selectedSkillSlugs]);
+  const assetRegistryStepCompletion = [
+    Boolean(assetDraftId || assetDraft.asset_id),
+    assetRepoTree.length > 0,
+    skillGenerationStatus === 'done',
+    isAssetRegistrySubmitted,
+  ];
+  const assetRegistryMaxAccessibleStep = !assetRegistryStepCompletion[0] ? 0 : !assetRegistryStepCompletion[1] ? 1 : !assetRegistryStepCompletion[2] ? 2 : 3;
   const [selectedAiUsagePostId, setSelectedAiUsagePostId] = useState('');
   const [selectedAiUsagePost, setSelectedAiUsagePost] = useState(null);
   const [aiUsageEditorFormat, setAiUsageEditorFormat] = useState({ bold: false, underline: false, color: '#243047' });
@@ -475,13 +517,20 @@ function App() {
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${authToken}` }), [authToken]);
   const isAdminView = Boolean(authUser?.is_admin);
-  const adminPage = ['accounts', 'tech-news-write', 'idea-review'].includes(activePage) ? activePage : 'accounts';
+  const adminPage = ['accounts', 'tech-news-write', 'idea-review', 'asset-management'].includes(activePage) ? activePage : 'accounts';
   const orgFilterOptions = useMemo(() => Array.from(new Set(accounts.map((account) => account.org_name).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko')), [accounts]);
   const filteredAccounts = useMemo(() => (orgFilter === 'all' ? accounts : accounts.filter((account) => account.org_name === orgFilter)), [accounts, orgFilter]);
   const hotAiUsagePosts = useMemo(() => [...aiUsagePosts].sort((a, b) => b.like_count - a.like_count || b.created_at.localeCompare(a.created_at)).slice(0, 3), [aiUsagePosts]);
   const hottestAiUsagePost = hotAiUsagePosts[hotAiUsageIndex] || hotAiUsagePosts[0] || null;
   const pendingReviewIdeas = useMemo(() => adminIdeas.filter((idea) => idea.status === '접수완료'), [adminIdeas]);
   const completedReviewIdeas = useMemo(() => adminIdeas.filter((idea) => ['선정', '미선정'].includes(idea.status)), [adminIdeas]);
+  const pendingAdminAssets = useMemo(() => adminAssets.filter((asset) => asset.approval_status === "submitted"), [adminAssets]);
+  const operatingAdminAssets = useMemo(() => adminAssets.filter((asset) => asset.approval_status === "approved"), [adminAssets]);
+  const filteredOperatingAdminAssets = useMemo(() => {
+    const query = adminAssetQuery.trim().toLocaleLowerCase("ko");
+    if (!query) return operatingAdminAssets;
+    return operatingAdminAssets.filter((asset) => asset.asset_name.toLocaleLowerCase("ko").includes(query));
+  }, [operatingAdminAssets, adminAssetQuery]);
   const filteredAiUsagePosts = useMemo(() => {
     const query = aiUsageQuery.trim().toLowerCase();
     const filtered = aiUsagePosts.filter((post) => {
@@ -542,6 +591,10 @@ function App() {
 
   useEffect(() => {
     if (authUser && isAdminView && activePage === 'idea-review') loadAdminIdeas();
+  }, [authUser, isAdminView, activePage]);
+
+  useEffect(() => {
+    if (authUser && isAdminView && activePage === "asset-management") loadAdminAssets();
   }, [authUser, isAdminView, activePage]);
 
   useEffect(() => {
@@ -608,39 +661,131 @@ function App() {
       return next;
     });
   };
-  const startSkillGeneration = () => {
+  const startSkillGeneration = async () => {
     if (skillGenerationStatus === 'loading') return;
+    const assetId = assetDraftId || assetDraft.asset_id || '';
+    if (!assetId) {
+      setAssetSubmitError('먼저 자산 명세서 작성 단계에서 다음을 눌러 임시 저장하세요.');
+      return;
+    }
     setSkillGenerationStatus('loading');
+    setSkillGenerationError('');
+    setAssetSkillPlan(null);
+    setGeneratedAssetSkillFiles([]);
     setSelectedSkillFilePath('');
-    window.setTimeout(() => {
-      setSkillGenerationStatus('done');
-      setSelectedSkillFilePath(assetSkillFiles[0].path);
-    }, 5000);
+    setSelectedSkillSlugs([]);
+    setSkillGenerationStepIndex(0);
+    setSkillGenerationPhase('planning');
+    setIsSkillProgressOpen(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/${assetId}/skill-plan`, {
+        method: 'POST',
+        headers: authHeaders,
+      });
+      if (!response.ok) throw await apiError(response, 'Skill 후보 생성에 실패했습니다.');
+      const plan = await response.json();
+      const defaultSlugs = plan.selected_skill_slugs?.length
+        ? plan.selected_skill_slugs
+        : (plan.candidates || []).filter((candidate) => candidate.recommended).map((candidate) => candidate.slug);
+      setAssetSkillPlan(plan);
+      setSelectedSkillSlugs(defaultSlugs);
+      setSkillGenerationPhase('selecting');
+    } catch (error) {
+      setSkillGenerationError(error.message);
+      setSkillGenerationStatus('idle');
+      setSkillGenerationPhase('error');
+    }
   };
-  const selectedSkillFile = assetSkillFiles.find((file) => file.path === selectedSkillFilePath);
+  const toggleGeneratedSkillCandidate = (slug) => {
+    if (skillGenerationPhase !== 'selecting') return;
+    setSelectedSkillSlugs((items) => (items.includes(slug) ? items.filter((item) => item !== slug) : [...items, slug]));
+  };
+  const confirmGeneratedSkillSelection = async () => {
+    if (!selectedSkillSlugs.length || skillGenerationPhase !== "selecting") return;
+    const assetId = assetDraftId || assetDraft.asset_id || "";
+    if (!assetId) return;
+    const steps = skillGenerationSteps;
+    setSkillGenerationError("");
+    setSkillGenerationStepIndex(0);
+    setSkillGenerationPhase("generating");
+    try {
+      const response = await fetch(API_BASE + "/api/assets/" + assetId + "/skills/generate", {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ selected_skill_slugs: selectedSkillSlugs }),
+      });
+      if (!response.ok) throw await apiError(response, "Skill 파일 생성에 실패했습니다.");
+      if (!response.body) throw new Error("Skill 생성 진행 상태를 수신할 수 없습니다.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let completedData = null;
+      const processEventLine = (line) => {
+        if (!line.trim()) return;
+        const event = JSON.parse(line);
+        if (event.type === "error") throw new Error(event.message || "Skill 파일 생성에 실패했습니다.");
+        const stepIndex = steps.findIndex((step) => step.id === event.step_id);
+        if (event.type === "step_started" && stepIndex >= 0) {
+          setSkillGenerationStepIndex(stepIndex);
+        }
+        if (event.type === "step_completed" && stepIndex >= 0) {
+          setSkillGenerationStepIndex(stepIndex + 1);
+        }
+        if (event.type === "completed") completedData = event;
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        lines.forEach(processEventLine);
+        if (done) break;
+      }
+      processEventLine(buffer);
+      if (!completedData) throw new Error("Skill 생성 완료 결과를 수신하지 못했습니다.");
+
+      const files = completedData.files || [];
+      setGeneratedAssetSkillFiles(files);
+      setSelectedSkillFilePath(files[0]?.path || "");
+      setSkillGenerationStepIndex(steps.length);
+      setSkillGenerationStatus("done");
+      setSkillGenerationPhase("done");
+      setIsSkillProgressOpen(false);
+    } catch (error) {
+      setSkillGenerationError(error.message);
+      setSkillGenerationStatus("idle");
+      setSkillGenerationPhase("error");
+    }
+  };
+  const selectedSkillFile = generatedAssetSkillFiles.find((file) => file.path === selectedSkillFilePath);
+  const renderSkillTreeNode = (node, depth = 0) => {
+    if (node.type === 'directory') {
+      return (
+        <div className="asset-reg-tree-dir" key={`${node.name}-${depth}`}>
+          <div className="asset-reg-tree-dir-label" style={{ paddingLeft: `${depth * 16}px` }}>
+            <span className="asset-reg-tree-caret">▾</span><span>📁</span><b>{node.name}</b>
+          </div>
+          <div>{node.children.map((child) => renderSkillTreeNode(child, depth + 1))}</div>
+        </div>
+      );
+    }
+    return (
+      <button
+        className={`asset-reg-tree-file ${selectedSkillFilePath === node.path ? 'active' : ''}`}
+        type="button"
+        key={node.path}
+        style={{ paddingLeft: `${depth * 16 + 22}px` }}
+        onClick={() => setSelectedSkillFilePath(node.path)}
+      >
+        <span>{getSkillFileIcon(node.name)}</span><b>{node.name}</b><em>{node.size}</em>
+      </button>
+    );
+  };
   const isAssetSubmitEnabled = Object.values(assetSubmitAgreements).every(Boolean);
   const toggleAssetSubmitAgreement = (key) => {
     setAssetSubmitAgreements((items) => ({ ...items, [key]: !items[key] }));
-  };
-  const copyAssetDiffusionPrompt = async () => {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(assetDiffusionPrompt);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = assetDiffusionPrompt;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
-    } catch {
-      // Some local HTTP contexts block clipboard access; still show user feedback for the click.
-    }
-    setIsDiffusionPromptCopied(true);
-    window.setTimeout(() => setIsDiffusionPromptCopied(false), 1500);
   };
   const toggleAssetGuide = (guideKey) => {
     setOpenAssetGuides((items) => ({ ...items, [guideKey]: !items[guideKey] }));
@@ -781,6 +926,7 @@ function App() {
     return currentStepPayload;
   };
   const goToAssetRegistryStep = (step) => {
+    if (step > assetRegistryMaxAccessibleStep) return;
     captureAssetDraft();
     setAssetRegistryStep(step);
   };
@@ -800,8 +946,14 @@ function App() {
     setAssetSampleFiles([]);
     setHasAssetTrainValidationSplit(false);
     setSkillGenerationStatus('idle');
+    setIsSkillProgressOpen(false);
+    setSkillGenerationPhase('idle');
+    setSkillGenerationStepIndex(0);
+    setAssetSkillPlan(null);
+    setSkillGenerationError('');
+    setSelectedSkillSlugs([]);
+    setGeneratedAssetSkillFiles([]);
     setSelectedSkillFilePath('');
-    setIsDiffusionPromptCopied(false);
     setAssetSubmitAgreements({ share: false, factual: false, security: false });
     setOpenAssetGuides({});
     setAssetTagInput('');
@@ -817,6 +969,133 @@ function App() {
     setIsAssetSpecReady(false);
     setAssetSpecSectionStatus({});
     setAssetSampleVersion((version) => version + 1);
+  };
+  const openAssetRegistrationDocument = async (asset) => {
+    setIsAssetDocumentOpen(true);
+    setAssetDocumentTitle(asset.asset_name);
+    setAssetDocumentHtml("");
+    setAssetDocumentError("");
+    setAssetDocumentLoadingId(asset.asset_id);
+    try {
+      const response = await fetch(API_BASE + "/api/assets/" + asset.asset_id + "/registration-document", { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, "AI 자산 등록서를 불러오지 못했습니다.");
+      setAssetDocumentHtml(await response.text());
+    } catch (error) {
+      setAssetDocumentError(error.message);
+    } finally {
+      setAssetDocumentLoadingId("");
+    }
+  };
+  const closeAssetRegistrationDocument = () => {
+    setIsAssetDocumentOpen(false);
+    setAssetDocumentHtml("");
+    setAssetDocumentError("");
+    setAssetDocumentLoadingId("");
+  };
+  const loadMyAiAssets = async () => {
+    setIsLoadingMyAiAssets(true);
+    setMyAiAssetsError("");
+    try {
+      const response = await fetch(API_BASE + "/api/assets/mine", { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, "나의 AI 자산 등록 기록을 불러오지 못했습니다.");
+      setMyAiAssets(await response.json());
+    } catch (error) {
+      setMyAiAssetsError(error.message);
+    } finally {
+      setIsLoadingMyAiAssets(false);
+    }
+  };
+  const loadAdminAssets = async () => {
+    setIsLoadingAdminAssets(true);
+    setAdminAssetsError("");
+    try {
+      const response = await fetch(API_BASE + "/api/admin/assets", { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, "AI 자산 목록을 불러오지 못했습니다.");
+      setAdminAssets(await response.json());
+    } catch (error) {
+      setAdminAssetsError(error.message);
+    } finally {
+      setIsLoadingAdminAssets(false);
+    }
+  };
+  const openAssetReviewForm = (asset) => {
+    setAssetReviewTarget(asset);
+    setAssetReviewForm({ status: "", comment: "" });
+    setAdminAssetsError("");
+  };
+  const closeAssetReviewForm = () => {
+    if (isReviewingAsset) return;
+    setAssetReviewTarget(null);
+    setAssetReviewForm({ status: "", comment: "" });
+    setAdminAssetsError("");
+  };
+  const submitAssetReview = async (event) => {
+    event.preventDefault();
+    if (!assetReviewTarget) return;
+    setIsReviewingAsset(true);
+    setAdminAssetsError("");
+    try {
+      const response = await fetch(API_BASE + "/api/admin/assets/" + assetReviewTarget.asset_id + "/status", {
+        method: "PUT",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: assetReviewForm.status, review_comment: assetReviewForm.comment.trim() }),
+      });
+      if (!response.ok) throw await apiError(response, "AI 자산 심사를 완료하지 못했습니다.");
+      const updatedAsset = await response.json();
+      setAdminAssets((current) => current.map((asset) => (asset.asset_id === updatedAsset.asset_id ? updatedAsset : asset)));
+      setAssetReviewTarget(null);
+      setAssetReviewForm({ status: "", comment: "" });
+    } catch (error) {
+      setAdminAssetsError(error.message);
+    } finally {
+      setIsReviewingAsset(false);
+    }
+  };
+  const toggleAdminAssetActivation = async (asset) => {
+    if (assetActivationId) return;
+    setAssetActivationId(asset.asset_id);
+    setAdminAssetsError("");
+    try {
+      const response = await fetch(API_BASE + "/api/admin/assets/" + asset.asset_id + "/activation", {
+        method: "PUT",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !asset.is_active }),
+      });
+      if (!response.ok) throw await apiError(response, "자산 활성 상태를 변경하지 못했습니다.");
+      const updatedAsset = await response.json();
+      setAdminAssets((current) => current.map((item) => (item.asset_id === updatedAsset.asset_id ? updatedAsset : item)));
+    } catch (error) {
+      setAdminAssetsError(error.message);
+    } finally {
+      setAssetActivationId("");
+    }
+  };
+  const openAssetDeleteConfirm = (asset) => {
+    setAssetDeleteTarget(asset);
+    setAdminAssetsError("");
+  };
+  const closeAssetDeleteConfirm = () => {
+    if (isDeletingAsset) return;
+    setAssetDeleteTarget(null);
+    setAdminAssetsError("");
+  };
+  const deleteAdminAsset = async () => {
+    if (!assetDeleteTarget || isDeletingAsset) return;
+    setIsDeletingAsset(true);
+    setAdminAssetsError("");
+    try {
+      const response = await fetch(API_BASE + "/api/admin/assets/" + assetDeleteTarget.asset_id, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+      if (!response.ok) throw await apiError(response, "AI 자산을 삭제하지 못했습니다.");
+      setAdminAssets((current) => current.filter((asset) => asset.asset_id !== assetDeleteTarget.asset_id));
+      setAssetDeleteTarget(null);
+    } catch (error) {
+      setAdminAssetsError(error.message);
+    } finally {
+      setIsDeletingAsset(false);
+    }
   };
   const fetchAssetSampleFile = async (fileInfo) => {
     if (!fileInfo?.url) return null;
@@ -878,6 +1157,9 @@ function App() {
     if (activePage === 'registry') loadAssetSamplePreset();
   }, [activePage, isAssetSampleLoaded, authToken]);
   useEffect(() => {
+    if (authUser && !isAdminView && activePage === 'registry') loadMyAiAssets();
+  }, [authUser, isAdminView, activePage]);
+  useEffect(() => {
     if (activePage !== 'registry' || assetRegistryStep !== 0) return undefined;
     const timer = window.setTimeout(refreshAssetSpecReady, 0);
     return () => window.clearTimeout(timer);
@@ -898,8 +1180,7 @@ function App() {
     task_types: selectedAssetTasks.length ? selectedAssetTasks : assetDraft.task_types || [],
     implementation_types: selectedAssetImplementations.length ? selectedAssetImplementations : assetDraft.implementation_types || [],
     tags: assetTags.length ? assetTags : assetDraft.tags || [],
-    skill_files: skillGenerationStatus === 'done' ? assetSkillFiles.map(({ path, content }) => ({ path, content })) : [],
-    diffusion_prompt: skillGenerationStatus === 'done' ? assetDiffusionPrompt : '',
+    skill_files: skillGenerationStatus === 'done' ? generatedAssetSkillFiles.map(({ path, content }) => ({ path, content })) : [],
   });
   const attachAssetSlidesMeta = (payload, livePayload = {}) => {
     payload.slides = assetImageItems
@@ -920,7 +1201,7 @@ function App() {
     if (missingFields.length > 0) {
       setAssetSubmitError(`필수 항목을 모두 입력하세요. (${missingFields.slice(0, 3).join(', ')}${missingFields.length > 3 ? ' 외' : ''})`);
       setIsAssetSpecReady(false);
-    setAssetSpecSectionStatus({});
+      setAssetSpecSectionStatus({});
       return;
     }
     setIsStagingAssetSpec(true);
@@ -965,6 +1246,11 @@ function App() {
       const data = await response.json();
       setAssetDraftId(data.asset_id);
       setAssetRepoTree(data.tree || []);
+      setSkillGenerationStatus('idle');
+      setAssetSkillPlan(null);
+      setSelectedSkillSlugs([]);
+      setGeneratedAssetSkillFiles([]);
+      setSelectedSkillFilePath('');
       setAssetDraft((current) => ({ ...current, asset_id: data.asset_id, repo_url: repoUrl, repo_branch: repoBranch }));
     } catch (error) {
       setAssetRepoTree([]);
@@ -997,6 +1283,7 @@ function App() {
       });
       if (!response.ok) throw await apiError(response, 'AI 자산 등록에 실패했습니다.');
       await response.json();
+      await loadMyAiAssets();
       setIsAssetRegistrySubmitted(true);
     } catch (error) {
       setAssetSubmitError(error.message);
@@ -1876,6 +2163,10 @@ function App() {
                 <ShieldCheck size={17} />
                 <span className="side-name">계정 관리</span>
               </button>
+              <button className={"side-item " + (adminPage === "asset-management" ? "active" : "")} type="button" onClick={() => { setAccountError(""); setNewsError(""); setActivePage("asset-management"); }}>
+                <Bot size={17} />
+                <span className="side-name">AI 자산 관리</span>
+              </button>
               <button className={`side-item ${adminPage === 'tech-news-write' ? 'active' : ''}`} type="button" onClick={() => { setAccountError(''); setActivePage('tech-news-write'); }}>
                 <Newspaper size={17} />
                 <span className="side-name">Tech News 작성하기</span>
@@ -1945,11 +2236,16 @@ function App() {
         <div className="side-user">
           <div className="avatar">{authUser.displayed_name?.slice(0, 1) || 'W'}</div>
           <div className="side-user-info">
-            <b>{authUser.displayed_name}</b>
-            <span><Building2 size={11} /> {authUser.org_name} · {authUser.job_title}</span>
+            <div className="side-user-name">
+              <b>{authUser.displayed_name}</b>
+              <em title={authUser.job_title}>· {authUser.job_title}</em>
+            </div>
+            <div className="side-user-meta">
+              <span title={authUser.org_name}><Building2 size={11} /><em>{authUser.org_name}</em></span>
+            </div>
           </div>
           <button className="side-logout" type="button" aria-label="로그아웃" onClick={handleLogout}>
-            <LogOut size={16} />
+            <LogOut size={14} />
           </button>
         </div>
       </aside>
@@ -1978,17 +2274,61 @@ function App() {
               </div>
             </section>
 
+            <section className="asset-reg-history" aria-label="나의 AI 자산 등록 기록">
+              <header className="asset-reg-history-head">
+                <div><span>MY ASSETS</span><h2>나의 AI 자산 등록 기록</h2><p>제출한 자산의 심사 상태를 확인할 수 있습니다.</p></div>
+                <strong>{myAiAssets.length}건</strong>
+              </header>
+              <div className="asset-reg-history-body" aria-live="polite">
+                {isLoadingMyAiAssets && <div className="asset-reg-history-message"><span className="asset-reg-spinner" /> 등록 기록을 불러오고 있습니다.</div>}
+                {!isLoadingMyAiAssets && myAiAssetsError && <div className="asset-reg-history-message error">{myAiAssetsError}</div>}
+                {!isLoadingMyAiAssets && !myAiAssetsError && myAiAssets.length === 0 && <div className="asset-reg-history-empty"><ShieldCheck size={22} /><b>아직 제출한 AI 자산이 없습니다</b><span>등록을 완료하면 이곳에서 심사 상태를 확인할 수 있습니다.</span></div>}
+                {!isLoadingMyAiAssets && !myAiAssetsError && myAiAssets.length > 0 && (
+                  <div className="asset-reg-history-list">
+                    {myAiAssets.map((asset) => {
+                      const statusMeta = assetApprovalStatusMeta[asset.approval_status] || assetApprovalStatusMeta.submitted;
+                      return (
+                        <article className="asset-reg-history-item" key={asset.asset_id}>
+                          <div className="asset-reg-history-mark"><Bot size={17} /></div>
+                          <div className="asset-reg-history-info">
+                            <b>{asset.asset_name}</b>
+                            <span>{asset.business_area} · {asset.maturity_level}</span>
+                          </div>
+                          <time>{formatDate(asset.created_at)}</time>
+                          <div className="asset-reg-history-actions">
+                            <button className="asset-reg-history-view" type="button" disabled={assetDocumentLoadingId === asset.asset_id} onClick={() => openAssetRegistrationDocument(asset)}><Eye size={13} />{assetDocumentLoadingId === asset.asset_id ? "Loading" : "View"}</button>
+                            {["approved", "rejected"].includes(asset.approval_status) && <button className="asset-reg-history-view feedback" type="button" onClick={() => setAssetFeedbackTarget(asset)}><FilePenLine size={13} />심사평</button>}
+                          </div>
+                          <em className={"asset-reg-history-status " + statusMeta.className}>{statusMeta.label}</em>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+
             {!isAssetRegistrySubmitted && (
               <div className="asset-reg-flow" aria-label="등록 단계">
-                {assetRegistrySteps.map(([title], index) => (
-                  <React.Fragment key={title}>
-                    <button className={`asset-reg-flow-step ${assetRegistryStep === index ? 'active' : ''} ${assetRegistryStep > index ? 'done' : ''}`} type="button" onClick={() => setAssetRegistryStep(index)}>
-                      <span>{assetRegistryStep > index ? '✓' : index + 1}</span>
-                      <b>{title}</b>
-                    </button>
-                    {index < assetRegistrySteps.length - 1 && <i />}
-                  </React.Fragment>
-                ))}
+                {assetRegistrySteps.map(([title], index) => {
+                  const isComplete = assetRegistryStepCompletion[index];
+                  const isLocked = index > assetRegistryMaxAccessibleStep;
+                  return (
+                    <React.Fragment key={title}>
+                      <button
+                        className={"asset-reg-flow-step " + (assetRegistryStep === index ? "active " : "") + (isComplete ? "done " : "") + (isLocked ? "locked" : "")}
+                        type="button"
+                        disabled={isLocked}
+                        title={isLocked ? "이전 단계를 완료하면 이동할 수 있습니다." : title}
+                        onClick={() => goToAssetRegistryStep(index)}
+                      >
+                        <span>{isComplete ? "✓" : index + 1}</span>
+                        <b>{title}</b>
+                      </button>
+                      {index < assetRegistrySteps.length - 1 && <i />}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             )}
 
@@ -2198,20 +2538,22 @@ function App() {
                     </div>
                   </div>
                 </div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => goToAssetRegistryStep(0)}>이전</button><button className="primary-btn" type="button" onClick={() => goToAssetRegistryStep(2)}>다음</button></footer>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => goToAssetRegistryStep(0)}>이전</button><button className="primary-btn" type="button" disabled={assetRepoTree.length === 0} title={assetRepoTree.length === 0 ? "Git 저장소를 연결한 후 이동할 수 있습니다." : ""} onClick={() => goToAssetRegistryStep(2)}>다음</button></footer>
               </section>
             )}
 
             {!isAssetRegistrySubmitted && assetRegistryStep === 2 && (
               <section className="asset-reg-card">
-                <header className="asset-reg-card-head"><span>Step 3 / 4</span><h2>확산 패키지 생성</h2><p>LLM이 연동된 저장소의 코드·README를 분석하여 Claude Skill 파일과 확산 프롬프트를 자동 생성합니다.</p></header>
+                <header className="asset-reg-card-head"><span>Step 3 / 4</span><h2>확산 패키지 생성</h2><p>LLM이 연동된 저장소의 코드·README를 분석하여 Claude Skill 파일을 자동 생성합니다.</p></header>
                 <div className="asset-reg-card-body">
                   <div className={`asset-reg-skill-trigger ${skillGenerationStatus === 'loading' ? 'loading' : ''}`}>
-                    <div><Sparkles size={18} /><b>LLM 기반 자동 생성</b><span>저장소 구조, README, 설정 파일을 분석해 Skill 정의 파일과 확산 프롬프트를 작성합니다.</span></div>
-                    <button className="primary-btn asset-reg-skill-generate" type="button" disabled={skillGenerationStatus === 'loading'} onClick={startSkillGeneration}>
-                      {skillGenerationStatus === 'loading' && <span className="asset-reg-spinner" />}
-                      {skillGenerationStatus === 'loading' ? '생성중...' : skillGenerationStatus === 'done' ? '다시 생성' : '✦ Skill 자동 생성'}
-                    </button>
+                    <div><Sparkles size={18} /><b>LLM 기반 자동 생성</b><span>저장소 구조, README, 설정 파일을 분석해 Skill 정의 파일과 실행 보조 스크립트를 작성합니다.</span></div>
+                    {skillGenerationStatus !== 'done' && (
+                      <button className="primary-btn asset-reg-skill-generate" type="button" disabled={skillGenerationStatus === 'loading'} onClick={startSkillGeneration}>
+                        {skillGenerationStatus === 'loading' && <span className="asset-reg-spinner" />}
+                        {skillGenerationStatus === 'loading' ? '생성중...' : '✦ Skill 자동 생성'}
+                      </button>
+                    )}
                   </div>
                   {skillGenerationStatus === 'loading' && (
                     <div className="asset-reg-skill-loading"><span className="asset-reg-spinner" /><div><b>Skill 파일을 생성하고 있습니다</b><p>저장소 구조, README, 설정 파일을 분석 중입니다. 잠시만 기다려주세요.</p></div></div>
@@ -2222,24 +2564,20 @@ function App() {
                         <div className="asset-reg-skill-result-head"><span>📂</span><b>생성된 Skill 파일 구조</b></div>
                         <div className="asset-reg-skill-explorer">
                           <div className="asset-reg-skill-tree">
-                            <div className="asset-reg-skill-tree-head">📁 저장소 루트 <span>LLM 생성</span></div>
-                            {assetSkillFiles.map((file) => (
-                              <button className={selectedSkillFilePath === file.path ? 'active' : ''} type="button" key={file.path} onClick={() => setSelectedSkillFilePath(file.path)}>📄 {file.path}</button>
-                            ))}
+                            <div className="asset-reg-skill-tree-head"><span>생성된 파일</span><em>{generatedAssetSkillFiles.length} files</em></div>
+                            <div className="asset-reg-skill-tree-body">
+                              {buildSkillFileTree(generatedAssetSkillFiles).map((node) => renderSkillTreeNode(node))}
+                            </div>
                           </div>
                           <div className="asset-reg-skill-viewer">
                             {selectedSkillFile ? <><div>{selectedSkillFile.path}</div><pre>{selectedSkillFile.content}</pre></> : <p>← 파일을 클릭하면 내용이 표시됩니다</p>}
                           </div>
                         </div>
                       </section>
-                      <section className="asset-reg-skill-section">
-                        <div className="asset-reg-skill-result-head"><span>📝</span><b>확산 프롬프트</b><div className="asset-reg-copy-actions">{isDiffusionPromptCopied && <em className="asset-reg-copy-pill">복사 되었습니다.</em>}<button className="asset-reg-copy-btn" type="button" onClick={copyAssetDiffusionPrompt}>Copy</button></div></div>
-                        <div className="asset-reg-prompt-box">{assetDiffusionPrompt}</div>
-                      </section>
                     </div>
                   )}
                 </div>
-                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => goToAssetRegistryStep(1)}>이전</button><button className="primary-btn" type="button" onClick={() => goToAssetRegistryStep(3)}>다음</button></footer>
+                <footer className="asset-reg-nav"><button className="line-btn" type="button" onClick={() => goToAssetRegistryStep(1)}>이전</button><button className="primary-btn" type="button" disabled={skillGenerationStatus !== "done"} title={skillGenerationStatus !== "done" ? "확산 패키지 생성을 완료한 후 이동할 수 있습니다." : ""} onClick={() => goToAssetRegistryStep(3)}>다음</button></footer>
               </section>
             )}
 
@@ -2252,7 +2590,7 @@ function App() {
             )}
 
             {isAssetRegistrySubmitted && (
-              <section className="asset-reg-done-card"><div>✓</div><h2>제출이 완료되었습니다</h2><p>AI 자산 등록 요청이 접수되었습니다. 거버넌스 검토 후 카탈로그에 공개되며, 결과는 이메일로 안내됩니다.</p><button className="line-btn" type="button" onClick={resetAssetRegistry}>새 자산 등록</button></section>
+              <section className="asset-reg-done-card"><div>✓</div><h2>제출이 완료되었습니다</h2><p>AI 자산 등록 요청이 접수되었습니다. 거버넌스 검토 후 AI Studio에 공개되며, 결과는 이메일로 안내됩니다.</p><button className="line-btn" type="button" onClick={resetAssetRegistry}>새 자산 등록</button></section>
             )}
           </section>
         )}
@@ -3003,6 +3341,143 @@ function App() {
           </section>
         )}
 
+        {isAdminView && adminPage === "asset-management" && (
+          <section className="content admin-asset-page">
+            <div className="account-head">
+              <div>
+                <span>ADMIN</span>
+                <h1>AI 자산 관리</h1>
+                <p>접수된 AI 자산을 심사하고 승인된 운영 자산을 관리합니다.</p>
+              </div>
+            </div>
+
+            <div className="admin-asset-tabs" role="tablist" aria-label="AI 자산 관리 분류">
+              <button className={adminAssetTab === "requests" ? "active" : ""} type="button" role="tab" aria-selected={adminAssetTab === "requests"} onClick={() => setAdminAssetTab("requests")}>
+                <span>자산 등록 요청</span><b>{pendingAdminAssets.length}</b>
+              </button>
+              <button className={adminAssetTab === "operating" ? "active" : ""} type="button" role="tab" aria-selected={adminAssetTab === "operating"} onClick={() => setAdminAssetTab("operating")}>
+                <span>운영 자산</span><b>{operatingAdminAssets.length}</b>
+              </button>
+            </div>
+
+            {adminAssetsError && !assetReviewTarget && <div className="form-error">{adminAssetsError}</div>}
+
+            <section className="admin-asset-panel">
+              <header className="admin-asset-panel-head">
+                <div>
+                  <span>{adminAssetTab === "requests" ? "REGISTRATION REQUESTS" : "APPROVED ASSETS"}</span>
+                  <h2>{adminAssetTab === "requests" ? "자산 등록 요청 리스트" : "실제 운영중인 자산 목록"}</h2>
+                </div>
+                <div className="admin-asset-panel-tools">
+                  {adminAssetTab === "operating" && (
+                    <div className="admin-asset-search">
+                      <Search size={16} aria-hidden="true" />
+                      <input type="search" value={adminAssetQuery} onChange={(event) => setAdminAssetQuery(event.target.value)} placeholder="자산 이름으로 검색" aria-label="운영 자산 이름 검색" />
+                    </div>
+                  )}
+                  <b>{adminAssetTab === "requests" ? pendingAdminAssets.length : filteredOperatingAdminAssets.length}건</b>
+                </div>
+              </header>
+
+              <div className="admin-asset-list">
+                {isLoadingAdminAssets ? (
+                  <div className="admin-asset-empty"><span className="asset-reg-spinner" /> 자산 목록을 불러오고 있습니다.</div>
+                ) : adminAssetTab === "requests" ? (
+                  pendingAdminAssets.length === 0 ? <div className="admin-asset-empty"><ShieldCheck size={22} /><b>대기 중인 등록 요청이 없습니다</b></div> : pendingAdminAssets.map((asset) => (
+                    <article className="admin-asset-row" key={asset.asset_id}>
+                      <div className="admin-asset-icon"><Bot size={18} /></div>
+                      <div className="admin-asset-info">
+                        <div><h3>{asset.asset_name}</h3><span className="admin-asset-status submitted">심사 대기</span></div>
+                        <p>{asset.description}</p>
+                        <div className="admin-asset-meta"><span>{asset.business_area}</span><span>{asset.maturity_level}</span><span>{asset.owner_org} · {asset.owner_name} {asset.owner_job_title}</span><time>{formatDate(asset.submitted_at || asset.created_at)}</time></div>
+                      </div>
+                      <div className="admin-asset-actions">
+                        <button type="button" disabled={assetDocumentLoadingId === asset.asset_id} onClick={() => openAssetRegistrationDocument(asset)}><Eye size={14} />{assetDocumentLoadingId === asset.asset_id ? "Loading" : "View"}</button>
+                        <button className="review" type="button" onClick={() => openAssetReviewForm(asset)}><ShieldCheck size={14} />심사</button>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  filteredOperatingAdminAssets.length === 0 ? <div className="admin-asset-empty"><Search size={22} /><b>{adminAssetQuery.trim() ? "검색 결과가 없습니다" : "운영중인 AI 자산이 없습니다"}</b></div> : filteredOperatingAdminAssets.map((asset) => (
+                    <article className={"admin-asset-row operating " + (asset.is_active ? "" : "inactive")} key={asset.asset_id}>
+                      <div className={"admin-asset-icon approved " + (asset.is_active ? "" : "inactive")}><Bot size={18} /></div>
+                      <div className="admin-asset-info">
+                        <div><h3>{asset.asset_name}</h3><span className={"admin-asset-status " + (asset.is_active ? "approved" : "inactive")}>{asset.is_active ? "활성" : "비활성"}</span></div>
+                        <p>{asset.description}</p>
+                        <div className="admin-asset-meta"><span>{asset.business_area}</span><span>{asset.maturity_level}</span><span>{asset.owner_org} · {asset.owner_name}</span><time>승인 {formatDate(asset.reviewed_at)}</time></div>
+                      </div>
+                      <div className="admin-asset-metrics">
+                        <span><b>{asset.view_count}</b>조회</span>
+                        <span><b>{asset.diffusion_attempt_count}</b>확산 시도</span>
+                        <span><b>{asset.diffusion_completed_count}</b>확산 완료</span>
+                      </div>
+                      <div className="admin-asset-ops">
+                        <label className="admin-asset-toggle" title={asset.is_active ? "자산 비활성화" : "자산 활성화"}>
+                          <input type="checkbox" checked={asset.is_active} disabled={assetActivationId === asset.asset_id} onChange={() => toggleAdminAssetActivation(asset)} />
+                          <span aria-hidden="true" />
+                          <em>{assetActivationId === asset.asset_id ? "변경 중" : asset.is_active ? "활성" : "비활성"}</em>
+                        </label>
+                        <div className="admin-asset-icon-actions">
+                          <button type="button" title="자산 등록서 보기" aria-label="자산 등록서 보기" disabled={assetDocumentLoadingId === asset.asset_id} onClick={() => openAssetRegistrationDocument(asset)}><Eye size={15} /></button>
+                          <button className="delete" type="button" title="자산 삭제" aria-label="자산 삭제" onClick={() => openAssetDeleteConfirm(asset)}><Trash2 size={15} /></button>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+
+            {assetDeleteTarget && (
+              <div className="news-modal-backdrop admin-asset-delete-backdrop" role="presentation" onMouseDown={closeAssetDeleteConfirm}>
+                <article className="admin-asset-delete-modal" role="dialog" aria-modal="true" aria-label="AI 자산 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
+                  <div className="admin-asset-delete-icon"><Trash2 size={20} /></div>
+                  <div className="admin-asset-delete-copy">
+                    <span>DELETE ASSET</span>
+                    <h2>운영 자산을 삭제할까요?</h2>
+                    <strong>{assetDeleteTarget.asset_name}</strong>
+                    <p>자산 정보와 연결된 데이터가 DB에서 삭제되며, workspace의 자산 파일도 함께 제거됩니다. 삭제 후에는 복구할 수 없습니다.</p>
+                  </div>
+                  {adminAssetsError && <div className="form-error">{adminAssetsError}</div>}
+                  <div className="admin-asset-delete-actions">
+                    <button className="line-btn" type="button" disabled={isDeletingAsset} onClick={closeAssetDeleteConfirm}>취소</button>
+                    <button className="primary-btn danger" type="button" disabled={isDeletingAsset} onClick={deleteAdminAsset}>{isDeletingAsset ? "삭제 중..." : "삭제"}</button>
+                  </div>
+                </article>
+              </div>
+            )}
+
+            {assetReviewTarget && (
+              <div className="news-modal-backdrop admin-asset-review-backdrop" role="presentation" onMouseDown={closeAssetReviewForm}>
+                <form className="admin-asset-review-modal" onSubmit={submitAssetReview} onMouseDown={(event) => event.stopPropagation()}>
+                  <button className="news-modal-close admin-asset-review-close" type="button" aria-label="닫기" onClick={closeAssetReviewForm}>×</button>
+                  <div className="admin-asset-review-head">
+                    <span>ASSET REVIEW</span>
+                    <h2>AI 자산 심사</h2>
+                    <p>{assetReviewTarget.asset_name}</p>
+                  </div>
+                  <label className="form-field">
+                    <span>심사 결과</span>
+                    <div className="admin-asset-review-choice">
+                      <button className={assetReviewForm.status === "approved" ? "approve active" : "approve"} type="button" onClick={() => setAssetReviewForm((current) => ({ ...current, status: "approved" }))}>Approve</button>
+                      <button className={assetReviewForm.status === "rejected" ? "reject active" : "reject"} type="button" onClick={() => setAssetReviewForm((current) => ({ ...current, status: "rejected" }))}>Reject</button>
+                    </div>
+                  </label>
+                  <label className="form-field">
+                    <span>심사 메시지</span>
+                    <textarea value={assetReviewForm.comment} onChange={(event) => setAssetReviewForm((current) => ({ ...current, comment: event.target.value }))} placeholder="승인 또는 반려 사유와 필요한 후속 조치를 작성하세요." rows="6" required />
+                  </label>
+                  {adminAssetsError && <div className="form-error">{adminAssetsError}</div>}
+                  <div className="admin-asset-review-actions">
+                    <button className="line-btn" type="button" disabled={isReviewingAsset} onClick={closeAssetReviewForm}>취소</button>
+                    <button className="primary-btn" type="submit" disabled={isReviewingAsset || !assetReviewForm.status || !assetReviewForm.comment.trim()}>{isReviewingAsset ? "처리 중..." : "심사 완료"}</button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </section>
+        )}
+
         {isAdminView && adminPage === 'idea-review' && (
           <section className="content idea-review-page">
             <div className="account-head">
@@ -3275,7 +3750,6 @@ function App() {
             </div>
           </section>
         )}
-
         {isAdminView && adminPage === 'tech-news-write' && (
           <section className="content news-admin-page">
             <div className="account-head">
@@ -3395,6 +3869,114 @@ function App() {
             )}
           </section>
         )}
+
+
+      {assetFeedbackTarget && (
+        <div className="news-modal-backdrop asset-feedback-backdrop" role="presentation" onMouseDown={() => setAssetFeedbackTarget(null)}>
+          <article className="asset-feedback-modal" role="dialog" aria-modal="true" aria-label="AI 자산 심사평" onMouseDown={(event) => event.stopPropagation()}>
+            <button className="news-modal-close asset-feedback-close" type="button" aria-label="닫기" onClick={() => setAssetFeedbackTarget(null)}>×</button>
+            <header><span>ASSET REVIEW</span><h2>심사평</h2></header>
+            <dl>
+              <div><dt>심사 날짜</dt><dd>{formatDate(assetFeedbackTarget.reviewed_at)}</dd></div>
+              <div><dt>심사평</dt><dd>{assetFeedbackTarget.review_comment || "등록된 심사평이 없습니다."}</dd></div>
+            </dl>
+          </article>
+        </div>
+      )}
+
+      {isAssetDocumentOpen && (
+        <div className="news-modal-backdrop asset-document-backdrop" role="presentation" onMouseDown={closeAssetRegistrationDocument}>
+          <article className="asset-document-modal" role="dialog" aria-modal="true" aria-label="AI 자산 등록서" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="asset-document-modal-head">
+              <div><span>AI 자산 등록서</span><b>{assetDocumentTitle}</b></div>
+              <button type="button" aria-label="닫기" onClick={closeAssetRegistrationDocument}>×</button>
+            </header>
+            <div className="asset-document-modal-body">
+              {assetDocumentLoadingId && <div className="asset-document-loading"><span className="asset-reg-spinner" /><b>자산 등록서를 구성하고 있습니다</b><p>등록 정보와 첨부 파일을 불러오는 중입니다.</p></div>}
+              {!assetDocumentLoadingId && assetDocumentError && <div className="asset-document-error"><b>등록서를 불러오지 못했습니다</b><p>{assetDocumentError}</p></div>}
+              {!assetDocumentLoadingId && !assetDocumentError && assetDocumentHtml && <iframe title={assetDocumentTitle + " 자산 등록서"} srcDoc={assetDocumentHtml} sandbox="allow-scripts allow-popups" />}
+            </div>
+          </article>
+        </div>
+      )}
+
+      {isSkillProgressOpen && (
+        <div className="news-modal-backdrop asset-reg-skill-progress-backdrop" role="presentation">
+          <article className="asset-reg-skill-progress-modal" role="dialog" aria-modal="true" aria-label="Skill 자동 생성 진행">
+            <header className="asset-reg-skill-progress-head">
+              <span><Sparkles size={16} /> 확산 패키지 생성</span>
+              <h2>{skillGenerationPhase === 'selecting' ? 'Skill 후보를 선택하세요' : skillGenerationPhase === 'error' ? 'Skill 생성 실패' : 'Skill 자동 생성 진행중'}</h2>
+              <p>{skillGenerationPhase === 'planning' ? '자산 명세서와 저장소 구조를 분석해 확산 가치가 높은 Skill 후보군을 추출하고 있습니다.' : skillGenerationPhase === 'selecting' ? '생성할 Skill을 직접 선택할 수 있습니다. 추천 후보는 기본 선택되어 있습니다.' : skillGenerationPhase === 'error' ? '아래 오류를 확인한 뒤 다시 시도하세요.' : '선택된 Skill과 CLAUDE.md를 순차적으로 생성하고 있습니다.'}</p>
+            </header>
+
+            {skillGenerationPhase === 'planning' && (
+              <div className="asset-reg-plan-loading">
+                <span className="asset-reg-spinner" />
+                <div>
+                  <b>Skill Generation Planning</b>
+                  <p>후보군 추출, 확산 점수 계산, reference_files 선정 절차를 진행합니다.</p>
+                </div>
+              </div>
+            )}
+
+            {skillGenerationPhase === 'selecting' && (
+              <>
+                <div className="asset-reg-skill-plan-summary">
+                  <b>Planning 결과</b>
+                  <p>{assetSkillPlan?.asset_summary || '자산 요약 정보가 없습니다.'}</p>
+                </div>
+                <div className="asset-reg-skill-candidate-list">
+                  {(assetSkillPlan?.candidates || []).map((candidate) => {
+                    const checked = selectedSkillSlugs.includes(candidate.slug);
+                    return (
+                      <button className={`asset-reg-skill-candidate ${checked ? 'selected' : ''}`} type="button" key={candidate.slug} onClick={() => toggleGeneratedSkillCandidate(candidate.slug)}>
+                        <span className="asset-reg-skill-check">{checked ? '✓' : ''}</span>
+                        <div>
+                          <div className="asset-reg-skill-candidate-top">
+                            <strong>{candidate.title}</strong>
+                            <em>{candidate.slug}</em>
+                            {candidate.recommended && <small>Recommended</small>}
+                          </div>
+                          <p>{candidate.reusable_pattern}</p>
+                          <div className="asset-reg-skill-score"><span>Diffusion Score</span><b>{candidate.diffusion_score}</b></div>
+                          <blockquote>{candidate.reason}</blockquote>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <footer className="asset-reg-skill-progress-actions">
+                  <button className="line-btn" type="button" onClick={() => { setIsSkillProgressOpen(false); setSkillGenerationStatus('idle'); setSkillGenerationPhase('idle'); setSkillGenerationError(''); }}>취소</button>
+                  <button className="primary-btn" type="button" disabled={!selectedSkillSlugs.length} onClick={confirmGeneratedSkillSelection}>선택 완료</button>
+                </footer>
+              </>
+            )}
+
+
+            {skillGenerationPhase === 'error' && (
+              <div className="asset-reg-skill-error">
+                <b>생성 작업을 완료하지 못했습니다</b>
+                <p>{skillGenerationError}</p>
+                <button className="primary-btn" type="button" onClick={() => { setIsSkillProgressOpen(false); setSkillGenerationPhase('idle'); setSkillGenerationError(''); }}>확인</button>
+              </div>
+            )}
+            {skillGenerationPhase === 'generating' && (
+              <div className="asset-reg-generation-steps">
+                {skillGenerationSteps.map((step, index) => (
+                  <div className={`asset-reg-generation-step ${index < skillGenerationStepIndex ? 'done' : ''} ${index === skillGenerationStepIndex ? 'active' : ''}`} key={step.id}>
+                    <span>{index < skillGenerationStepIndex ? '✓' : index + 1}</span>
+                    <div>
+                      <b>{step.label}</b>
+                      <p>{index < skillGenerationStepIndex ? '생성 완료' : index === skillGenerationStepIndex ? 'AI가 파일을 분석하고 생성하고 있습니다. 작업에 다소 시간이 걸릴 수 있습니다.' : '대기 중'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+        </div>
+      )}
+
       {assetRepoErrorMessage && (
         <div className="news-modal-backdrop" role="presentation" onMouseDown={() => setAssetRepoErrorMessage('')}>
           <article className="asset-reg-repo-error-modal" role="dialog" aria-modal="true" aria-label="Git 저장소 연결 실패" onMouseDown={(event) => event.stopPropagation()}>
