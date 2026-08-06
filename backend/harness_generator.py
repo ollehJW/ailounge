@@ -162,7 +162,7 @@ def validate_plan(plan: dict) -> dict:
     candidates = plan.get("candidates")
     if not isinstance(candidates, list) or not candidates:
         raise ValueError("Skill plan must contain a non-empty candidates list.")
-    allowed_skill_types = {"guide", "skeleton", "both"}
+    allowed_skill_types = {"guide", "skeleton"}
     allowed_candidate_keys = {
         "slug",
         "title",
@@ -292,6 +292,14 @@ def plan_skill_candidates(asset_dir: Path, output_dir: Path) -> dict:
 def iter_generate_skill_package(asset_dir: Path, output_dir: Path, plan: dict, selected_skill_slugs: list[str]):
     meta_path, repo_dir = ensure_inputs(asset_dir)
     candidates = plan.get("candidates") if isinstance(plan.get("candidates"), list) else []
+    # Normalize plans created before skill types were reduced to guide and skeleton.
+    candidates = [
+        {**candidate, "skill_type": "skeleton"}
+        if isinstance(candidate, dict) and candidate.get("skill_type") == "both"
+        else candidate
+        for candidate in candidates
+    ]
+    plan = {**plan, "candidates": candidates}
     by_slug = {str(candidate.get("slug")): candidate for candidate in candidates if isinstance(candidate, dict) and candidate.get("slug")}
     selected = [by_slug[slug] for slug in selected_skill_slugs if slug in by_slug]
     if not selected:

@@ -1113,7 +1113,7 @@ function App() {
       if (!response.ok) return;
       const sample = await response.json();
       const payload = sample.payload || {};
-      const nextDraft = { ...payload, asset_id: '', repo_url: '', repo_branch: '' };
+      const nextDraft = { ...payload, asset_id: '' };
       delete nextDraft.staged_by;
       delete nextDraft.staged_at;
       nextDraft.owner_email = nextDraft.owner_email || nextDraft.user_email || 'jongwook.lee@hyundai-wia.com';
