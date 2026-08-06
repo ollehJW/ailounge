@@ -1,3 +1,27 @@
-
+# Backend
+cd /home/wia/projects/ailounge/backend
+source .venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 9002 --reload
+
+# Frontend
+cd /home/wia/projects/ailounge/frontend
 npm run dev
+
+# Staging cleanup timer
+# Runs automatically every day at 05:00 KST.
+# One-time setup only (already completed on the current machine).
+systemctl --user link /home/wia/projects/ailounge/deploy/systemd/ailounge-staging-cleanup.service /home/wia/projects/ailounge/deploy/systemd/ailounge-staging-cleanup.timer
+systemctl --user daemon-reload
+systemctl --user enable --now ailounge-staging-cleanup.timer
+
+# Check the next scheduled run.
+systemctl --user list-timers ailounge-staging-cleanup.timer --no-pager
+
+# Check cleanup logs.
+journalctl --user -u ailounge-staging-cleanup.service
+
+# Run cleanup manually when needed.
+/home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend/cleanup_staging.py --max-age-days 7
+
+# Preview cleanup targets without deleting them.
+/home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend/cleanup_staging.py --max-age-days 7 --dry-run

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run AI Lounge staging cleanup daily at 05:00 KST
+
+[Timer]
+OnCalendar=*-*-* 05:00:00 Asia/Seoul
+Persistent=true
+AccuracySec=1min
+Unit=ailounge-staging-cleanup.service
+
+[Install]
+WantedBy=timers.target

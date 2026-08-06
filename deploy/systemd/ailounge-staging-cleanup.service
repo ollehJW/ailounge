@@ -1,0 +1,8 @@
+[Unit]
+Description=AI Lounge expired staging asset cleanup
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/wia/projects/ailounge/backend
+ExecStart=/home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend/cleanup_staging.py --max-age-days 7
+
