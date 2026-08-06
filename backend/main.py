@@ -1698,8 +1698,8 @@ def delete_admin_ai_asset(
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI 자산을 찾을 수 없습니다.")
-        if row["approval_status"] != "approved":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="승인된 운영 자산만 삭제할 수 있습니다.")
+        if row["approval_status"] not in {"approved", "rejected"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="승인 또는 반려된 자산만 삭제할 수 있습니다.")
         con.execute("DELETE FROM ai_assets WHERE asset_id = ?", (asset_id,))
 
     try:

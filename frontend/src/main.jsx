@@ -526,6 +526,7 @@ function App() {
   const completedReviewIdeas = useMemo(() => adminIdeas.filter((idea) => ['선정', '미선정'].includes(idea.status)), [adminIdeas]);
   const pendingAdminAssets = useMemo(() => adminAssets.filter((asset) => asset.approval_status === "submitted"), [adminAssets]);
   const operatingAdminAssets = useMemo(() => adminAssets.filter((asset) => asset.approval_status === "approved"), [adminAssets]);
+  const rejectedAdminAssets = useMemo(() => adminAssets.filter((asset) => asset.approval_status === "rejected"), [adminAssets]);
   const filteredOperatingAdminAssets = useMemo(() => {
     const query = adminAssetQuery.trim().toLocaleLowerCase("ko");
     if (!query) return operatingAdminAssets;
@@ -3358,6 +3359,9 @@ function App() {
               <button className={adminAssetTab === "operating" ? "active" : ""} type="button" role="tab" aria-selected={adminAssetTab === "operating"} onClick={() => setAdminAssetTab("operating")}>
                 <span>운영 자산</span><b>{operatingAdminAssets.length}</b>
               </button>
+              <button className={adminAssetTab === "rejected" ? "active" : ""} type="button" role="tab" aria-selected={adminAssetTab === "rejected"} onClick={() => setAdminAssetTab("rejected")}>
+                <span>반려 자산</span><b>{rejectedAdminAssets.length}</b>
+              </button>
             </div>
 
             {adminAssetsError && !assetReviewTarget && <div className="form-error">{adminAssetsError}</div>}
@@ -3365,8 +3369,8 @@ function App() {
             <section className="admin-asset-panel">
               <header className="admin-asset-panel-head">
                 <div>
-                  <span>{adminAssetTab === "requests" ? "REGISTRATION REQUESTS" : "APPROVED ASSETS"}</span>
-                  <h2>{adminAssetTab === "requests" ? "자산 등록 요청 리스트" : "실제 운영중인 자산 목록"}</h2>
+                  <span>{adminAssetTab === "requests" ? "REGISTRATION REQUESTS" : adminAssetTab === "operating" ? "APPROVED ASSETS" : "REJECTED ASSETS"}</span>
+                  <h2>{adminAssetTab === "requests" ? "자산 등록 요청 리스트" : adminAssetTab === "operating" ? "실제 운영중인 자산 목록" : "반려된 자산 목록"}</h2>
                 </div>
                 <div className="admin-asset-panel-tools">
                   {adminAssetTab === "operating" && (
@@ -3375,7 +3379,7 @@ function App() {
                       <input type="search" value={adminAssetQuery} onChange={(event) => setAdminAssetQuery(event.target.value)} placeholder="자산 이름으로 검색" aria-label="운영 자산 이름 검색" />
                     </div>
                   )}
-                  <b>{adminAssetTab === "requests" ? pendingAdminAssets.length : filteredOperatingAdminAssets.length}건</b>
+                  <b>{adminAssetTab === "requests" ? pendingAdminAssets.length : adminAssetTab === "operating" ? filteredOperatingAdminAssets.length : rejectedAdminAssets.length}건</b>
                 </div>
               </header>
 
@@ -3397,7 +3401,7 @@ function App() {
                       </div>
                     </article>
                   ))
-                ) : (
+                ) : adminAssetTab === "operating" ? (
                   filteredOperatingAdminAssets.length === 0 ? <div className="admin-asset-empty"><Search size={22} /><b>{adminAssetQuery.trim() ? "검색 결과가 없습니다" : "운영중인 AI 자산이 없습니다"}</b></div> : filteredOperatingAdminAssets.map((asset) => (
                     <article className={"admin-asset-row operating " + (asset.is_active ? "" : "inactive")} key={asset.asset_id}>
                       <div className={"admin-asset-icon approved " + (asset.is_active ? "" : "inactive")}><Bot size={18} /></div>
@@ -3424,6 +3428,21 @@ function App() {
                       </div>
                     </article>
                   ))
+                ) : (
+                  rejectedAdminAssets.length === 0 ? <div className="admin-asset-empty"><ShieldCheck size={22} /><b>반려된 AI 자산이 없습니다</b></div> : rejectedAdminAssets.map((asset) => (
+                    <article className="admin-asset-row rejected" key={asset.asset_id}>
+                      <div className="admin-asset-icon rejected"><Bot size={18} /></div>
+                      <div className="admin-asset-info">
+                        <div><h3>{asset.asset_name}</h3><span className="admin-asset-status rejected">반려</span></div>
+                        <p>{asset.description}</p>
+                        <div className="admin-asset-meta"><span>{asset.business_area}</span><span>{asset.maturity_level}</span><span>{asset.owner_org} · {asset.owner_name} {asset.owner_job_title}</span><time>심사 {formatDate(asset.reviewed_at)}</time></div>
+                      </div>
+                      <div className="admin-asset-actions">
+                        <button type="button" disabled={assetDocumentLoadingId === asset.asset_id} onClick={() => openAssetRegistrationDocument(asset)}><Eye size={14} />{assetDocumentLoadingId === asset.asset_id ? "Loading" : "View"}</button>
+                        <button className="delete" type="button" onClick={() => openAssetDeleteConfirm(asset)}><Trash2 size={14} />삭제</button>
+                      </div>
+                    </article>
+                  ))
                 )}
               </div>
             </section>
@@ -3434,7 +3453,7 @@ function App() {
                   <div className="admin-asset-delete-icon"><Trash2 size={20} /></div>
                   <div className="admin-asset-delete-copy">
                     <span>DELETE ASSET</span>
-                    <h2>운영 자산을 삭제할까요?</h2>
+                    <h2>{assetDeleteTarget.approval_status === "rejected" ? "반려 자산을 삭제할까요?" : "운영 자산을 삭제할까요?"}</h2>
                     <strong>{assetDeleteTarget.asset_name}</strong>
                     <p>자산 정보와 연결된 데이터가 DB에서 삭제되며, workspace의 자산 파일도 함께 제거됩니다. 삭제 후에는 복구할 수 없습니다.</p>
                   </div>

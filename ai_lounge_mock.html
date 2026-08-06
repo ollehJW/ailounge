@@ -4013,15 +4013,6 @@
     .copy-btn.copied { border-color: #087242 !important; color: #087242 !important; background: #f0faf4; }
     .diffuse-card-desc { margin: 10px 0 0; font-size: 12px; color: #748093; line-height: 1.5; }
 
-    .diff-prompt-card { background: #fff; border: 1px solid var(--line); padding: 20px; }
-    .diff-prompt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .diff-prompt-head h3 { margin: 0; font-size: 16px; letter-spacing: -.04em; }
-    .diff-prompt-body {
-      background: #f7f9fc; border: 1px solid #e2e8f0;
-      padding: 16px 18px; font-size: 12.5px; line-height: 1.8; color: #3a4558;
-      white-space: pre-wrap; font-family: inherit; max-height: 340px; overflow-y: auto;
-    }
-
 
     /* ── 확산 사례 탭 ───────────────────────────── */
     .diff-case-toolbar {
@@ -8312,11 +8303,10 @@ plt.<span style="color:#93c5fd">show</span>()</div>
       }
       /* ── 확산 탭 ── */
       const gitUrl = `https://git.hyundai-wia.com/ai-assets/${p.id}.git`;
-      const prompt = p.diffusionPrompt || '(확산 프롬프트 준비 중입니다.)';
       return `
         <div class="vibe-guide-card">
           <h3>Vibe Coding 활용 가이드</h3>
-          <p class="vibe-guide-intro">이 AI 자산의 코드를 우리 팀 데이터에 맞게 빠르게 바꾸는 방법입니다.<br>개발 경험 없이도 Claude를 활용해 실무에 바로 적용할 수 있습니다.</p>
+          <p class="vibe-guide-intro">Git 저장소와 Claude Skills를 활용해 이 AI 자산을 우리 팀 업무 환경에 맞게 수정하는 방법입니다.<br>별도의 확산 프롬프트 없이 프로젝트를 열고 필요한 변경 사항을 자연어로 요청할 수 있습니다.</p>
           <ol class="vibe-steps">
             <li class="vibe-step">
               <span class="vibe-step-num">1</span>
@@ -8328,29 +8318,29 @@ plt.<span style="color:#93c5fd">show</span>()</div>
             <li class="vibe-step">
               <span class="vibe-step-num">2</span>
               <div class="vibe-step-body">
-                <b>Claude Skills 다운로드</b>
-                <span>아래 Skills Zip을 내려받아 압축 해제 후 프로젝트 폴더에 넣어주세요. Claude Coding Agent가 이 AI 자산을 확산·재현하는 데 필요한 Skill 정의가 담겨 있습니다.</span>
+                <b>Claude Skills 설치</b>
+                <span>아래 Skills Zip을 내려받아 압축을 해제하고 프로젝트 루트에 배치하세요. 자산 구조와 재사용 절차를 이해하는 데 필요한 지침과 실행 도구가 포함되어 있습니다.</span>
               </div>
             </li>
             <li class="vibe-step">
               <span class="vibe-step-num">3</span>
               <div class="vibe-step-body">
-                <b>확산 프롬프트 복사</b>
-                <span>아래 <em>확산 프롬프트</em>를 복사하고, 우리 팀 환경 정보(데이터 경로, 컬럼명 등)를 괄호 안에 직접 채워주세요.</span>
+                <b>프로젝트 열기</b>
+                <span>Claude Coding Agent에서 저장소 폴더를 여세요. 프로젝트의 CLAUDE.md와 관련 Skills가 자동으로 참조되어 자산의 구성과 활용 절차를 파악합니다.</span>
               </div>
             </li>
             <li class="vibe-step">
               <span class="vibe-step-num">4</span>
               <div class="vibe-step-body">
-                <b>AI 도구에 붙여넣기</b>
-                <span>채운 프롬프트를 Claude 채팅창에 붙여넣으면, Claude가 코드를 우리 데이터에 맞게 자동으로 수정해줍니다.</span>
+                <b>변경 사항 요청</b>
+                <span>적용할 업무와 데이터 경로, 컬럼명, 운영 환경, 검증 기준을 설명하고 필요한 수정을 자연어로 요청하세요. Claude가 적합한 Skill을 활용해 코드를 변경합니다.</span>
               </div>
             </li>
             <li class="vibe-step">
               <span class="vibe-step-num">5</span>
               <div class="vibe-step-body">
-                <b>실행 & 결과 확인</b>
-                <span>수정된 코드를 실행하고 결과를 확인하세요. 추가 요청이 있으면 AI에게 이어서 요청하면 됩니다.</span>
+                <b>실행 및 검증</b>
+                <span>수정된 코드를 실행하고 결과가 업무 기준을 충족하는지 확인하세요. 오류나 보완 사항은 실행 결과와 함께 Claude에 이어서 요청할 수 있습니다.</span>
               </div>
             </li>
           </ol>
@@ -8372,13 +8362,6 @@ plt.<span style="color:#93c5fd">show</span>()</div>
           </div>
         </div>
 
-        <div class="diff-prompt-card">
-          <div class="diff-prompt-head">
-            <h3>확산 프롬프트</h3>
-            <button class="copy-btn" data-copy-target="diff-prompt-${p.id}">복사</button>
-          </div>
-          <pre class="diff-prompt-body" id="diff-prompt-${p.id}">${prompt.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
-        </div>
       `;
     }
 
