@@ -43,6 +43,7 @@ TEXT_EXTENSIONS = {
     ".mjs",
     ".py",
     ".sql",
+    ".sh",
     ".ts",
     ".tsx",
     ".txt",
@@ -51,6 +52,8 @@ TEXT_EXTENSIONS = {
 }
 MAX_FILE_CHARS = 16000
 MAX_TOTAL_CHARS = 90000
+MAX_REFERENCE_FILE_CHARS = 50000
+MAX_REFERENCE_TOTAL_CHARS = 150000
 
 
 def read_json(path: Path) -> dict:
@@ -105,6 +108,7 @@ def collect_text_files(root: Path) -> str:
 def collect_reference_text_files(root: Path, reference_files: list[str] | None) -> str:
     blocks: list[str] = []
     seen: set[str] = set()
+    total = 0
     for reference in reference_files or []:
         rel = Path(str(reference).strip())
         if not rel.as_posix() or rel.is_absolute() or ".." in rel.parts:
@@ -119,7 +123,17 @@ def collect_reference_text_files(root: Path, reference_files: list[str] | None) 
             content = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
-        blocks.append(f"--- {rel.as_posix()} ---\n{content[:MAX_FILE_CHARS]}")
+        content = content[:MAX_REFERENCE_FILE_CHARS]
+        block = f"--- {rel.as_posix()} ---\n{content}"
+        if total + len(block) > MAX_REFERENCE_TOTAL_CHARS:
+            remaining = MAX_REFERENCE_TOTAL_CHARS - total
+            if remaining <= 0:
+                break
+            block = block[:remaining]
+        blocks.append(block)
+        total += len(block)
+        if total >= MAX_REFERENCE_TOTAL_CHARS:
+            break
     return "\n\n".join(blocks)
 
 

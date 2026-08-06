@@ -34,7 +34,7 @@ reference_files requirements:
 - reference_files must contain repository-relative file paths from the provided Repository tree.
 - Select only the files that are useful for generating this specific skill.
 - Prefer 3 to 6 files per candidate.
-- Prefer package/config files, README/guide files, core execution scripts, workflow logic, validation logic, and business logic.
+- Prefer package/config files, README/guide files, core execution scripts, runtime setup or bootstrap scripts, workflow logic, validation logic, and business logic.
 - If skill_type is "skeleton", include the core execution script(s) that implement the actual logic to be templatized, even if they are environment-specific today — the skill-generation step needs the real logic to extract a generic, config-driven skeleton from it.
 - For technical candidates, include files containing the actual core execution logic, initialization, input/output contracts, configuration, validation, dependency declarations, and failure handling.
 - Do not select only documentation, orchestration descriptions, or prompts when reusable executable implementation exists.

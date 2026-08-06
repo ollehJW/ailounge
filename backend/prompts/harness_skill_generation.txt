@@ -62,6 +62,8 @@ Technical skeleton requirements:
 - When the selected skill represents a technical implementation and the repository excerpts contain working code, generate a practical, runnable skeleton grounded in that implementation.
 - Preserve reusable initialization, configuration, input normalization, core execution, output normalization, validation, state management, and failure-handling logic when present in the selected excerpts.
 - Do not replace available implementation with comments such as "implement this adapter", "plug in the actual implementation", or requirements for externally generated outputs when the referenced repository already implements that logic.
+- Do not start the generated skeleton from a downstream intermediate artifact when the selected reusable pattern includes upstream core execution and the repository excerpts implement that execution. The skeleton must accept the earliest practical input and execute those evidenced core stages itself.
+- Implement every core stage named in reusable_pattern that is supported by the selected repository excerpts. Before returning, compare the generated scripts against reusable_pattern and silently add any evidenced stage that was omitted.
 - Move environment-specific values, endpoints, paths, schemas, thresholds, credentials, and implementation choices into configuration or environment variables.
 - Retain necessary runtime dependencies when they are essential to the reusable capability; do not force every technical skeleton to be dependency-free.
 - Keep tightly coupled stages together when separating them would break their shared data contract, execution order, or state management.
