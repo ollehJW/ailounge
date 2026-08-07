@@ -1848,6 +1848,102 @@ def create_ai_asset_skills(
     )
 
 
+@app.get("/api/assets/intro/summary")
+def get_ai_asset_intro_summary(
+    _: Annotated[UserResponse, Depends(get_current_user)],
+) -> dict[str, Any]:
+    with get_connection() as con:
+        totals = dict(con.execute(
+            """
+            SELECT COUNT(*) AS asset_count,
+                   COALESCE(SUM(view_count), 0) AS view_count,
+                   COALESCE(SUM(diffusion_attempt_count), 0) AS diffusion_attempt_count,
+                   COALESCE(SUM(diffusion_completed_count), 0) AS diffusion_completed_count
+            FROM ai_assets
+            WHERE approval_status = 'approved' AND is_active = 1
+            """
+        ).fetchone())
+
+        business_distribution = [
+            {"label": row["business_area"], "count": row["asset_count"]}
+            for row in con.execute(
+                """
+                SELECT business_area, COUNT(*) AS asset_count
+                FROM ai_assets
+                WHERE approval_status = 'approved' AND is_active = 1
+                GROUP BY business_area
+                ORDER BY asset_count DESC, business_area
+                """
+            ).fetchall()
+        ]
+
+        top_assets = []
+        for row in con.execute(
+            """
+            SELECT asset_id, asset_name, description, business_area, maturity_level,
+                   tags_json, view_count, diffusion_attempt_count, diffusion_completed_count
+            FROM ai_assets
+            WHERE approval_status = 'approved' AND is_active = 1
+            ORDER BY diffusion_attempt_count DESC, diffusion_completed_count DESC, updated_at DESC
+            LIMIT 5
+            """
+        ).fetchall():
+            item = dict(row)
+            item["tags"] = load_json_list(item.pop("tags_json", None))
+            top_assets.append(item)
+
+        registered_by_month = {
+            row["month"]: row["count"]
+            for row in con.execute(
+                """
+                SELECT substr(created_at, 1, 7) AS month, COUNT(*) AS count
+                FROM ai_assets
+                WHERE approval_status = 'approved' AND is_active = 1
+                GROUP BY substr(created_at, 1, 7)
+                """
+            ).fetchall()
+        }
+        completed_by_month = {
+            row["month"]: row["count"]
+            for row in con.execute(
+                """
+                SELECT substr(c.created_at, 1, 7) AS month, COUNT(*) AS count
+                FROM ai_asset_diffusion_cases c
+                JOIN ai_assets a ON a.asset_id = c.asset_id
+                WHERE a.approval_status = 'approved' AND a.is_active = 1
+                GROUP BY substr(c.created_at, 1, 7)
+                """
+            ).fetchall()
+        }
+
+    current = datetime.now(timezone.utc)
+    month_keys: list[str] = []
+    year, month = current.year, current.month
+    for offset in range(5, -1, -1):
+        target_month = month - offset
+        target_year = year
+        while target_month <= 0:
+            target_month += 12
+            target_year -= 1
+        month_keys.append(f"{target_year:04d}-{target_month:02d}")
+
+    monthly_activity = [
+        {
+            "month": key,
+            "label": f"{int(key[5:]):02d}월",
+            "registrations": int(registered_by_month.get(key, 0)),
+            "completions": int(completed_by_month.get(key, 0)),
+        }
+        for key in month_keys
+    ]
+    return {
+        "totals": totals,
+        "business_distribution": business_distribution,
+        "monthly_activity": monthly_activity,
+        "top_assets": top_assets,
+    }
+
+
 @app.get("/api/assets/catalog")
 def list_ai_asset_catalog(
     current_user: Annotated[UserResponse, Depends(get_current_user)],

@@ -477,6 +477,9 @@ function App() {
   const [assetTagInput, setAssetTagInput] = useState('');
   const [assetTags, setAssetTags] = useState([]);
   const [assetCatalog, setAssetCatalog] = useState([]);
+  const [introSummary, setIntroSummary] = useState(null);
+  const [isLoadingIntroSummary, setIsLoadingIntroSummary] = useState(false);
+  const [introSummaryError, setIntroSummaryError] = useState('');
   const [isLoadingAssetCatalog, setIsLoadingAssetCatalog] = useState(false);
   const [assetCatalogError, setAssetCatalogError] = useState('');
   const [assetCatalogQuery, setAssetCatalogQuery] = useState('');
@@ -699,6 +702,10 @@ function App() {
 
   useEffect(() => {
     if (authUser && isAdminView && activePage === "asset-management") loadAdminAssets();
+  }, [authUser, isAdminView, activePage]);
+
+  useEffect(() => {
+    if (authUser && !isAdminView && activePage === 'intro') loadIntroSummary();
   }, [authUser, isAdminView, activePage]);
 
   useEffect(() => {
@@ -1078,6 +1085,20 @@ function App() {
     setAssetSpecSectionStatus({});
     setAssetSampleVersion((version) => version + 1);
   };
+  const loadIntroSummary = async () => {
+    setIsLoadingIntroSummary(true);
+    setIntroSummaryError('');
+    try {
+      const response = await fetch(API_BASE + '/api/assets/intro/summary', { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, 'AI STUDIO 운영 현황을 불러오지 못했습니다.');
+      setIntroSummary(await response.json());
+    } catch (error) {
+      setIntroSummaryError(error.message);
+    } finally {
+      setIsLoadingIntroSummary(false);
+    }
+  };
+
   const loadAssetCatalog = async () => {
     setIsLoadingAssetCatalog(true);
     setAssetCatalogError('');
@@ -2867,6 +2888,8 @@ function App() {
   }
 
   const dxDocFields = resolveDxDocFields(dxDefinitionFields);
+  const introBusinessMax = Math.max(1, ...(introSummary?.business_distribution || []).map((item) => Number(item.count || 0)));
+  const introActivityMax = Math.max(1, ...(introSummary?.monthly_activity || []).flatMap((item) => [Number(item.registrations || 0), Number(item.completions || 0)]));
 
   return (
     <div className="portal-shell">
@@ -2971,6 +2994,128 @@ function App() {
       </aside>
 
       <main className="main" aria-label="콘텐츠 영역">
+        {!isAdminView && activePage === 'intro' && (
+          <section className="content ai-intro-page" aria-label="AI STUDIO 소개">
+            <section className="ai-intro-hero">
+              <div className="ai-intro-hero-copy">
+                <span>AI STUDIO</span>
+                <h1>검증된 AI를<br />전사의 실행력으로.</h1>
+                <p>업무 과제를 구체화하고, 완성된 AI 자산을 등록·탐색·확산해 개인의 개발 결과를 조직의 역량으로 연결합니다.</p>
+              </div>
+            </section>
+
+            <nav className="ai-intro-entry-grid" aria-label="AI STUDIO 주요 기능">
+              <button type="button" onClick={() => setActivePage('dx-discovery')}>
+                <span className="ai-intro-entry-icon"><Sparkles size={20} /></span>
+                <small>01 · DEFINE</small><b>업무 과제 구체화</b>
+                <p>Agent와 대화하며 현장의 문제를 실행 가능한 DX 과제로 구체화합니다.</p>
+                <em>DX 과제 발굴로 이동 <ArrowRight size={13} /></em>
+              </button>
+              <button type="button" onClick={() => setActivePage('explore')}>
+                <span className="ai-intro-entry-icon"><Search size={20} /></span>
+                <small>02 · REUSE</small><b>검증 자산 탐색·확산</b>
+                <p>승인된 운영 자산을 업무와 기술 기준으로 찾고 코드·Skill과 적용 경험을 확인합니다.</p>
+                <em>AI 자산 탐색으로 이동 <ArrowRight size={13} /></em>
+              </button>
+              <button type="button" onClick={() => setActivePage('registry')}>
+                <span className="ai-intro-entry-icon"><Plus size={20} /></span>
+                <small>03 · SHARE</small><b>완성 자산 등록·공유</b>
+                <p>코드·데이터·활용 화면과 확산 패키지를 갖춘 재사용 가능한 자산으로 등록합니다.</p>
+                <em>AI 자산 등록으로 이동 <ArrowRight size={13} /></em>
+              </button>
+            </nav>
+
+            <section className="ai-intro-section">
+              <header className="ai-intro-section-head">
+                <span>WHY AI STUDIO</span>
+                <h2>AI 개발 결과가 조직의 자산이 되는 구조</h2>
+                <p>과제 발굴부터 검증된 자산의 재사용과 현업 확산까지 하나의 흐름으로 연결합니다.</p>
+              </header>
+              <div className="ai-intro-value-grid">
+                <article><div><Sparkles size={18} /></div><small>01 · 발굴</small><h3>막연한 문제를 과제로</h3><p>대화를 통해 업무 방식과 Pain Point를 정리하고 과제 정의서로 구체화합니다.</p></article>
+                <article><div><ShieldCheck size={18} /></div><small>02 · 등록</small><h3>검증 가능한 자산화</h3><p>명세, 저장소, 데이터, 성능과 활용 화면을 함께 관리해 신뢰할 수 있는 자산을 만듭니다.</p></article>
+                <article><div><Layers3 size={18} /></div><small>03 · 탐색</small><h3>필요한 자산을 빠르게</h3><p>업무 영역, Task, 구현 방식과 데이터 유형을 기준으로 운영 자산을 탐색합니다.</p></article>
+                <article><div><GitBranch size={18} /></div><small>04 · 확산</small><h3>적용 경험까지 축적</h3><p>Skill과 저장소를 활용해 확산을 시도하고 실제 적용 사례와 Q&amp;A를 다시 공유합니다.</p></article>
+              </div>
+            </section>
+
+            <section className="ai-intro-process">
+              <header className="ai-intro-section-head">
+                <span>DIFFUSION PROCESS</span>
+                <h2>AI 자산 확산의 4단계</h2>
+                <p>새로운 과제를 찾는 순간부터 현업 적용 경험이 다시 플랫폼에 쌓일 때까지 이어집니다.</p>
+              </header>
+              <ol>
+                <li><span>01</span><div><b>과제 발굴</b><p>업무 문제와 기대 효과를 정의합니다.</p></div></li>
+                <li><span>02</span><div><b>등록·심사</b><p>자산을 명세화하고 거버넌스 검토를 거칩니다.</p></div></li>
+                <li><span>03</span><div><b>탐색·확산 시도</b><p>적합한 자산의 코드와 Skill을 업무에 적용합니다.</p></div></li>
+                <li><span>04</span><div><b>적용·사례 공유</b><p>성과와 수정 방식을 남겨 확산 완료로 연결합니다.</p></div></li>
+              </ol>
+            </section>
+
+            <section className="ai-intro-section ai-intro-impact">
+              <header className="ai-intro-section-head">
+                <span>AI ASSET IMPACT</span>
+                <h2>AI 자산 운영 현황</h2>
+                <p>현재 운영 중인 자산의 탐색과 확산 활동을 실제 데이터로 확인합니다.</p>
+              </header>
+
+              {isLoadingIntroSummary && <div className="ai-intro-status"><span className="loading-spinner" /> 운영 현황을 불러오고 있습니다.</div>}
+              {!isLoadingIntroSummary && introSummaryError && <div className="ai-intro-status error"><span>{introSummaryError}</span><button type="button" onClick={loadIntroSummary}>다시 시도</button></div>}
+              {!isLoadingIntroSummary && !introSummaryError && introSummary && (
+                <>
+                  <div className="ai-intro-kpis">
+                    <article><span><Bot size={17} /></span><b>{formatViewCount(introSummary.totals.asset_count)}</b><small>운영 자산</small></article>
+                    <article><span><Eye size={17} /></span><b>{formatViewCount(introSummary.totals.view_count)}</b><small>누적 조회</small></article>
+                    <article><span><Download size={17} /></span><b>{formatViewCount(introSummary.totals.diffusion_attempt_count)}</b><small>확산 시도</small></article>
+                    <article><span><CheckCircle2 size={17} /></span><b>{formatViewCount(introSummary.totals.diffusion_completed_count)}</b><small>확산 완료</small></article>
+                  </div>
+
+                  <div className="ai-intro-dashboard">
+                    <article className="ai-intro-chart ai-intro-monthly">
+                      <header><div><small>6 MONTH ACTIVITY</small><h3>월별 등록·확산 완료</h3></div><div className="ai-intro-legend"><span><i className="registered" />등록</span><span><i className="completed" />확산 완료</span></div></header>
+                      <div className="ai-intro-bars">
+                        {introSummary.monthly_activity.map((item) => (
+                          <div key={item.month}>
+                            <div className="ai-intro-bar-pair">
+                              <i className="registered" style={{ height: `${Math.max(4, Number(item.registrations || 0) / introActivityMax * 100)}%` }} title={`등록 ${item.registrations}건`} />
+                              <i className="completed" style={{ height: `${Math.max(4, Number(item.completions || 0) / introActivityMax * 100)}%` }} title={`확산 완료 ${item.completions}건`} />
+                            </div>
+                            <span>{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+
+                    <article className="ai-intro-chart">
+                      <header><div><small>BUSINESS AREA</small><h3>업무 영역별 자산</h3></div></header>
+                      <div className="ai-intro-distribution">
+                        {introSummary.business_distribution.length ? introSummary.business_distribution.map((item) => (
+                          <div key={item.label}><span><b>{item.label}</b><em>{item.count}</em></span><i><b style={{ width: `${Number(item.count || 0) / introBusinessMax * 100}%` }} /></i></div>
+                        )) : <p>운영 중인 자산이 없습니다.</p>}
+                      </div>
+                    </article>
+
+                    <article className="ai-intro-chart ai-intro-top-assets">
+                      <header><div><small>TOP ASSETS</small><h3>확산 시도 상위 자산</h3></div><button type="button" onClick={() => setActivePage('explore')}>전체 보기 <ArrowRight size={13} /></button></header>
+                      <div>
+                        {introSummary.top_assets.length ? introSummary.top_assets.map((asset, index) => (
+                          <button type="button" key={asset.asset_id} onClick={() => setActivePage('explore')}>
+                            <span>{String(index + 1).padStart(2, '0')}</span>
+                            <div><b>{asset.asset_name}</b><small>{asset.business_area} · {asset.maturity_level}</small></div>
+                            <em>{formatViewCount(asset.diffusion_attempt_count)}회</em>
+                          </button>
+                        )) : <p>운영 중인 자산이 없습니다.</p>}
+                      </div>
+                    </article>
+                  </div>
+                </>
+              )}
+            </section>
+
+          </section>
+        )}
+
         {!isAdminView && activePage === 'explore' && (
           <section className="content asset-catalog-page" aria-label="AI 자산 탐색">
             <div className="account-head">
@@ -3007,6 +3152,7 @@ function App() {
               <div className="asset-catalog-main">
                 <div className="asset-catalog-search"><Search size={17} /><input type="search" value={assetCatalogQuery} onChange={(event) => setAssetCatalogQuery(event.target.value)} placeholder="자산명, 설명, 태그로 검색..." /></div>
                 <div className="asset-catalog-toolbar"><div><b>{filteredAssetCatalog.length}</b>개 자산 표시<span>{Object.values(assetCatalogFilters).flat().length ? ' · 선택한 필터 적용 중' : ' · 전체 운영 자산'}</span></div><div><button className={assetCatalogSort === 'popular' ? 'active' : ''} type="button" onClick={() => setAssetCatalogSort('popular')}>인기순</button><button className={assetCatalogSort === 'latest' ? 'active' : ''} type="button" onClick={() => setAssetCatalogSort('latest')}>최신순</button></div></div>
+                <div className="asset-catalog-results-scroll">
                 {isLoadingAssetCatalog && <div className="asset-catalog-message"><span className="loading-spinner" /> 운영 자산을 불러오고 있습니다.</div>}
                 {!isLoadingAssetCatalog && assetCatalogError && <div className="asset-catalog-message error">{assetCatalogError}</div>}
                 {!isLoadingAssetCatalog && !assetCatalogError && filteredAssetCatalog.length === 0 && <div className="asset-catalog-empty"><Search size={24} /><b>조건에 맞는 자산이 없습니다</b><span>검색어나 필터 조건을 조정해보세요.</span></div>}
@@ -3018,6 +3164,7 @@ function App() {
                     <div className="asset-card-tags">{(asset.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</div>
                     <footer><span className="asset-card-foot-stats"><em title="조회 수"><Eye size={11} />{formatViewCount(asset.view_count)}</em><i /><span><b>{formatViewCount(asset.diffusion_completed_count)}</b>회 확산 완료 / <b>{formatViewCount(asset.diffusion_attempt_count)}</b>회 확산 시도</span></span><button type="button">보기 <ArrowRight size={13} /></button></footer>
                   </article>))}</div>
+                </div>
               </div>
             </div>
             {selectedCatalogAsset && <><button className="asset-detail-backdrop" type="button" aria-label="상세 닫기" onClick={closeAssetCatalogDetail} /><aside className="asset-detail-drawer" aria-label="AI 자산 상세">
@@ -3048,10 +3195,12 @@ function App() {
 
         {!isAdminView && activePage === 'registry' && (
           <section className="content asset-registry-page" aria-label="AI 자산 등록" ref={assetRegistryRef}>
-            <div className="asset-reg-head">
-              <span>ASSET REGISTRY</span>
-              <h1>AI 자산 등록<b>·</b></h1>
-              <p>개발 완료한 AI 모델·코드·업무 자동화 자산을 전사에서 재사용할 수 있도록 등록 요청서를 작성합니다.</p>
+            <div className="account-head">
+              <div>
+                <span>AI STUDIO</span>
+                <h1>AI 자산 등록</h1>
+                <p>개발 완료한 AI 모델·코드·업무 자동화 자산을 전사에서 재사용할 수 있도록 등록 요청서를 작성합니다.</p>
+              </div>
             </div>
 
             <section className="asset-reg-guide" aria-label="자산 등록 절차">
