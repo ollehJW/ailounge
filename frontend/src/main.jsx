@@ -29,11 +29,14 @@ import {
   LogIn,
   LogOut,
   Layers3,
+  Mail,
+  MessageCircle,
   Newspaper,
   NotebookPen,
   Send,
   Pencil,
   ShieldCheck,
+  ThumbsUp,
   Trash2,
   Underline,
   UserPlus,
@@ -378,6 +381,32 @@ const previewText = (html, limit = 50) => {
   return `${text.slice(0, limit)}....`;
 };
 
+const copyTextToClipboard = async (text) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) throw new Error('클립보드 복사를 지원하지 않는 브라우저입니다.');
+};
+
+const emptyDiffusionCaseForm = {
+  title: '',
+  stage: '',
+  applied_work: '',
+  customization: '',
+  effect: '',
+  git_url: '',
+};
+
 function App() {
   const [authUser, setAuthUser] = useState(null);
   const [authToken, setAuthToken] = useState(() => window.localStorage.getItem('ailounge_token') || '');
@@ -459,6 +488,28 @@ function App() {
   const [isLoadingCatalogDetail, setIsLoadingCatalogDetail] = useState(false);
   const [catalogDetailError, setCatalogDetailError] = useState('');
   const [catalogSlideIndex, setCatalogSlideIndex] = useState(0);
+  const [isCatalogRepoCopied, setIsCatalogRepoCopied] = useState(false);
+  const [assetDiffusionCases, setAssetDiffusionCases] = useState({});
+  const [isDiffusionCaseFormOpen, setIsDiffusionCaseFormOpen] = useState(false);
+  const [diffusionCaseForm, setDiffusionCaseForm] = useState(emptyDiffusionCaseForm);
+  const [diffusionCaseError, setDiffusionCaseError] = useState('');
+  const [isLoadingDiffusionCases, setIsLoadingDiffusionCases] = useState(false);
+  const [isSavingDiffusionCase, setIsSavingDiffusionCase] = useState(false);
+  const [editingDiffusionCaseId, setEditingDiffusionCaseId] = useState('');
+  const [deletingDiffusionCaseId, setDeletingDiffusionCaseId] = useState('');
+  const [assetQaThreads, setAssetQaThreads] = useState({});
+  const [assetQaDraft, setAssetQaDraft] = useState('');
+  const [assetQaReplyTarget, setAssetQaReplyTarget] = useState('');
+  const [assetQaReplyDraft, setAssetQaReplyDraft] = useState('');
+  const [assetQaError, setAssetQaError] = useState('');
+  const [isLoadingAssetQa, setIsLoadingAssetQa] = useState(false);
+  const [isSavingAssetQa, setIsSavingAssetQa] = useState(false);
+  const [editingAssetQaQuestionId, setEditingAssetQaQuestionId] = useState('');
+  const [assetQaQuestionEditDraft, setAssetQaQuestionEditDraft] = useState('');
+  const [deletingAssetQaQuestionId, setDeletingAssetQaQuestionId] = useState('');
+  const [editingAssetQaReplyId, setEditingAssetQaReplyId] = useState('');
+  const [assetQaEditDraft, setAssetQaEditDraft] = useState('');
+  const [deletingAssetQaReplyId, setDeletingAssetQaReplyId] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [editingUserId, setEditingUserId] = useState('');
@@ -1083,6 +1134,7 @@ function App() {
     setSelectedCatalogTab('overview');
     setCatalogSlideIndex(0);
     setCatalogDetailError('');
+    setIsCatalogRepoCopied(false);
     setIsLoadingCatalogDetail(true);
     try {
       const response = await fetch(API_BASE + '/api/assets/catalog/' + asset.asset_id, { headers: authHeaders });
@@ -1100,12 +1152,387 @@ function App() {
   const closeAssetCatalogDetail = () => {
     setSelectedCatalogAsset(null);
     setCatalogDetailError('');
+    setIsCatalogRepoCopied(false);
+    setIsDiffusionCaseFormOpen(false);
+    setDiffusionCaseError('');
+  };
+
+  const copyCatalogRepositoryUrl = async (repoUrl) => {
+    try {
+      await copyTextToClipboard(repoUrl);
+      setCatalogDetailError('');
+      setIsCatalogRepoCopied(true);
+      window.setTimeout(() => setIsCatalogRepoCopied(false), 1500);
+    } catch (error) {
+      setIsCatalogRepoCopied(false);
+      setCatalogDetailError(error.message || 'Git 저장소 주소를 복사하지 못했습니다.');
+    }
+  };
+
+  const syncDiffusionCompletedCount = (assetId, count) => {
+    const nextCount = Number(count || 0);
+    setAssetCatalog((current) => current.map((asset) => asset.asset_id === assetId
+      ? { ...asset, diffusion_completed_count: nextCount }
+      : asset));
+    setSelectedCatalogAsset((current) => current?.asset_id === assetId
+      ? { ...current, diffusion_completed_count: nextCount }
+      : current);
+  };
+
+  const loadAssetDiffusionCases = async (assetId) => {
+    setIsLoadingDiffusionCases(true);
+    setDiffusionCaseError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/catalog/${assetId}/diffusion-cases`, { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, '확산 사례를 불러오지 못했습니다.');
+      const cases = await response.json();
+      setAssetDiffusionCases((current) => ({ ...current, [assetId]: cases }));
+    } catch (error) {
+      setDiffusionCaseError(error.message);
+    } finally {
+      setIsLoadingDiffusionCases(false);
+    }
+  };
+
+  const selectAssetCatalogTab = (key) => {
+    setSelectedCatalogTab(key);
+    if (key === 'demo') setCatalogSlideIndex(0);
+    if (key === 'diffusion-cases' && selectedCatalogAsset) {
+      loadAssetDiffusionCases(selectedCatalogAsset.asset_id);
+    }
+    if (key === 'qa' && selectedCatalogAsset) {
+      loadAssetQa(selectedCatalogAsset.asset_id);
+      setAssetQaReplyTarget('');
+      setAssetQaReplyDraft('');
+      setEditingAssetQaQuestionId('');
+      setAssetQaQuestionEditDraft('');
+      setEditingAssetQaReplyId('');
+      setAssetQaEditDraft('');
+    }
+  };
+
+  const updateQaQuestion = (assetId, questionId, updater) => {
+    setAssetQaThreads((current) => ({
+      ...current,
+      [assetId]: (current[assetId] || []).map((question) => question.qa_post_id === questionId
+        ? updater(question)
+        : question),
+    }));
+  };
+
+  const loadAssetQa = async (assetId) => {
+    setIsLoadingAssetQa(true);
+    setAssetQaError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/catalog/${assetId}/qa`, { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, 'Q&A를 불러오지 못했습니다.');
+      const questions = await response.json();
+      setAssetQaThreads((current) => ({ ...current, [assetId]: questions }));
+    } catch (error) {
+      setAssetQaError(error.message);
+    } finally {
+      setIsLoadingAssetQa(false);
+    }
+  };
+
+  const submitAssetQaQuestion = async (event) => {
+    event.preventDefault();
+    const content = assetQaDraft.trim();
+    if (!selectedCatalogAsset || !content) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    setIsSavingAssetQa(true);
+    setAssetQaError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/catalog/${assetId}/qa/questions`, {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, topic: '적용 문의' }),
+      });
+      if (!response.ok) throw await apiError(response, '질문을 등록하지 못했습니다.');
+      const question = await response.json();
+      setAssetQaThreads((current) => ({ ...current, [assetId]: [question, ...(current[assetId] || [])] }));
+      setAssetQaDraft('');
+    } catch (error) {
+      setAssetQaError(error.message);
+    } finally {
+      setIsSavingAssetQa(false);
+    }
+  };
+
+  const toggleAssetQaHelpful = async (question) => {
+    if (!selectedCatalogAsset) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/assets/catalog/${assetId}/qa/questions/${question.qa_post_id}/helpful`,
+        { method: question.helpful_by_me ? 'DELETE' : 'POST', headers: authHeaders },
+      );
+      if (!response.ok) throw await apiError(response, '도움돼요를 변경하지 못했습니다.');
+      const result = await response.json();
+      updateQaQuestion(assetId, question.qa_post_id, (current) => ({ ...current, ...result }));
+    } catch (error) {
+      setAssetQaError(error.message);
+    }
+  };
+
+  const openAssetQaReply = (questionId) => {
+    setAssetQaReplyTarget((current) => current === questionId ? '' : questionId);
+    setAssetQaReplyDraft('');
+    setAssetQaError('');
+  };
+
+  const submitAssetQaReply = async (event, questionId) => {
+    event.preventDefault();
+    const content = assetQaReplyDraft.trim();
+    if (!selectedCatalogAsset || !content) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    setIsSavingAssetQa(true);
+    setAssetQaError('');
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/assets/catalog/${assetId}/qa/questions/${questionId}/replies`,
+        {
+          method: 'POST',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        },
+      );
+      if (!response.ok) throw await apiError(response, '답글을 등록하지 못했습니다.');
+      const reply = await response.json();
+      updateQaQuestion(assetId, questionId, (question) => ({ ...question, replies: [...question.replies, reply] }));
+      setAssetQaReplyTarget('');
+      setAssetQaReplyDraft('');
+    } catch (error) {
+      setAssetQaError(error.message);
+    } finally {
+      setIsSavingAssetQa(false);
+    }
+  };
+
+  const startEditAssetQaReply = (reply) => {
+    setEditingAssetQaQuestionId('');
+    setAssetQaQuestionEditDraft('');
+    setEditingAssetQaReplyId(reply.qa_post_id);
+    setAssetQaEditDraft(reply.content);
+    setAssetQaError('');
+  };
+
+  const startEditAssetQaQuestion = (question) => {
+    setEditingAssetQaReplyId('');
+    setAssetQaEditDraft('');
+    setEditingAssetQaQuestionId(question.qa_post_id);
+    setAssetQaQuestionEditDraft(question.content);
+    setAssetQaError('');
+  };
+
+  const saveAssetQaQuestion = async (event, questionId) => {
+    event.preventDefault();
+    const content = assetQaQuestionEditDraft.trim();
+    if (!selectedCatalogAsset || !content) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    setIsSavingAssetQa(true);
+    setAssetQaError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/catalog/${assetId}/qa/posts/${questionId}`, {
+        method: 'PUT',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      if (!response.ok) throw await apiError(response, '질문을 수정하지 못했습니다.');
+      const question = await response.json();
+      updateQaQuestion(assetId, questionId, () => question);
+      setEditingAssetQaQuestionId('');
+      setAssetQaQuestionEditDraft('');
+    } catch (error) {
+      setAssetQaError(error.message);
+    } finally {
+      setIsSavingAssetQa(false);
+    }
+  };
+
+  const deleteAssetQaQuestion = async (question) => {
+    if (!selectedCatalogAsset || !window.confirm('이 질문을 삭제할까요? 등록된 답글도 모두 함께 삭제됩니다.')) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    setDeletingAssetQaQuestionId(question.qa_post_id);
+    setAssetQaError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/assets/catalog/${assetId}/qa/posts/${question.qa_post_id}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      if (!response.ok) throw await apiError(response, '질문을 삭제하지 못했습니다.');
+      setAssetQaThreads((current) => ({
+        ...current,
+        [assetId]: (current[assetId] || []).filter((item) => item.qa_post_id !== question.qa_post_id),
+      }));
+      if (assetQaReplyTarget === question.qa_post_id) {
+        setAssetQaReplyTarget('');
+        setAssetQaReplyDraft('');
+      }
+      setEditingAssetQaQuestionId('');
+      setAssetQaQuestionEditDraft('');
+    } catch (error) {
+      setAssetQaError(error.message);
+    } finally {
+      setDeletingAssetQaQuestionId('');
+    }
+  };
+
+  const saveAssetQaReply = async (event, questionId) => {
+    event.preventDefault();
+    const content = assetQaEditDraft.trim();
+    if (!selectedCatalogAsset || !content) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    setIsSavingAssetQa(true);
+    setAssetQaError('');
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/assets/catalog/${assetId}/qa/posts/${editingAssetQaReplyId}`,
+        {
+          method: 'PUT',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        },
+      );
+      if (!response.ok) throw await apiError(response, '답글을 수정하지 못했습니다.');
+      const reply = await response.json();
+      updateQaQuestion(assetId, questionId, (question) => ({
+        ...question,
+        replies: question.replies.map((item) => item.qa_post_id === reply.qa_post_id ? reply : item),
+      }));
+      setEditingAssetQaReplyId('');
+      setAssetQaEditDraft('');
+    } catch (error) {
+      setAssetQaError(error.message);
+    } finally {
+      setIsSavingAssetQa(false);
+    }
+  };
+
+  const deleteAssetQaReply = async (questionId, reply) => {
+    if (!selectedCatalogAsset || !window.confirm('이 답글을 삭제할까요?')) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    setDeletingAssetQaReplyId(reply.qa_post_id);
+    setAssetQaError('');
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/assets/catalog/${assetId}/qa/posts/${reply.qa_post_id}`,
+        { method: 'DELETE', headers: authHeaders },
+      );
+      if (!response.ok) throw await apiError(response, '답글을 삭제하지 못했습니다.');
+      updateQaQuestion(assetId, questionId, (question) => ({
+        ...question,
+        replies: question.replies.filter((item) => item.qa_post_id !== reply.qa_post_id),
+      }));
+    } catch (error) {
+      setAssetQaError(error.message);
+    } finally {
+      setDeletingAssetQaReplyId('');
+    }
+  };
+
+  const openDiffusionCaseForm = () => {
+    setEditingDiffusionCaseId('');
+    setDiffusionCaseForm(emptyDiffusionCaseForm);
+    setDiffusionCaseError('');
+    setIsDiffusionCaseFormOpen(true);
+  };
+
+  const startEditDiffusionCase = (item) => {
+    setEditingDiffusionCaseId(item.diffusion_case_id);
+    setDiffusionCaseForm({
+      title: item.title,
+      stage: item.stage,
+      applied_work: item.applied_work,
+      customization: item.customization,
+      effect: item.effect,
+      git_url: item.git_url || '',
+    });
+    setDiffusionCaseError('');
+    setIsDiffusionCaseFormOpen(true);
+  };
+
+  const closeDiffusionCaseForm = () => {
+    if (isSavingDiffusionCase) return;
+    setIsDiffusionCaseFormOpen(false);
+    setEditingDiffusionCaseId('');
+    setDiffusionCaseError('');
+  };
+
+  const updateDiffusionCaseField = (field, value) => {
+    setDiffusionCaseForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const submitDiffusionCase = async (event) => {
+    event.preventDefault();
+    if (!selectedCatalogAsset) return;
+    const requiredFields = ['title', 'stage', 'applied_work', 'customization', 'effect'];
+    if (requiredFields.some((field) => !diffusionCaseForm[field].trim())) {
+      setDiffusionCaseError('필수 항목을 모두 입력하세요.');
+      return;
+    }
+    const assetId = selectedCatalogAsset.asset_id;
+    setIsSavingDiffusionCase(true);
+    setDiffusionCaseError('');
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/assets/catalog/${assetId}/diffusion-cases${editingDiffusionCaseId ? `/${editingDiffusionCaseId}` : ''}`,
+        {
+          method: editingDiffusionCaseId ? 'PUT' : 'POST',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.fromEntries(
+            Object.entries(diffusionCaseForm).map(([key, value]) => [key, value.trim() || null]),
+          )),
+        },
+      );
+      if (!response.ok) throw await apiError(response, editingDiffusionCaseId ? '확산 사례를 수정하지 못했습니다.' : '확산 사례를 등록하지 못했습니다.');
+      const result = await response.json();
+      setAssetDiffusionCases((current) => {
+        const cases = current[assetId] || [];
+        const nextCases = editingDiffusionCaseId
+          ? cases.map((item) => item.diffusion_case_id === editingDiffusionCaseId ? result.case : item)
+          : [result.case, ...cases];
+        return { ...current, [assetId]: nextCases };
+      });
+      syncDiffusionCompletedCount(assetId, result.diffusion_completed_count);
+      setIsDiffusionCaseFormOpen(false);
+      setEditingDiffusionCaseId('');
+    } catch (error) {
+      setDiffusionCaseError(error.message);
+    } finally {
+      setIsSavingDiffusionCase(false);
+    }
+  };
+
+  const deleteDiffusionCase = async (item) => {
+    if (!selectedCatalogAsset || !window.confirm(`'${item.title}' 확산 사례를 삭제할까요?`)) return;
+    const assetId = selectedCatalogAsset.asset_id;
+    setDeletingDiffusionCaseId(item.diffusion_case_id);
+    setDiffusionCaseError('');
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/assets/catalog/${assetId}/diffusion-cases/${item.diffusion_case_id}`,
+        { method: 'DELETE', headers: authHeaders },
+      );
+      if (!response.ok) throw await apiError(response, '확산 사례를 삭제하지 못했습니다.');
+      const result = await response.json();
+      setAssetDiffusionCases((current) => ({
+        ...current,
+        [assetId]: (current[assetId] || []).filter((caseItem) => caseItem.diffusion_case_id !== item.diffusion_case_id),
+      }));
+      syncDiffusionCompletedCount(assetId, result.diffusion_completed_count);
+    } catch (error) {
+      setDiffusionCaseError(error.message);
+    } finally {
+      setDeletingDiffusionCaseId('');
+    }
   };
 
   const downloadCatalogFile = async (path, fallbackName) => {
     try {
       const response = await fetch(API_BASE + path, { headers: authHeaders });
       if (!response.ok) throw await apiError(response, '파일을 내려받지 못했습니다.');
+      const diffusionAttemptHeader = response.headers.get('X-Diffusion-Attempt-Count');
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1115,11 +1542,13 @@ function App() {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      if (path.endsWith('/skills.zip')) {
+      if (path.endsWith('/skills.zip') && diffusionAttemptHeader !== null) {
+        const diffusionAttemptCount = Number(diffusionAttemptHeader);
+        if (!Number.isFinite(diffusionAttemptCount)) return;
         setAssetCatalog((current) => current.map((asset) => asset.asset_id === selectedCatalogAsset?.asset_id
-          ? { ...asset, diffusion_attempt_count: Number(asset.diffusion_attempt_count || 0) + 1 }
+          ? { ...asset, diffusion_attempt_count: diffusionAttemptCount }
           : asset));
-        setSelectedCatalogAsset((current) => current ? { ...current, diffusion_attempt_count: Number(current.diffusion_attempt_count || 0) + 1 } : current);
+        setSelectedCatalogAsset((current) => current ? { ...current, diffusion_attempt_count: diffusionAttemptCount } : current);
       }
     } catch (error) {
       setCatalogDetailError(error.message);
@@ -2275,8 +2704,29 @@ function App() {
     );
     if (selectedCatalogTab === 'performance') return (
       <div className="asset-detail-performance">
-        <section><h3>Before / After 비교</h3><div className="asset-before-after-grid">{(asset.before_after_metrics || []).map((item, index) => <article key={index}><b>{item.metric_name}</b><div><span>{item.before_value}<small>Before</small></span><ArrowRight size={16} /><span className="after">{item.after_value}<small>After</small></span></div><em>{item.improvement_rate}</em></article>)}</div>{!(asset.before_after_metrics || []).length && <p className="asset-detail-empty-copy">등록된 비교 지표가 없습니다.</p>}</section>
-        <section><h3>성능 지표</h3><div className="asset-kpi-grid">{(asset.performance_metrics || []).map((item, index) => <article key={index}><span>{item.metric_name}</span><b>{item.value}</b><p>{item.description}</p></article>)}</div>{!(asset.performance_metrics || []).length && <p className="asset-detail-empty-copy">등록된 성능 지표가 없습니다.</p>}</section>
+        <section className="asset-performance-section">
+          <header className="asset-performance-title"><div><span>WORKFLOW IMPACT</span><h3>Before / After 비교</h3></div><small>{(asset.before_after_metrics || []).length}개 개선 항목</small></header>
+          {(asset.before_after_metrics || []).length ? (
+            <div className="asset-performance-comparisons">
+              {asset.before_after_metrics.map((item, index) => (
+                <article key={index}>
+                  <div className="asset-performance-metric"><span>{String(index + 1).padStart(2, '0')}</span><b>{item.metric_name}</b><em>{item.improvement_rate}</em></div>
+                  <div className="asset-performance-values"><div className="before"><small>BEFORE</small><strong>{item.before_value}</strong></div><span className="asset-performance-arrow"><ArrowRight size={17} /></span><div className="after"><small>AFTER</small><strong>{item.after_value}</strong></div></div>
+                </article>
+              ))}
+            </div>
+          ) : <p className="asset-detail-empty-copy">등록된 비교 지표가 없습니다.</p>}
+        </section>
+        <section className="asset-performance-section">
+          <header className="asset-performance-title"><div><span>PERFORMANCE KPI</span><h3>성능 지표</h3></div></header>
+          {(asset.performance_metrics || []).length ? (
+            <div className="asset-performance-kpis">
+              {asset.performance_metrics.map((item, index) => (
+                <article key={index}><div className="asset-kpi-icon"><CheckCircle2 size={18} /></div><div className="asset-kpi-copy"><span>{item.metric_name}</span><p>{item.description}</p></div><b>{item.value}</b></article>
+              ))}
+            </div>
+          ) : <p className="asset-detail-empty-copy">등록된 성능 지표가 없습니다.</p>}
+        </section>
       </div>
     );
     if (selectedCatalogTab === 'demo') {
@@ -2284,10 +2734,82 @@ function App() {
       const slide = slides[catalogSlideIndex] || slides[0];
       return slide ? <div className="asset-detail-demo"><div className="asset-demo-stage"><img src={API_BASE + slide.url} alt={slide.caption || asset.asset_name} /></div><div className="asset-demo-caption"><span>{String(catalogSlideIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}</span><div><b>{slide.caption || '자산 활용 화면'}</b><p>{slide.description}</p></div><div><button type="button" aria-label="이전 이미지" disabled={catalogSlideIndex === 0} onClick={() => setCatalogSlideIndex((index) => index - 1)}>←</button><button type="button" aria-label="다음 이미지" disabled={catalogSlideIndex >= slides.length - 1} onClick={() => setCatalogSlideIndex((index) => index + 1)}>→</button></div></div></div> : <div className="asset-detail-empty"><Layers3 size={26} /><b>등록된 자산 활용 화면이 없습니다.</b></div>;
     }
+    if (selectedCatalogTab === 'qa') {
+      const questions = assetQaThreads[asset.asset_id] || [];
+      return (
+        <section className="asset-qa">
+          <header className="asset-qa-head"><span>ASSET Q&amp;A</span><h3>Q&amp;A · 적용 경험 공유</h3><p>자산 담당자와 사용자들이 적용 방법, 데이터 구조, 성능 기준과 운영 경험을 나누는 공간입니다.</p></header>
+          <form className="asset-qa-compose" onSubmit={submitAssetQaQuestion}>
+            <div className="asset-qa-avatar"><UserRound size={18} /></div>
+            <div><textarea value={assetQaDraft} onChange={(event) => setAssetQaDraft(event.target.value)} placeholder="이 자산의 적용 방법, 데이터 구조, 성능 기준에 대해 질문해 보세요." /><footer><span>{authUser?.org_name} · {authUser?.displayed_name}</span><button type="submit" disabled={isSavingAssetQa || !assetQaDraft.trim()}><MessageCircle size={14} />{isSavingAssetQa ? '등록 중...' : '질문 등록'}</button></footer></div>
+          </form>
+          {assetQaError && <div className="asset-qa-error">{assetQaError}</div>}
+          {isLoadingAssetQa ? <div className="asset-qa-state"><span className="loading-spinner" /> Q&amp;A를 불러오고 있습니다.</div> : questions.length === 0 ? <div className="asset-qa-state empty"><MessageCircle size={23} /><b>아직 등록된 질문이 없습니다</b><span>이 자산에 대해 궁금한 내용을 첫 질문으로 남겨보세요.</span></div> : (
+            <div className="asset-qa-list">
+              {questions.map((question) => (
+                <article className="asset-qa-item" key={question.qa_post_id}>
+                  <div className="asset-qa-avatar"><UserRound size={17} /></div>
+                  <div className="asset-qa-content">
+                    <header><div><b>{question.writer_name}</b>{question.writer_job_title && <em>{question.writer_job_title}</em>}</div><div className="asset-qa-question-meta"><span>{formatDate(question.created_at)} · {question.topic}</span>{question.can_edit && <div className="asset-qa-question-tools"><button type="button" aria-label="질문 수정" onClick={() => startEditAssetQaQuestion(question)}><Pencil size={12} /></button><button className="delete" type="button" aria-label="질문 삭제" disabled={deletingAssetQaQuestionId === question.qa_post_id} onClick={() => deleteAssetQaQuestion(question)}><Trash2 size={12} /></button></div>}</div></header>
+                    {editingAssetQaQuestionId === question.qa_post_id ? <form className="asset-qa-question-edit" onSubmit={(event) => saveAssetQaQuestion(event, question.qa_post_id)}><textarea autoFocus value={assetQaQuestionEditDraft} onChange={(event) => setAssetQaQuestionEditDraft(event.target.value)} /><div><button type="button" disabled={isSavingAssetQa} onClick={() => setEditingAssetQaQuestionId('')}>취소</button><button type="submit" disabled={isSavingAssetQa || !assetQaQuestionEditDraft.trim()}>{isSavingAssetQa ? '저장 중...' : '수정 완료'}</button></div></form> : <p>{question.content}</p>}
+                    {question.replies.map((reply) => (
+                      <div className="asset-qa-reply" key={reply.qa_post_id}>
+                        <header><b>{reply.writer_name}</b>{reply.writer_job_title && <em>{reply.writer_job_title}</em>}{reply.is_owner && <span>자산 담당자</span>}<small>{formatDate(reply.created_at)}</small>{reply.can_edit && <div className="asset-qa-reply-tools"><button type="button" aria-label="답글 수정" onClick={() => startEditAssetQaReply(reply)}><Pencil size={12} /></button><button className="delete" type="button" aria-label="답글 삭제" disabled={deletingAssetQaReplyId === reply.qa_post_id} onClick={() => deleteAssetQaReply(question.qa_post_id, reply)}><Trash2 size={12} /></button></div>}</header>
+                        {editingAssetQaReplyId === reply.qa_post_id ? <form className="asset-qa-reply-edit" onSubmit={(event) => saveAssetQaReply(event, question.qa_post_id)}><textarea autoFocus value={assetQaEditDraft} onChange={(event) => setAssetQaEditDraft(event.target.value)} /><div><button type="button" disabled={isSavingAssetQa} onClick={() => setEditingAssetQaReplyId('')}>취소</button><button type="submit" disabled={isSavingAssetQa || !assetQaEditDraft.trim()}>{isSavingAssetQa ? '저장 중...' : '수정 완료'}</button></div></form> : <p>{reply.content}</p>}
+                      </div>
+                    ))}
+                    <div className="asset-qa-actions"><button className={question.helpful_by_me ? 'active' : ''} type="button" onClick={() => toggleAssetQaHelpful(question)}><ThumbsUp size={13} fill={question.helpful_by_me ? 'currentColor' : 'none'} />도움돼요 {question.helpful_count}</button><button type="button" onClick={() => openAssetQaReply(question.qa_post_id)}>답글</button></div>
+                    {assetQaReplyTarget === question.qa_post_id && <form className="asset-qa-reply-compose" onSubmit={(event) => submitAssetQaReply(event, question.qa_post_id)}><textarea autoFocus value={assetQaReplyDraft} onChange={(event) => setAssetQaReplyDraft(event.target.value)} placeholder="답글을 작성하세요." /><div><button type="button" disabled={isSavingAssetQa} onClick={() => setAssetQaReplyTarget('')}>취소</button><button type="submit" disabled={isSavingAssetQa || !assetQaReplyDraft.trim()}>{isSavingAssetQa ? '등록 중...' : '답글 등록'}</button></div></form>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+    if (selectedCatalogTab === 'diffusion-cases') {
+      const cases = assetDiffusionCases[asset.asset_id] || [];
+      return (
+        <div className="asset-diffusion-cases">
+          <header className="asset-diffusion-case-toolbar">
+            <div><span>DIFFUSION CASES</span><h3>확산 사례 목록 <small>· 총 {cases.length}건</small></h3></div>
+            <button type="button" onClick={openDiffusionCaseForm}><Plus size={14} />사례 등록</button>
+          </header>
+          {isLoadingDiffusionCases ? (
+            <div className="asset-diffusion-case-state"><span className="loading-spinner" /> 확산 사례를 불러오고 있습니다.</div>
+          ) : diffusionCaseError && !isDiffusionCaseFormOpen ? (
+            <div className="asset-diffusion-case-state error"><span>{diffusionCaseError}</span><button type="button" onClick={() => loadAssetDiffusionCases(asset.asset_id)}>다시 시도</button></div>
+          ) : cases.length === 0 ? (
+            <div className="asset-diffusion-case-empty"><GitBranch size={25} /><b>아직 등록된 확산 사례가 없습니다</b><p>이 자산을 업무에 적용한 경험을 첫 사례로 공유해보세요.</p></div>
+          ) : (
+            <div className="asset-diffusion-case-list">
+              {cases.map((item) => (
+                <article className="asset-diffusion-case-card" key={item.diffusion_case_id}>
+                  <header>
+                    <div><span>{item.writer_org}</span><h4>{item.title}</h4><small>{item.writer_name}{item.writer_job_title ? ` ${item.writer_job_title}` : ''} · {formatDate(item.created_at)}</small></div>
+                    <div className="asset-diffusion-case-card-tools">
+                      <em className={`stage-${item.stage}`}>{item.stage_label}</em>
+                      {item.can_edit && <span><button type="button" aria-label="확산 사례 수정" onClick={() => startEditDiffusionCase(item)}><Pencil size={13} /></button><button className="delete" type="button" aria-label="확산 사례 삭제" disabled={deletingDiffusionCaseId === item.diffusion_case_id} onClick={() => deleteDiffusionCase(item)}><Trash2 size={13} /></button></span>}
+                    </div>
+                  </header>
+                  <div className="asset-diffusion-case-fields">
+                    <section><b>적용 업무</b><p>{item.applied_work}</p></section>
+                    <section><b>수정·활용 방식</b><p>{item.customization}</p></section>
+                    <section><b>적용 효과</b><p>{item.effect}</p></section>
+                  </div>
+                  {item.git_url && <footer><GitBranch size={14} /><code>{item.git_url}</code><button type="button" onClick={() => copyTextToClipboard(item.git_url).catch(() => {})}>Copy</button></footer>}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="asset-detail-diffusion">
         <section className="asset-vibe-guide"><span>VIBE CODING GUIDE</span><h3>Claude와 함께 우리 업무에 맞게 확산하세요</h3><p>Git 저장소와 확산 패키지를 준비한 뒤, 업무 환경과 데이터 구조에 맞춰 자연어로 변경 사항을 요청할 수 있습니다.</p><ol>{['Git 저장소를 내려받아 프로젝트 폴더를 준비합니다.', 'Skills ZIP을 내려받아 프로젝트 루트에 압축 해제합니다.', 'Claude Coding Agent에서 프로젝트를 열어 자산 구조를 확인합니다.', '적용 업무, 데이터 경로, 운영 환경과 검증 기준을 설명합니다.', '수정된 코드를 실행하고 실제 업무 기준으로 결과를 검증합니다.'].map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol></section>
-        <div className="asset-diffusion-actions"><section><GitBranch size={20} /><div><b>Git 저장소</b><p>{asset.repo_url || '등록된 Git 주소가 없습니다.'}</p></div>{asset.repo_url && <button type="button" onClick={() => navigator.clipboard.writeText(asset.repo_url)}>Copy</button>}</section><section><Download size={20} /><div><b>확산 패키지</b><p>CLAUDE.md와 재사용 가능한 Skills를 포함합니다.</p></div><button type="button" disabled={!asset.skill_download_url} onClick={() => downloadCatalogFile(asset.skill_download_url, asset.asset_name + '_skills.zip')}>Download</button></section></div>
+        <div className="asset-diffusion-actions"><section><GitBranch size={20} /><div><b>Git 저장소</b><p>{asset.repo_url || '등록된 Git 주소가 없습니다.'}</p></div>{asset.repo_url && <button className={isCatalogRepoCopied ? 'copied' : ''} type="button" onClick={() => copyCatalogRepositoryUrl(asset.repo_url)}>{isCatalogRepoCopied ? 'Copied' : 'Copy'}</button>}</section><section><Download size={20} /><div><b>확산 패키지</b><p>CLAUDE.md와 재사용 가능한 Skills를 포함합니다.</p></div><button type="button" disabled={!asset.skill_download_url} onClick={() => downloadCatalogFile(asset.skill_download_url, asset.asset_name + '_skills.zip')}>Download</button></section></div>
       </div>
     );
   };
@@ -2451,13 +2973,31 @@ function App() {
       <main className="main" aria-label="콘텐츠 영역">
         {!isAdminView && activePage === 'explore' && (
           <section className="content asset-catalog-page" aria-label="AI 자산 탐색">
-            <header className="asset-catalog-hero">
-              <div><span>AI ASSET LIBRARY</span><h1>AI 자산 라이브러리<b>·</b></h1><p>검증된 AI 모델, Agent와 업무 자동화 자산을 탐색하고 우리 조직의 업무에 맞게 확산할 수 있습니다.</p></div>
-              <div className="asset-catalog-total"><Layers3 size={20} /><b>{assetCatalog.length}</b><span>운영 AI 자산</span></div>
-            </header>
+            <div className="account-head">
+              <div>
+                <span>AI STUDIO</span>
+                <h1>AI 자산 라이브러리</h1>
+                <p>검증된 AI 모델, Agent와 업무 자동화 자산을 탐색하고 우리 조직의 업무에 맞게 확산할 수 있습니다.</p>
+              </div>
+            </div>
             <section className="asset-collection-section">
-              <header><div><span>MY COLLECTION</span><h2>내 컬렉션</h2></div><small>{bookmarkedAssetCatalog.length}개 저장됨</small></header>
-              {bookmarkedAssetCatalog.length > 0 ? <div className="asset-collection-list">{bookmarkedAssetCatalog.map((asset) => <button type="button" key={asset.asset_id} onClick={() => openAssetCatalogDetail(asset)}><span className={'asset-maturity ' + asset.maturity_level}>{asset.maturity_level}</span><b>{asset.asset_name}</b><small>{asset.business_area} · {(asset.task_types || []).slice(0, 2).join(' · ')}</small><ArrowRight size={15} /></button>)}</div> : <div className="asset-collection-empty"><Star size={17} /><span>관심 자산의 별표를 누르면 이곳에서 빠르게 확인할 수 있습니다.</span></div>}
+              <header>
+                <div><span>MY COLLECTION</span><h2>내 컬렉션</h2><p>관심 자산을 모아두고 상세 정보와 확산 현황을 빠르게 확인합니다.</p></div>
+                <small><Star size={13} fill="currentColor" />{bookmarkedAssetCatalog.length}개 저장됨</small>
+              </header>
+              {bookmarkedAssetCatalog.length > 0 ? (
+                <div className="asset-catalog-grid asset-collection-catalog-grid">
+                  {bookmarkedAssetCatalog.map((asset) => (
+                    <article className="asset-catalog-card" key={asset.asset_id} tabIndex="0" role="button" onClick={() => openAssetCatalogDetail(asset)} onKeyDown={(event) => { if (event.key === 'Enter') openAssetCatalogDetail(asset); }}>
+                      <div className="asset-card-top"><span className={'asset-maturity ' + asset.maturity_level}>{asset.maturity_level}</span><button className="active" type="button" aria-label="내 컬렉션에서 제거" onClick={(event) => toggleAssetBookmark(asset.asset_id, event)}><Star size={16} fill="currentColor" /></button></div>
+                      <div className="asset-card-title"><small>{asset.business_area}</small><h2>{asset.asset_name}</h2><p>{asset.description}</p></div>
+                      <dl><div><dt>Task 유형</dt><dd>{(asset.task_types || []).join(' · ') || '미분류'}</dd></div><div><dt>구현 방식</dt><dd>{(asset.implementation_types || []).join(' · ') || '미분류'}</dd></div><div><dt>Data 유형</dt><dd>{asset.data_type || '데이터 없음'}</dd></div></dl>
+                      <div className="asset-card-tags">{(asset.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</div>
+                      <footer><span className="asset-card-foot-stats"><em title="조회 수"><Eye size={11} />{formatViewCount(asset.view_count)}</em><i /><span><b>{formatViewCount(asset.diffusion_completed_count)}</b>회 확산 완료 / <b>{formatViewCount(asset.diffusion_attempt_count)}</b>회 확산 시도</span></span><button type="button">보기 <ArrowRight size={13} /></button></footer>
+                    </article>
+                  ))}
+                </div>
+              ) : <div className="asset-collection-empty"><Star size={17} /><span>관심 자산의 별표를 누르면 이곳에서 빠르게 확인할 수 있습니다.</span></div>}
             </section>
             <div className="asset-catalog-layout">
               <aside className="asset-catalog-filter">
@@ -2481,10 +3021,28 @@ function App() {
               </div>
             </div>
             {selectedCatalogAsset && <><button className="asset-detail-backdrop" type="button" aria-label="상세 닫기" onClick={closeAssetCatalogDetail} /><aside className="asset-detail-drawer" aria-label="AI 자산 상세">
-              <header className="asset-detail-head"><button type="button" aria-label="닫기" onClick={closeAssetCatalogDetail}><X size={18} /></button><span>{selectedCatalogAsset.business_area}</span><h2>{selectedCatalogAsset.asset_name}</h2><p>{selectedCatalogAsset.description}</p><div className="asset-detail-owner"><div>{selectedCatalogAsset.owner_name?.slice(0, 1) || 'W'}</div><span><b>{selectedCatalogAsset.owner_name || '자산 담당자'} <em>{selectedCatalogAsset.owner_job_title}</em></b><small>{selectedCatalogAsset.owner_org}</small></span></div><dl><div><dt>{selectedCatalogAsset.maturity_level}</dt><dd>자산 성숙도</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.view_count)}</dt><dd>조회 수</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.diffusion_attempt_count)}</dt><dd>확산 시도</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.diffusion_completed_count)}</dt><dd>확산 완료</dd></div><div><dt>{formatDate(selectedCatalogAsset.updated_at)}</dt><dd>업데이트</dd></div></dl></header>
-              <nav className="asset-detail-tabs">{[['overview', '과제 설명'], ['tech', '적용 기술'], ['data', '데이터'], ['performance', '성능 지표'], ['demo', '자산 활용'], ['diffusion', '확산 가이드']].map(([key, label]) => <button className={selectedCatalogTab === key ? 'active' : ''} type="button" key={key} onClick={() => { setSelectedCatalogTab(key); if (key === 'demo') setCatalogSlideIndex(0); }}>{label}</button>)}</nav>
+              <header className="asset-detail-head"><button type="button" aria-label="닫기" onClick={closeAssetCatalogDetail}><X size={18} /></button><span>{selectedCatalogAsset.business_area}</span><h2>{selectedCatalogAsset.asset_name}</h2><p>{selectedCatalogAsset.description}</p><div className="asset-detail-owner"><div className="asset-detail-owner-icon"><UserRound size={16} /></div><span><b>{selectedCatalogAsset.owner_name || '자산 담당자'} <em>{selectedCatalogAsset.owner_job_title}</em></b><small>{selectedCatalogAsset.owner_org}</small>{selectedCatalogAsset.owner_email && <button type="button" title="이메일 주소 복사" onClick={() => copyTextToClipboard(selectedCatalogAsset.owner_email).catch(() => {})}><Mail size={11} />{selectedCatalogAsset.owner_email}</button>}</span></div><dl><div><dt>{selectedCatalogAsset.maturity_level}</dt><dd>자산 성숙도</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.view_count)}</dt><dd>조회 수</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.diffusion_attempt_count)}</dt><dd>확산 시도</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.diffusion_completed_count)}</dt><dd>확산 완료</dd></div><div><dt>{formatDate(selectedCatalogAsset.updated_at)}</dt><dd>업데이트</dd></div></dl></header>
+              <nav className="asset-detail-tabs">{[['overview', '과제 설명'], ['tech', '적용 기술'], ['data', '데이터'], ['performance', '성능 지표'], ['demo', '자산 활용'], ['diffusion', '확산 가이드'], ['diffusion-cases', '확산 사례'], ['qa', 'Q&A']].map(([key, label]) => <button className={selectedCatalogTab === key ? 'active' : ''} type="button" key={key} onClick={() => selectAssetCatalogTab(key)}>{label}</button>)}</nav>
               <div className="asset-detail-body">{renderAssetCatalogDetailTab()}</div>
             </aside></>}
+            {isDiffusionCaseFormOpen && selectedCatalogAsset && (
+              <div className="asset-diffusion-case-backdrop" role="presentation" onMouseDown={closeDiffusionCaseForm}>
+                <form className="asset-diffusion-case-modal" onSubmit={submitDiffusionCase} onMouseDown={(event) => event.stopPropagation()}>
+                  <button className="asset-diffusion-case-close" type="button" aria-label="닫기" onClick={closeDiffusionCaseForm}><X size={18} /></button>
+                  <header><span>DIFFUSION CASE</span><h2>{editingDiffusionCaseId ? '확산 사례 수정' : '확산 사례 등록'}</h2><p><b>{selectedCatalogAsset.asset_name}</b>을 실제 업무에 적용한 경험을 공유합니다.</p></header>
+                  <div className="asset-diffusion-case-form-grid">
+                    <label><span>사례 제목 *</span><input value={diffusionCaseForm.title} onChange={(event) => updateDiffusionCaseField('title', event.target.value)} placeholder="자산을 적용한 업무와 핵심 결과가 드러나도록 작성하세요." /></label>
+                    <label><span>확산 단계 *</span><div className="asset-diffusion-stage-select"><select value={diffusionCaseForm.stage} onChange={(event) => updateDiffusionCaseField('stage', event.target.value)}><option value="">선택</option><option value="poc">PoC</option><option value="pilot">Pilot</option><option value="production">운영</option></select><ChevronDown size={15} /></div></label>
+                    <label className="full"><span>적용 업무 *</span><textarea value={diffusionCaseForm.applied_work} onChange={(event) => updateDiffusionCaseField('applied_work', event.target.value)} placeholder="이 자산을 어떤 업무·공정·프로세스에 적용했는지 작성하세요." /></label>
+                    <label className="full"><span>수정·활용 방식 *</span><textarea value={diffusionCaseForm.customization} onChange={(event) => updateDiffusionCaseField('customization', event.target.value)} placeholder="원본 자산을 업무 환경에 맞게 어떻게 수정하고 활용했는지 작성하세요." /></label>
+                    <label className="full"><span>적용 효과 *</span><textarea value={diffusionCaseForm.effect} onChange={(event) => updateDiffusionCaseField('effect', event.target.value)} placeholder="적용 후 확인된 정량적·정성적 효과를 작성하세요." /></label>
+                    <label className="full"><span>공유 코드 Git URL <small>선택</small></span><input type="url" value={diffusionCaseForm.git_url} onChange={(event) => updateDiffusionCaseField('git_url', event.target.value)} placeholder="https://git.hyundai-wia.com/..." /></label>
+                  </div>
+                  {diffusionCaseError && <p className="asset-diffusion-case-error">{diffusionCaseError}</p>}
+                  <footer><button type="button" disabled={isSavingDiffusionCase} onClick={closeDiffusionCaseForm}>취소</button><button type="submit" disabled={isSavingDiffusionCase}>{isSavingDiffusionCase ? '저장 중...' : editingDiffusionCaseId ? '수정 완료' : '사례 등록'}</button></footer>
+                </form>
+              </div>
+            )}
           </section>
         )}
 

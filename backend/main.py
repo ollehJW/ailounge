@@ -49,6 +49,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Diffusion-Attempt-Count"],
 )
 
 
@@ -226,6 +227,86 @@ class IdeaResponse(BaseModel):
     updated_at: str
     reviewed_at: str | None = None
     review_comment: str | None = None
+
+class AssetQaQuestionRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+    topic: str = Field(default="적용 문의", min_length=1, max_length=80)
+
+
+class AssetQaContentRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class AssetQaReplyResponse(BaseModel):
+    qa_post_id: str
+    asset_id: str
+    user_id: str
+    parent_post_id: str
+    content: str
+    writer_name: str
+    writer_org: str
+    writer_job_title: str
+    is_owner: bool = False
+    can_edit: bool = False
+    created_at: str
+    updated_at: str
+
+
+class AssetQaQuestionResponse(BaseModel):
+    qa_post_id: str
+    asset_id: str
+    user_id: str
+    topic: str
+    content: str
+    helpful_count: int = 0
+    helpful_by_me: bool = False
+    writer_name: str
+    writer_org: str
+    writer_job_title: str
+    is_owner: bool = False
+    can_edit: bool = False
+    replies: list[AssetQaReplyResponse] = Field(default_factory=list)
+    created_at: str
+    updated_at: str
+
+
+class AssetQaHelpfulResponse(BaseModel):
+    helpful_count: int
+    helpful_by_me: bool
+
+
+class AssetDiffusionCaseRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    stage: str = Field(min_length=1, max_length=20)
+    applied_work: str = Field(min_length=1, max_length=4000)
+    customization: str = Field(min_length=1, max_length=4000)
+    effect: str = Field(min_length=1, max_length=4000)
+    git_url: str | None = Field(default=None, max_length=1000)
+
+
+class AssetDiffusionCaseResponse(BaseModel):
+    diffusion_case_id: str
+    asset_id: str
+    user_id: str
+    title: str
+    stage: str
+    stage_label: str
+    applied_work: str
+    customization: str
+    effect: str
+    git_url: str | None = None
+    writer_name: str
+    writer_org: str
+    writer_job_title: str
+    can_edit: bool = False
+    created_at: str
+    updated_at: str
+
+
+class AssetDiffusionCaseMutationResponse(BaseModel):
+    case: AssetDiffusionCaseResponse | None = None
+    diffusion_completed_count: int
+
 
 class AiAssetResponse(BaseModel):
     asset_id: str
@@ -740,6 +821,139 @@ def init_db() -> None:
             )
             """
         )
+        diffusion_attempts_table_exists = con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ai_asset_diffusion_attempts'"
+        ).fetchone() is not None
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_diffusion_attempts (
+                asset_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                first_attempted_at TEXT NOT NULL,
+                PRIMARY KEY (asset_id, user_id),
+                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_attempt_insert
+            AFTER INSERT ON ai_asset_diffusion_attempts
+            BEGIN
+                UPDATE ai_assets
+                SET diffusion_attempt_count = diffusion_attempt_count + 1
+                WHERE asset_id = NEW.asset_id;
+            END
+            """
+        )
+        con.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_attempt_delete
+            AFTER DELETE ON ai_asset_diffusion_attempts
+            BEGIN
+                UPDATE ai_assets
+                SET diffusion_attempt_count = MAX(diffusion_attempt_count - 1, 0)
+                WHERE asset_id = OLD.asset_id;
+            END
+            """
+        )
+        diffusion_cases_table_exists = con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ai_asset_diffusion_cases'"
+        ).fetchone() is not None
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_diffusion_cases (
+                diffusion_case_id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                stage TEXT NOT NULL CHECK (stage IN ('poc', 'pilot', 'production')),
+                applied_work TEXT NOT NULL,
+                customization TEXT NOT NULL,
+                effect TEXT NOT NULL,
+                git_url TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_case_insert
+            AFTER INSERT ON ai_asset_diffusion_cases
+            BEGIN
+                UPDATE ai_assets
+                SET diffusion_completed_count = diffusion_completed_count + 1
+                WHERE asset_id = NEW.asset_id;
+            END
+            """
+        )
+        con.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_case_delete
+            AFTER DELETE ON ai_asset_diffusion_cases
+            BEGIN
+                UPDATE ai_assets
+                SET diffusion_completed_count = MAX(diffusion_completed_count - 1, 0)
+                WHERE asset_id = OLD.asset_id;
+            END
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_qa_posts (
+                qa_post_id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                parent_post_id TEXT,
+                topic TEXT NOT NULL DEFAULT '적용 문의',
+                content TEXT NOT NULL,
+                helpful_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT,
+                FOREIGN KEY (parent_post_id) REFERENCES ai_asset_qa_posts(qa_post_id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_qa_helpful (
+                qa_post_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (qa_post_id, user_id),
+                FOREIGN KEY (qa_post_id) REFERENCES ai_asset_qa_posts(qa_post_id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_qa_helpful_insert
+            AFTER INSERT ON ai_asset_qa_helpful
+            BEGIN
+                UPDATE ai_asset_qa_posts
+                SET helpful_count = helpful_count + 1
+                WHERE qa_post_id = NEW.qa_post_id;
+            END
+            """
+        )
+        con.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_qa_helpful_delete
+            AFTER DELETE ON ai_asset_qa_helpful
+            BEGIN
+                UPDATE ai_asset_qa_posts
+                SET helpful_count = MAX(helpful_count - 1, 0)
+                WHERE qa_post_id = OLD.qa_post_id;
+            END
+            """
+        )
         asset_columns = {row[1] for row in con.execute("PRAGMA table_info(ai_assets)")}
         asset_column_migrations = {
             "approval_status": "TEXT NOT NULL DEFAULT " + chr(39) + "submitted" + chr(39),
@@ -757,12 +971,22 @@ def init_db() -> None:
         for metric_column in ("view_count", "diffusion_attempt_count", "diffusion_completed_count"):
             if metric_column not in asset_columns:
                 con.execute(f"ALTER TABLE ai_assets ADD COLUMN {metric_column} INTEGER NOT NULL DEFAULT 0")
+        if not diffusion_attempts_table_exists:
+            con.execute("UPDATE ai_assets SET diffusion_attempt_count = 0")
+        if not diffusion_cases_table_exists:
+            con.execute("UPDATE ai_assets SET diffusion_completed_count = 0")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_created_at ON ai_assets(created_at)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_approval_status ON ai_assets(approval_status)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_slides_asset_order ON ai_asset_slides(asset_id, sort_order)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_data_files_asset_role ON ai_asset_data_files(asset_id, data_role)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_skill_files_asset_path ON ai_asset_skill_files(asset_id, file_path)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_bookmarks_user_created ON ai_asset_bookmarks(user_id, created_at DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_diffusion_attempts_user ON ai_asset_diffusion_attempts(user_id, first_attempted_at DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_diffusion_cases_asset_created ON ai_asset_diffusion_cases(asset_id, created_at DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_diffusion_cases_user_created ON ai_asset_diffusion_cases(user_id, created_at DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_qa_posts_asset_created ON ai_asset_qa_posts(asset_id, created_at DESC)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_qa_posts_parent_created ON ai_asset_qa_posts(parent_post_id, created_at)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_qa_posts_user_created ON ai_asset_qa_posts(user_id, created_at DESC)")
         NEWS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         USAGE_POSTS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         IDEAS_WORKSPACE.mkdir(parents=True, exist_ok=True)
@@ -1018,6 +1242,11 @@ def ai_asset_catalog_payload(con: sqlite3.Connection, row: sqlite3.Row, include_
     payload["has_train_validation_split"] = bool(payload.get("has_train_validation_split"))
     payload["is_bookmarked"] = bool(payload.get("is_bookmarked"))
     if include_detail:
+        workspace_meta = read_json_object(asset_dir(payload["asset_id"]) / "meta.json")
+        workspace_payload = workspace_meta.get("payload") if isinstance(workspace_meta.get("payload"), dict) else {}
+        payload["owner_email"] = str(
+            workspace_payload.get("owner_email") or workspace_meta.get("user_email") or ""
+        ).strip() or None
         slide_rows = con.execute(
             """
             SELECT slide_id, file_name, caption, description, sort_order
@@ -1674,6 +1903,427 @@ def delete_ai_asset_bookmark(
         )
 
 
+DIFFUSION_CASE_STAGE_LABELS = {
+    "poc": "PoC",
+    "pilot": "Pilot",
+    "production": "운영",
+}
+
+
+def diffusion_case_values(payload: AssetDiffusionCaseRequest) -> dict[str, str | None]:
+    values = {
+        "title": payload.title.strip(),
+        "stage": payload.stage.strip().lower(),
+        "applied_work": payload.applied_work.strip(),
+        "customization": payload.customization.strip(),
+        "effect": payload.effect.strip(),
+        "git_url": (payload.git_url or "").strip() or None,
+    }
+    if any(not values[field] for field in ("title", "applied_work", "customization", "effect")):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="필수 항목을 모두 입력하세요.")
+    if values["stage"] not in DIFFUSION_CASE_STAGE_LABELS:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="확산 단계가 올바르지 않습니다.")
+    return values
+
+
+def diffusion_case_response(row: sqlite3.Row, current_user_id: str) -> AssetDiffusionCaseResponse:
+    value = dict(row)
+    value["stage_label"] = DIFFUSION_CASE_STAGE_LABELS.get(value["stage"], value["stage"])
+    value["can_edit"] = value["user_id"] == current_user_id
+    return AssetDiffusionCaseResponse(**value)
+
+
+def ensure_catalog_asset(con: sqlite3.Connection, asset_id: str) -> sqlite3.Row:
+    row = con.execute(
+        """
+        SELECT asset_id, diffusion_completed_count
+        FROM ai_assets
+        WHERE asset_id = ? AND approval_status = 'approved' AND is_active = 1
+        """,
+        (asset_id,),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="운영 중인 AI 자산을 찾을 수 없습니다.")
+    return row
+
+
+def get_diffusion_case_row(con: sqlite3.Connection, asset_id: str, diffusion_case_id: str) -> sqlite3.Row:
+    row = con.execute(
+        """
+        SELECT c.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
+               u.job_title AS writer_job_title
+        FROM ai_asset_diffusion_cases c
+        JOIN user u ON u.user_id = c.user_id
+        WHERE c.asset_id = ? AND c.diffusion_case_id = ?
+        """,
+        (asset_id, diffusion_case_id),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="확산 사례를 찾을 수 없습니다.")
+    return row
+
+
+@app.get("/api/assets/catalog/{asset_id}/diffusion-cases", response_model=list[AssetDiffusionCaseResponse])
+def list_ai_asset_diffusion_cases(
+    asset_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> list[AssetDiffusionCaseResponse]:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        rows = con.execute(
+            """
+            SELECT c.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
+                   u.job_title AS writer_job_title
+            FROM ai_asset_diffusion_cases c
+            JOIN user u ON u.user_id = c.user_id
+            WHERE c.asset_id = ?
+            ORDER BY c.created_at DESC
+            """,
+            (asset_id,),
+        ).fetchall()
+    return [diffusion_case_response(row, current_user.user_id) for row in rows]
+
+
+@app.post("/api/assets/catalog/{asset_id}/diffusion-cases", response_model=AssetDiffusionCaseMutationResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_asset_diffusion_case(
+    asset_id: str,
+    payload: AssetDiffusionCaseRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetDiffusionCaseMutationResponse:
+    asset_id = validate_asset_id(asset_id)
+    values = diffusion_case_values(payload)
+    diffusion_case_id = str(uuid.uuid4())
+    now = utc_now()
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        con.execute(
+            """
+            INSERT INTO ai_asset_diffusion_cases (
+                diffusion_case_id, asset_id, user_id, title, stage, applied_work,
+                customization, effect, git_url, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                diffusion_case_id, asset_id, current_user.user_id, values["title"], values["stage"],
+                values["applied_work"], values["customization"], values["effect"], values["git_url"], now, now,
+            ),
+        )
+        row = get_diffusion_case_row(con, asset_id, diffusion_case_id)
+        count = con.execute(
+            "SELECT diffusion_completed_count FROM ai_assets WHERE asset_id = ?",
+            (asset_id,),
+        ).fetchone()["diffusion_completed_count"]
+    return AssetDiffusionCaseMutationResponse(
+        case=diffusion_case_response(row, current_user.user_id),
+        diffusion_completed_count=count,
+    )
+
+
+@app.put("/api/assets/catalog/{asset_id}/diffusion-cases/{diffusion_case_id}", response_model=AssetDiffusionCaseMutationResponse)
+def update_ai_asset_diffusion_case(
+    asset_id: str,
+    diffusion_case_id: str,
+    payload: AssetDiffusionCaseRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetDiffusionCaseMutationResponse:
+    asset_id = validate_asset_id(asset_id)
+    values = diffusion_case_values(payload)
+    now = utc_now()
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        existing = get_diffusion_case_row(con, asset_id, diffusion_case_id)
+        if existing["user_id"] != current_user.user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인이 작성한 확산 사례만 수정할 수 있습니다.")
+        con.execute(
+            """
+            UPDATE ai_asset_diffusion_cases
+            SET title = ?, stage = ?, applied_work = ?, customization = ?,
+                effect = ?, git_url = ?, updated_at = ?
+            WHERE diffusion_case_id = ? AND asset_id = ?
+            """,
+            (
+                values["title"], values["stage"], values["applied_work"], values["customization"],
+                values["effect"], values["git_url"], now, diffusion_case_id, asset_id,
+            ),
+        )
+        row = get_diffusion_case_row(con, asset_id, diffusion_case_id)
+        count = con.execute(
+            "SELECT diffusion_completed_count FROM ai_assets WHERE asset_id = ?",
+            (asset_id,),
+        ).fetchone()["diffusion_completed_count"]
+    return AssetDiffusionCaseMutationResponse(
+        case=diffusion_case_response(row, current_user.user_id),
+        diffusion_completed_count=count,
+    )
+
+
+@app.delete("/api/assets/catalog/{asset_id}/diffusion-cases/{diffusion_case_id}", response_model=AssetDiffusionCaseMutationResponse)
+def delete_ai_asset_diffusion_case(
+    asset_id: str,
+    diffusion_case_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetDiffusionCaseMutationResponse:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        existing = get_diffusion_case_row(con, asset_id, diffusion_case_id)
+        if existing["user_id"] != current_user.user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인이 작성한 확산 사례만 삭제할 수 있습니다.")
+        con.execute(
+            "DELETE FROM ai_asset_diffusion_cases WHERE diffusion_case_id = ? AND asset_id = ?",
+            (diffusion_case_id, asset_id),
+        )
+        count = con.execute(
+            "SELECT diffusion_completed_count FROM ai_assets WHERE asset_id = ?",
+            (asset_id,),
+        ).fetchone()["diffusion_completed_count"]
+    return AssetDiffusionCaseMutationResponse(diffusion_completed_count=count)
+
+
+def qa_text(value: str, label: str) -> str:
+    clean_value = value.strip()
+    if not clean_value:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"{label}을 입력하세요.")
+    return clean_value
+
+
+def get_qa_post_row(
+    con: sqlite3.Connection,
+    asset_id: str,
+    qa_post_id: str,
+    current_user_id: str,
+) -> sqlite3.Row:
+    row = con.execute(
+        """
+        SELECT p.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
+               u.job_title AS writer_job_title,
+               CASE WHEN p.user_id = a.created_by THEN 1 ELSE 0 END AS is_owner,
+               CASE WHEN p.user_id = ? THEN 1 ELSE 0 END AS can_edit,
+               EXISTS(
+                   SELECT 1 FROM ai_asset_qa_helpful h
+                   WHERE h.qa_post_id = p.qa_post_id AND h.user_id = ?
+               ) AS helpful_by_me
+        FROM ai_asset_qa_posts p
+        JOIN ai_assets a ON a.asset_id = p.asset_id
+        JOIN user u ON u.user_id = p.user_id
+        WHERE p.asset_id = ? AND p.qa_post_id = ?
+        """,
+        (current_user_id, current_user_id, asset_id, qa_post_id),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Q&A 게시물을 찾을 수 없습니다.")
+    return row
+
+
+def qa_reply_response(row: sqlite3.Row) -> AssetQaReplyResponse:
+    value = dict(row)
+    value["is_owner"] = bool(value.get("is_owner"))
+    value["can_edit"] = bool(value.get("can_edit"))
+    return AssetQaReplyResponse(**value)
+
+
+def qa_question_response(
+    con: sqlite3.Connection,
+    row: sqlite3.Row,
+    current_user_id: str,
+) -> AssetQaQuestionResponse:
+    value = dict(row)
+    value["is_owner"] = bool(value.get("is_owner"))
+    value["can_edit"] = bool(value.get("can_edit"))
+    value["helpful_by_me"] = bool(value.get("helpful_by_me"))
+    replies = con.execute(
+        """
+        SELECT p.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
+               u.job_title AS writer_job_title,
+               CASE WHEN p.user_id = a.created_by THEN 1 ELSE 0 END AS is_owner,
+               CASE WHEN p.user_id = ? THEN 1 ELSE 0 END AS can_edit
+        FROM ai_asset_qa_posts p
+        JOIN ai_assets a ON a.asset_id = p.asset_id
+        JOIN user u ON u.user_id = p.user_id
+        WHERE p.parent_post_id = ?
+        ORDER BY p.created_at
+        """,
+        (current_user_id, row["qa_post_id"]),
+    ).fetchall()
+    value["replies"] = [qa_reply_response(reply) for reply in replies]
+    return AssetQaQuestionResponse(**value)
+
+
+@app.get("/api/assets/catalog/{asset_id}/qa", response_model=list[AssetQaQuestionResponse])
+def list_ai_asset_qa(
+    asset_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> list[AssetQaQuestionResponse]:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        questions = con.execute(
+            """
+            SELECT p.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
+                   u.job_title AS writer_job_title,
+                   CASE WHEN p.user_id = a.created_by THEN 1 ELSE 0 END AS is_owner,
+                   CASE WHEN p.user_id = ? THEN 1 ELSE 0 END AS can_edit,
+                   EXISTS(
+                       SELECT 1 FROM ai_asset_qa_helpful h
+                       WHERE h.qa_post_id = p.qa_post_id AND h.user_id = ?
+                   ) AS helpful_by_me
+            FROM ai_asset_qa_posts p
+            JOIN ai_assets a ON a.asset_id = p.asset_id
+            JOIN user u ON u.user_id = p.user_id
+            WHERE p.asset_id = ? AND p.parent_post_id IS NULL
+            ORDER BY p.created_at DESC
+            """,
+            (current_user.user_id, current_user.user_id, asset_id),
+        ).fetchall()
+        return [qa_question_response(con, question, current_user.user_id) for question in questions]
+
+
+@app.post("/api/assets/catalog/{asset_id}/qa/questions", response_model=AssetQaQuestionResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_asset_qa_question(
+    asset_id: str,
+    payload: AssetQaQuestionRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetQaQuestionResponse:
+    asset_id = validate_asset_id(asset_id)
+    content = qa_text(payload.content, "질문")
+    topic = qa_text(payload.topic, "문의 유형")
+    qa_post_id = str(uuid.uuid4())
+    now = utc_now()
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        con.execute(
+            """
+            INSERT INTO ai_asset_qa_posts (
+                qa_post_id, asset_id, user_id, parent_post_id, topic, content, created_at, updated_at
+            ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
+            """,
+            (qa_post_id, asset_id, current_user.user_id, topic, content, now, now),
+        )
+        row = get_qa_post_row(con, asset_id, qa_post_id, current_user.user_id)
+        return qa_question_response(con, row, current_user.user_id)
+
+
+@app.post("/api/assets/catalog/{asset_id}/qa/questions/{question_id}/replies", response_model=AssetQaReplyResponse, status_code=status.HTTP_201_CREATED)
+def create_ai_asset_qa_reply(
+    asset_id: str,
+    question_id: str,
+    payload: AssetQaContentRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetQaReplyResponse:
+    asset_id = validate_asset_id(asset_id)
+    content = qa_text(payload.content, "답글")
+    reply_id = str(uuid.uuid4())
+    now = utc_now()
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        question = get_qa_post_row(con, asset_id, question_id, current_user.user_id)
+        if question["parent_post_id"] is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="질문에만 답글을 작성할 수 있습니다.")
+        con.execute(
+            """
+            INSERT INTO ai_asset_qa_posts (
+                qa_post_id, asset_id, user_id, parent_post_id, topic, content, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, '', ?, ?, ?)
+            """,
+            (reply_id, asset_id, current_user.user_id, question_id, content, now, now),
+        )
+        row = get_qa_post_row(con, asset_id, reply_id, current_user.user_id)
+        return qa_reply_response(row)
+
+
+@app.put(
+    "/api/assets/catalog/{asset_id}/qa/posts/{qa_post_id}",
+    response_model=AssetQaQuestionResponse | AssetQaReplyResponse,
+)
+def update_ai_asset_qa_post(
+    asset_id: str,
+    qa_post_id: str,
+    payload: AssetQaContentRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetQaQuestionResponse | AssetQaReplyResponse:
+    asset_id = validate_asset_id(asset_id)
+    content = qa_text(payload.content, "내용")
+    now = utc_now()
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        existing = get_qa_post_row(con, asset_id, qa_post_id, current_user.user_id)
+        if existing["user_id"] != current_user.user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인이 작성한 게시물만 수정할 수 있습니다.")
+        con.execute(
+            "UPDATE ai_asset_qa_posts SET content = ?, updated_at = ? WHERE qa_post_id = ? AND asset_id = ?",
+            (content, now, qa_post_id, asset_id),
+        )
+        updated = get_qa_post_row(con, asset_id, qa_post_id, current_user.user_id)
+        if updated["parent_post_id"] is None:
+            return qa_question_response(con, updated, current_user.user_id)
+        return qa_reply_response(updated)
+
+
+@app.delete("/api/assets/catalog/{asset_id}/qa/posts/{qa_post_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ai_asset_qa_post(
+    asset_id: str,
+    qa_post_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> None:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        existing = get_qa_post_row(con, asset_id, qa_post_id, current_user.user_id)
+        if existing["user_id"] != current_user.user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인이 작성한 게시물만 삭제할 수 있습니다.")
+        con.execute(
+            "DELETE FROM ai_asset_qa_posts WHERE qa_post_id = ? AND asset_id = ?",
+            (qa_post_id, asset_id),
+        )
+
+
+@app.post("/api/assets/catalog/{asset_id}/qa/questions/{question_id}/helpful", response_model=AssetQaHelpfulResponse)
+def create_ai_asset_qa_helpful(
+    asset_id: str,
+    question_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetQaHelpfulResponse:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        question = get_qa_post_row(con, asset_id, question_id, current_user.user_id)
+        if question["parent_post_id"] is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="질문에만 도움돼요를 표시할 수 있습니다.")
+        con.execute(
+            "INSERT OR IGNORE INTO ai_asset_qa_helpful (qa_post_id, user_id, created_at) VALUES (?, ?, ?)",
+            (question_id, current_user.user_id, utc_now()),
+        )
+        count = con.execute(
+            "SELECT helpful_count FROM ai_asset_qa_posts WHERE qa_post_id = ?",
+            (question_id,),
+        ).fetchone()["helpful_count"]
+    return AssetQaHelpfulResponse(helpful_count=count, helpful_by_me=True)
+
+
+@app.delete("/api/assets/catalog/{asset_id}/qa/questions/{question_id}/helpful", response_model=AssetQaHelpfulResponse)
+def delete_ai_asset_qa_helpful(
+    asset_id: str,
+    question_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetQaHelpfulResponse:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        ensure_catalog_asset(con, asset_id)
+        question = get_qa_post_row(con, asset_id, question_id, current_user.user_id)
+        if question["parent_post_id"] is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="질문에만 도움돼요를 표시할 수 있습니다.")
+        con.execute(
+            "DELETE FROM ai_asset_qa_helpful WHERE qa_post_id = ? AND user_id = ?",
+            (question_id, current_user.user_id),
+        )
+        count = con.execute(
+            "SELECT helpful_count FROM ai_asset_qa_posts WHERE qa_post_id = ?",
+            (question_id,),
+        ).fetchone()["helpful_count"]
+    return AssetQaHelpfulResponse(helpful_count=count, helpful_by_me=False)
+
+
 @app.get("/api/assets/catalog/{asset_id}")
 def get_ai_asset_catalog_detail(
     asset_id: str,
@@ -1749,7 +2399,7 @@ def download_ai_asset_catalog_data(
 @app.get("/api/assets/catalog/{asset_id}/skills.zip")
 def download_ai_asset_catalog_skills(
     asset_id: str,
-    _: Annotated[UserResponse, Depends(get_current_user)],
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
 ) -> FileResponse:
     asset_id = validate_asset_id(asset_id)
     with get_connection() as con:
@@ -1766,11 +2416,23 @@ def download_ai_asset_catalog_skills(
         if not path.is_file() or asset_dir(asset_id).resolve() not in path.parents:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="확산 패키지를 찾을 수 없습니다.")
         con.execute(
-            "UPDATE ai_assets SET diffusion_attempt_count = diffusion_attempt_count + 1 WHERE asset_id = ?",
-            (asset_id,),
+            """
+            INSERT OR IGNORE INTO ai_asset_diffusion_attempts (asset_id, user_id, first_attempted_at)
+            VALUES (?, ?, ?)
+            """,
+            (asset_id, current_user.user_id, utc_now()),
         )
+        attempt_count = con.execute(
+            "SELECT diffusion_attempt_count FROM ai_assets WHERE asset_id = ?",
+            (asset_id,),
+        ).fetchone()["diffusion_attempt_count"]
     safe_name = re.sub(r"[^0-9A-Za-z가-힣._-]+", "_", row["asset_name"]).strip("_") or "ai_asset"
-    return FileResponse(path, filename=f"{safe_name}_skills.zip", media_type="application/zip")
+    return FileResponse(
+        path,
+        filename=f"{safe_name}_skills.zip",
+        media_type="application/zip",
+        headers={"X-Diffusion-Attempt-Count": str(attempt_count)},
+    )
 
 
 @app.get("/api/assets/mine", response_model=list[AiAssetResponse])
