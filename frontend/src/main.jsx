@@ -3,26 +3,32 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { createRoot } from 'react-dom/client';
 import {
+  ArrowRight,
   BarChart3,
   Bot,
   Bold,
   Building2,
+  CheckCircle2,
   ChevronDown,
   Clock3,
   Code2,
+  Database,
   Download,
   ExternalLink,
   Eye,
   FilePenLine,
+  GitBranch,
   Home,
   Heart,
   Plus,
   Search,
   Sparkles,
+  Star,
   Wand2,
   KeyRound,
   LogIn,
   LogOut,
+  Layers3,
   Newspaper,
   NotebookPen,
   Send,
@@ -32,6 +38,7 @@ import {
   Underline,
   UserPlus,
   UserRound,
+  X,
 } from 'lucide-react';
 import './styles.css';
 
@@ -126,6 +133,9 @@ const dxTaskDefinition = {
   description: 'Agent가 대화를 통해 내용을 채우는 영역입니다.',
 };
 
+const assetBusinessAreas = ['생산·제조', '품질', 'R&D·설계', 'SCM·구매·물류', '영업·마케팅', '경영지원', '안전·환경·보건', 'IT·DX', '공통'];
+const assetDataTypes = ['테이블·정형데이터', '시계열 데이터', '센서·IoT 데이터', '문서·텍스트', '이미지', '영상', '음성', '로그', 'CAD·도면', '코드', '웹·외부 데이터', '복합 데이터'];
+const assetMaturityLevels = ['아이디어', 'PoC', 'Pilot', '운영'];
 const assetTaskTypes = ['예측', '탐지', '분류', '검색', '질의응답', '요약', '생성', '추출', '추천', '분석', '최적화', '자동화'];
 const assetImplementationTypes = ['ML', 'DL', 'Computer Vision', 'LLM', 'RAG', 'Agent', 'Rule-Based', 'Hybrid'];
 const createAssetTechItem = (overrides = {}) => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, ...overrides });
@@ -212,6 +222,12 @@ const aiUsageTextColors = [
 const stripHtml = (html) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 const formatViewCount = (value) => Number(value || 0).toLocaleString('ko-KR');
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '');
+const formatAssetFileSize = (value) => {
+  const bytes = Number(value || 0);
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
 const formatDxSessionDate = (value) => {
   if (!value) return '';
   const date = new Date(value);
@@ -431,6 +447,18 @@ function App() {
   const [openAssetGuides, setOpenAssetGuides] = useState({});
   const [assetTagInput, setAssetTagInput] = useState('');
   const [assetTags, setAssetTags] = useState([]);
+  const [assetCatalog, setAssetCatalog] = useState([]);
+  const [isLoadingAssetCatalog, setIsLoadingAssetCatalog] = useState(false);
+  const [assetCatalogError, setAssetCatalogError] = useState('');
+  const [assetCatalogQuery, setAssetCatalogQuery] = useState('');
+  const [assetCatalogSort, setAssetCatalogSort] = useState('popular');
+  const [assetCatalogFilters, setAssetCatalogFilters] = useState({});
+  const [assetBookmarks, setAssetBookmarks] = useState(() => new Set());
+  const [selectedCatalogAsset, setSelectedCatalogAsset] = useState(null);
+  const [selectedCatalogTab, setSelectedCatalogTab] = useState('overview');
+  const [isLoadingCatalogDetail, setIsLoadingCatalogDetail] = useState(false);
+  const [catalogDetailError, setCatalogDetailError] = useState('');
+  const [catalogSlideIndex, setCatalogSlideIndex] = useState(0);
   const [accounts, setAccounts] = useState([]);
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [editingUserId, setEditingUserId] = useState('');
@@ -532,6 +560,30 @@ function App() {
     if (!query) return operatingAdminAssets;
     return operatingAdminAssets.filter((asset) => asset.asset_name.toLocaleLowerCase("ko").includes(query));
   }, [operatingAdminAssets, adminAssetQuery]);
+
+  const assetCatalogFilterGroups = [
+    { key: 'business_area', label: '업무 영역', options: assetBusinessAreas },
+    { key: 'task_types', label: 'Task 유형', options: assetTaskTypes },
+    { key: 'implementation_types', label: '구현 방식', options: assetImplementationTypes },
+    { key: 'data_type', label: 'Data 유형', options: assetDataTypes },
+    { key: 'maturity_level', label: '자산 성숙도', options: assetMaturityLevels },
+  ];
+  const filteredAssetCatalog = useMemo(() => {
+    const query = assetCatalogQuery.trim().toLocaleLowerCase('ko');
+    const result = assetCatalog.filter((asset) => {
+      const searchable = [asset.asset_name, asset.description, asset.business_area, asset.data_type, ...(asset.task_types || []), ...(asset.implementation_types || []), ...(asset.tags || [])].join(' ').toLocaleLowerCase('ko');
+      if (query && !searchable.includes(query)) return false;
+      return Object.entries(assetCatalogFilters).every(([key, selected]) => {
+        if (!selected?.length) return true;
+        const value = asset[key];
+        return Array.isArray(value) ? value.some((item) => selected.includes(item)) : selected.includes(value);
+      });
+    });
+    return [...result].sort((a, b) => assetCatalogSort === 'latest'
+      ? String(b.updated_at).localeCompare(String(a.updated_at))
+      : Number(b.diffusion_attempt_count || 0) - Number(a.diffusion_attempt_count || 0) || String(b.updated_at).localeCompare(String(a.updated_at)));
+  }, [assetCatalog, assetCatalogQuery, assetCatalogFilters, assetCatalogSort]);
+  const bookmarkedAssetCatalog = useMemo(() => assetCatalog.filter((asset) => assetBookmarks.has(asset.asset_id)), [assetCatalog, assetBookmarks]);
   const filteredAiUsagePosts = useMemo(() => {
     const query = aiUsageQuery.trim().toLowerCase();
     const filtered = aiUsagePosts.filter((post) => {
@@ -596,6 +648,10 @@ function App() {
 
   useEffect(() => {
     if (authUser && isAdminView && activePage === "asset-management") loadAdminAssets();
+  }, [authUser, isAdminView, activePage]);
+
+  useEffect(() => {
+    if (authUser && !isAdminView && activePage === 'explore') loadAssetCatalog();
   }, [authUser, isAdminView, activePage]);
 
   useEffect(() => {
@@ -971,6 +1027,105 @@ function App() {
     setAssetSpecSectionStatus({});
     setAssetSampleVersion((version) => version + 1);
   };
+  const loadAssetCatalog = async () => {
+    setIsLoadingAssetCatalog(true);
+    setAssetCatalogError('');
+    try {
+      const response = await fetch(API_BASE + '/api/assets/catalog', { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, 'AI 자산을 불러오지 못했습니다.');
+      const assets = await response.json();
+      setAssetCatalog(assets);
+      setAssetBookmarks(new Set(assets.filter((asset) => asset.is_bookmarked).map((asset) => asset.asset_id)));
+    } catch (error) {
+      setAssetCatalogError(error.message);
+    } finally {
+      setIsLoadingAssetCatalog(false);
+    }
+  };
+
+  const toggleAssetCatalogFilter = (key, value) => {
+    setAssetCatalogFilters((current) => {
+      const selected = current[key] || [];
+      return { ...current, [key]: selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value] };
+    });
+  };
+
+  const toggleAssetBookmark = async (assetId, event) => {
+    event?.stopPropagation();
+    const wasBookmarked = assetBookmarks.has(assetId);
+    setAssetBookmarks((current) => {
+      const next = new Set(current);
+      if (wasBookmarked) next.delete(assetId);
+      else next.add(assetId);
+      return next;
+    });
+    setAssetCatalog((current) => current.map((asset) => asset.asset_id === assetId ? { ...asset, is_bookmarked: !wasBookmarked } : asset));
+    try {
+      const response = await fetch(API_BASE + '/api/assets/catalog/' + assetId + '/bookmark', {
+        method: wasBookmarked ? 'DELETE' : 'POST',
+        headers: authHeaders,
+      });
+      if (!response.ok) throw await apiError(response, '즐겨찾기를 변경하지 못했습니다.');
+    } catch (error) {
+      setAssetBookmarks((current) => {
+        const next = new Set(current);
+        if (wasBookmarked) next.add(assetId);
+        else next.delete(assetId);
+        return next;
+      });
+      setAssetCatalog((current) => current.map((asset) => asset.asset_id === assetId ? { ...asset, is_bookmarked: wasBookmarked } : asset));
+      setAssetCatalogError(error.message);
+    }
+  };
+
+  const openAssetCatalogDetail = async (asset) => {
+    setSelectedCatalogAsset(asset);
+    setSelectedCatalogTab('overview');
+    setCatalogSlideIndex(0);
+    setCatalogDetailError('');
+    setIsLoadingCatalogDetail(true);
+    try {
+      const response = await fetch(API_BASE + '/api/assets/catalog/' + asset.asset_id, { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, 'AI 자산 상세 정보를 불러오지 못했습니다.');
+      const detail = await response.json();
+      setSelectedCatalogAsset(detail);
+      setAssetCatalog((current) => current.map((item) => item.asset_id === detail.asset_id ? { ...item, view_count: detail.view_count } : item));
+    } catch (error) {
+      setCatalogDetailError(error.message);
+    } finally {
+      setIsLoadingCatalogDetail(false);
+    }
+  };
+
+  const closeAssetCatalogDetail = () => {
+    setSelectedCatalogAsset(null);
+    setCatalogDetailError('');
+  };
+
+  const downloadCatalogFile = async (path, fallbackName) => {
+    try {
+      const response = await fetch(API_BASE + path, { headers: authHeaders });
+      if (!response.ok) throw await apiError(response, '파일을 내려받지 못했습니다.');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fallbackName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      if (path.endsWith('/skills.zip')) {
+        setAssetCatalog((current) => current.map((asset) => asset.asset_id === selectedCatalogAsset?.asset_id
+          ? { ...asset, diffusion_attempt_count: Number(asset.diffusion_attempt_count || 0) + 1 }
+          : asset));
+        setSelectedCatalogAsset((current) => current ? { ...current, diffusion_attempt_count: Number(current.diffusion_attempt_count || 0) + 1 } : current);
+      }
+    } catch (error) {
+      setCatalogDetailError(error.message);
+    }
+  };
+
   const openAssetRegistrationDocument = async (asset) => {
     setIsAssetDocumentOpen(true);
     setAssetDocumentTitle(asset.asset_name);
@@ -2095,6 +2250,48 @@ function App() {
     }
   };
 
+  const renderAssetCatalogDetailTab = () => {
+    const asset = selectedCatalogAsset;
+    if (!asset || isLoadingCatalogDetail) return <div className="asset-catalog-detail-loading"><span className="loading-spinner" /> 자산 정보를 불러오고 있습니다.</div>;
+    if (catalogDetailError) return <div className="asset-catalog-detail-error">{catalogDetailError}</div>;
+    if (selectedCatalogTab === 'overview') return (
+      <div className="asset-detail-definition">
+        <section className="problem"><header><span>01</span>문제 정의</header><p>{asset.problem_definition}</p></section>
+        <div className="asset-detail-workflow"><section><header><span>02</span>As-Is Workflow</header><p>{asset.as_is_workflow}</p></section><ArrowRight size={20} /><section><header><span>03</span>To-Be Workflow</header><p>{asset.to_be_workflow}</p></section></div>
+        <section className="effect"><header><span>04</span>AI 개선 효과</header><p>{asset.ai_effect}</p></section>
+      </div>
+    );
+    if (selectedCatalogTab === 'tech') return (
+      <div className="asset-detail-stack">
+        <section><h3>모델 / 알고리즘</h3>{(asset.models || []).length ? asset.models.map((item, index) => <article key={index}><b>{item.model_name || item.name}</b><p>{item.description}</p>{item.reference_url && <a href={item.reference_url} target="_blank" rel="noreferrer">참조 링크 <ExternalLink size={12} /></a>}</article>) : <p className="asset-detail-empty-copy">등록된 모델 정보가 없습니다.</p>}</section>
+        <section><h3>기술 스택</h3>{(asset.tech_stacks || []).length ? asset.tech_stacks.map((item, index) => <article key={index}><b>{item.stack_name || item.name}</b><p>{item.description}</p>{item.reference_url && <a href={item.reference_url} target="_blank" rel="noreferrer">참조 링크 <ExternalLink size={12} /></a>}</article>) : <p className="asset-detail-empty-copy">등록된 기술 스택 정보가 없습니다.</p>}</section>
+      </div>
+    );
+    if (selectedCatalogTab === 'data') return (
+      <div className="asset-detail-data">
+        <section className="asset-detail-copy"><h3>데이터 설명</h3><p>{asset.has_data ? (asset.data_description || '등록된 데이터 설명이 없습니다.') : '이 자산은 별도 데이터 첨부 없이 활용할 수 있습니다.'}</p>{asset.data_type && <span>{asset.data_type}</span>}</section>
+        {asset.has_data && <section><h3>샘플 데이터</h3><div className="asset-detail-download-list">{(asset.data_files || []).map((file) => <article key={file.data_file_id}><Database size={18} /><div><b>{file.file_name}</b><span>{file.data_role === 'train' ? '학습' : file.data_role === 'validation' ? '검증' : '샘플'} · {formatAssetFileSize(file.file_size)}</span></div><button type="button" onClick={() => downloadCatalogFile(file.download_url, file.file_name)}><Download size={14} />Download</button></article>)}</div>{!(asset.data_files || []).length && <p className="asset-detail-empty-copy">첨부된 샘플 데이터가 없습니다.</p>}</section>}
+      </div>
+    );
+    if (selectedCatalogTab === 'performance') return (
+      <div className="asset-detail-performance">
+        <section><h3>Before / After 비교</h3><div className="asset-before-after-grid">{(asset.before_after_metrics || []).map((item, index) => <article key={index}><b>{item.metric_name}</b><div><span>{item.before_value}<small>Before</small></span><ArrowRight size={16} /><span className="after">{item.after_value}<small>After</small></span></div><em>{item.improvement_rate}</em></article>)}</div>{!(asset.before_after_metrics || []).length && <p className="asset-detail-empty-copy">등록된 비교 지표가 없습니다.</p>}</section>
+        <section><h3>성능 지표</h3><div className="asset-kpi-grid">{(asset.performance_metrics || []).map((item, index) => <article key={index}><span>{item.metric_name}</span><b>{item.value}</b><p>{item.description}</p></article>)}</div>{!(asset.performance_metrics || []).length && <p className="asset-detail-empty-copy">등록된 성능 지표가 없습니다.</p>}</section>
+      </div>
+    );
+    if (selectedCatalogTab === 'demo') {
+      const slides = asset.slides || [];
+      const slide = slides[catalogSlideIndex] || slides[0];
+      return slide ? <div className="asset-detail-demo"><div className="asset-demo-stage"><img src={API_BASE + slide.url} alt={slide.caption || asset.asset_name} /></div><div className="asset-demo-caption"><span>{String(catalogSlideIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}</span><div><b>{slide.caption || '자산 활용 화면'}</b><p>{slide.description}</p></div><div><button type="button" aria-label="이전 이미지" disabled={catalogSlideIndex === 0} onClick={() => setCatalogSlideIndex((index) => index - 1)}>←</button><button type="button" aria-label="다음 이미지" disabled={catalogSlideIndex >= slides.length - 1} onClick={() => setCatalogSlideIndex((index) => index + 1)}>→</button></div></div></div> : <div className="asset-detail-empty"><Layers3 size={26} /><b>등록된 자산 활용 화면이 없습니다.</b></div>;
+    }
+    return (
+      <div className="asset-detail-diffusion">
+        <section className="asset-vibe-guide"><span>VIBE CODING GUIDE</span><h3>Claude와 함께 우리 업무에 맞게 확산하세요</h3><p>Git 저장소와 확산 패키지를 준비한 뒤, 업무 환경과 데이터 구조에 맞춰 자연어로 변경 사항을 요청할 수 있습니다.</p><ol>{['Git 저장소를 내려받아 프로젝트 폴더를 준비합니다.', 'Skills ZIP을 내려받아 프로젝트 루트에 압축 해제합니다.', 'Claude Coding Agent에서 프로젝트를 열어 자산 구조를 확인합니다.', '적용 업무, 데이터 경로, 운영 환경과 검증 기준을 설명합니다.', '수정된 코드를 실행하고 실제 업무 기준으로 결과를 검증합니다.'].map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}</ol></section>
+        <div className="asset-diffusion-actions"><section><GitBranch size={20} /><div><b>Git 저장소</b><p>{asset.repo_url || '등록된 Git 주소가 없습니다.'}</p></div>{asset.repo_url && <button type="button" onClick={() => navigator.clipboard.writeText(asset.repo_url)}>Copy</button>}</section><section><Download size={20} /><div><b>확산 패키지</b><p>CLAUDE.md와 재사용 가능한 Skills를 포함합니다.</p></div><button type="button" disabled={!asset.skill_download_url} onClick={() => downloadCatalogFile(asset.skill_download_url, asset.asset_name + '_skills.zip')}>Download</button></section></div>
+      </div>
+    );
+  };
+
   if (isCheckingSession) {
     return (
       <div className="login-shell">
@@ -2252,6 +2449,45 @@ function App() {
       </aside>
 
       <main className="main" aria-label="콘텐츠 영역">
+        {!isAdminView && activePage === 'explore' && (
+          <section className="content asset-catalog-page" aria-label="AI 자산 탐색">
+            <header className="asset-catalog-hero">
+              <div><span>AI ASSET LIBRARY</span><h1>AI 자산 라이브러리<b>·</b></h1><p>검증된 AI 모델, Agent와 업무 자동화 자산을 탐색하고 우리 조직의 업무에 맞게 확산할 수 있습니다.</p></div>
+              <div className="asset-catalog-total"><Layers3 size={20} /><b>{assetCatalog.length}</b><span>운영 AI 자산</span></div>
+            </header>
+            <section className="asset-collection-section">
+              <header><div><span>MY COLLECTION</span><h2>내 컬렉션</h2></div><small>{bookmarkedAssetCatalog.length}개 저장됨</small></header>
+              {bookmarkedAssetCatalog.length > 0 ? <div className="asset-collection-list">{bookmarkedAssetCatalog.map((asset) => <button type="button" key={asset.asset_id} onClick={() => openAssetCatalogDetail(asset)}><span className={'asset-maturity ' + asset.maturity_level}>{asset.maturity_level}</span><b>{asset.asset_name}</b><small>{asset.business_area} · {(asset.task_types || []).slice(0, 2).join(' · ')}</small><ArrowRight size={15} /></button>)}</div> : <div className="asset-collection-empty"><Star size={17} /><span>관심 자산의 별표를 누르면 이곳에서 빠르게 확인할 수 있습니다.</span></div>}
+            </section>
+            <div className="asset-catalog-layout">
+              <aside className="asset-catalog-filter">
+                <header><h2>필터</h2><button type="button" onClick={() => setAssetCatalogFilters({})}>초기화</button></header>
+                {assetCatalogFilterGroups.map((group) => <section key={group.key}><div><b>{group.label}</b><span>{group.options.length}</span></div><div className="asset-filter-options">{group.options.map((option) => <button className={(assetCatalogFilters[group.key] || []).includes(option) ? 'active' : ''} type="button" key={option} onClick={() => toggleAssetCatalogFilter(group.key, option)}>{option}</button>)}</div></section>)}
+              </aside>
+              <div className="asset-catalog-main">
+                <div className="asset-catalog-search"><Search size={17} /><input type="search" value={assetCatalogQuery} onChange={(event) => setAssetCatalogQuery(event.target.value)} placeholder="자산명, 설명, 태그로 검색..." /></div>
+                <div className="asset-catalog-toolbar"><div><b>{filteredAssetCatalog.length}</b>개 자산 표시<span>{Object.values(assetCatalogFilters).flat().length ? ' · 선택한 필터 적용 중' : ' · 전체 운영 자산'}</span></div><div><button className={assetCatalogSort === 'popular' ? 'active' : ''} type="button" onClick={() => setAssetCatalogSort('popular')}>인기순</button><button className={assetCatalogSort === 'latest' ? 'active' : ''} type="button" onClick={() => setAssetCatalogSort('latest')}>최신순</button></div></div>
+                {isLoadingAssetCatalog && <div className="asset-catalog-message"><span className="loading-spinner" /> 운영 자산을 불러오고 있습니다.</div>}
+                {!isLoadingAssetCatalog && assetCatalogError && <div className="asset-catalog-message error">{assetCatalogError}</div>}
+                {!isLoadingAssetCatalog && !assetCatalogError && filteredAssetCatalog.length === 0 && <div className="asset-catalog-empty"><Search size={24} /><b>조건에 맞는 자산이 없습니다</b><span>검색어나 필터 조건을 조정해보세요.</span></div>}
+                <div className="asset-catalog-grid">{filteredAssetCatalog.map((asset) => (
+                  <article className="asset-catalog-card" key={asset.asset_id} tabIndex="0" role="button" onClick={() => openAssetCatalogDetail(asset)} onKeyDown={(event) => { if (event.key === 'Enter') openAssetCatalogDetail(asset); }}>
+                    <div className="asset-card-top"><span className={'asset-maturity ' + asset.maturity_level}>{asset.maturity_level}</span><button className={assetBookmarks.has(asset.asset_id) ? 'active' : ''} type="button" aria-label="내 컬렉션 저장" onClick={(event) => toggleAssetBookmark(asset.asset_id, event)}><Star size={16} fill={assetBookmarks.has(asset.asset_id) ? 'currentColor' : 'none'} /></button></div>
+                    <div className="asset-card-title"><small>{asset.business_area}</small><h2>{asset.asset_name}</h2><p>{asset.description}</p></div>
+                    <dl><div><dt>Task 유형</dt><dd>{(asset.task_types || []).join(' · ') || '미분류'}</dd></div><div><dt>구현 방식</dt><dd>{(asset.implementation_types || []).join(' · ') || '미분류'}</dd></div><div><dt>Data 유형</dt><dd>{asset.data_type || '데이터 없음'}</dd></div></dl>
+                    <div className="asset-card-tags">{(asset.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</div>
+                    <footer><span className="asset-card-foot-stats"><em title="조회 수"><Eye size={11} />{formatViewCount(asset.view_count)}</em><i /><span><b>{formatViewCount(asset.diffusion_completed_count)}</b>회 확산 완료 / <b>{formatViewCount(asset.diffusion_attempt_count)}</b>회 확산 시도</span></span><button type="button">보기 <ArrowRight size={13} /></button></footer>
+                  </article>))}</div>
+              </div>
+            </div>
+            {selectedCatalogAsset && <><button className="asset-detail-backdrop" type="button" aria-label="상세 닫기" onClick={closeAssetCatalogDetail} /><aside className="asset-detail-drawer" aria-label="AI 자산 상세">
+              <header className="asset-detail-head"><button type="button" aria-label="닫기" onClick={closeAssetCatalogDetail}><X size={18} /></button><span>{selectedCatalogAsset.business_area}</span><h2>{selectedCatalogAsset.asset_name}</h2><p>{selectedCatalogAsset.description}</p><div className="asset-detail-owner"><div>{selectedCatalogAsset.owner_name?.slice(0, 1) || 'W'}</div><span><b>{selectedCatalogAsset.owner_name || '자산 담당자'} <em>{selectedCatalogAsset.owner_job_title}</em></b><small>{selectedCatalogAsset.owner_org}</small></span></div><dl><div><dt>{selectedCatalogAsset.maturity_level}</dt><dd>자산 성숙도</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.view_count)}</dt><dd>조회 수</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.diffusion_attempt_count)}</dt><dd>확산 시도</dd></div><div><dt>{formatViewCount(selectedCatalogAsset.diffusion_completed_count)}</dt><dd>확산 완료</dd></div><div><dt>{formatDate(selectedCatalogAsset.updated_at)}</dt><dd>업데이트</dd></div></dl></header>
+              <nav className="asset-detail-tabs">{[['overview', '과제 설명'], ['tech', '적용 기술'], ['data', '데이터'], ['performance', '성능 지표'], ['demo', '자산 활용'], ['diffusion', '확산 가이드']].map(([key, label]) => <button className={selectedCatalogTab === key ? 'active' : ''} type="button" key={key} onClick={() => { setSelectedCatalogTab(key); if (key === 'demo') setCatalogSlideIndex(0); }}>{label}</button>)}</nav>
+              <div className="asset-detail-body">{renderAssetCatalogDetailTab()}</div>
+            </aside></>}
+          </section>
+        )}
+
         {!isAdminView && activePage === 'registry' && (
           <section className="content asset-registry-page" aria-label="AI 자산 등록" ref={assetRegistryRef}>
             <div className="asset-reg-head">

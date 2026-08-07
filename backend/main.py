@@ -728,6 +728,18 @@ def init_db() -> None:
             )
             """
         )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ai_asset_bookmarks (
+                user_id TEXT NOT NULL,
+                asset_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, asset_id),
+                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE,
+                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
+            )
+            """
+        )
         asset_columns = {row[1] for row in con.execute("PRAGMA table_info(ai_assets)")}
         asset_column_migrations = {
             "approval_status": "TEXT NOT NULL DEFAULT " + chr(39) + "submitted" + chr(39),
@@ -750,6 +762,7 @@ def init_db() -> None:
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_slides_asset_order ON ai_asset_slides(asset_id, sort_order)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_data_files_asset_role ON ai_asset_data_files(asset_id, data_role)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_skill_files_asset_path ON ai_asset_skill_files(asset_id, file_path)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_bookmarks_user_created ON ai_asset_bookmarks(user_id, created_at DESC)")
         NEWS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         USAGE_POSTS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         IDEAS_WORKSPACE.mkdir(parents=True, exist_ok=True)
@@ -986,6 +999,49 @@ def read_json_object(path: Path) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError):
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def load_json_list(value: str | None) -> list[Any]:
+    try:
+        parsed = json.loads(value or "[]")
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def ai_asset_catalog_payload(con: sqlite3.Connection, row: sqlite3.Row, include_detail: bool = False) -> dict[str, Any]:
+    payload = dict(row)
+    for field in ("task_types", "implementation_types", "tags", "models", "tech_stacks", "before_after_metrics", "performance_metrics"):
+        payload[field] = load_json_list(payload.pop(f"{field}_json", None))
+    payload["is_active"] = bool(payload.get("is_active"))
+    payload["has_data"] = bool(payload.get("has_data"))
+    payload["has_train_validation_split"] = bool(payload.get("has_train_validation_split"))
+    payload["is_bookmarked"] = bool(payload.get("is_bookmarked"))
+    if include_detail:
+        slide_rows = con.execute(
+            """
+            SELECT slide_id, file_name, caption, description, sort_order
+            FROM ai_asset_slides WHERE asset_id = ? ORDER BY sort_order
+            """,
+            (payload["asset_id"],),
+        ).fetchall()
+        payload["slides"] = [
+            {**dict(slide), "url": f"/api/assets/catalog/{payload['asset_id']}/slides/{slide['slide_id']}"}
+            for slide in slide_rows
+        ]
+        data_rows = con.execute(
+            """
+            SELECT data_file_id, data_role, file_name, file_size, content_type
+            FROM ai_asset_data_files WHERE asset_id = ? ORDER BY data_role, created_at
+            """,
+            (payload["asset_id"],),
+        ).fetchall()
+        payload["data_files"] = [
+            {**dict(data_file), "download_url": f"/api/assets/catalog/{payload['asset_id']}/data/{data_file['data_file_id']}"}
+            for data_file in data_rows
+        ]
+        payload["skill_download_url"] = f"/api/assets/catalog/{payload['asset_id']}/skills.zip" if payload.get("skill_zip_path") else None
+    return payload
 
 
 def asset_file_data_uri(path_value: str, asset_id: str) -> str:
@@ -1561,6 +1617,160 @@ def create_ai_asset_skills(
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/assets/catalog")
+def list_ai_asset_catalog(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> list[dict[str, Any]]:
+    with get_connection() as con:
+        rows = con.execute(
+            """
+            SELECT a.*, u.displayed_name AS owner_name, u.org_name AS owner_org,
+                   u.job_title AS owner_job_title,
+                   EXISTS(SELECT 1 FROM ai_asset_bookmarks b WHERE b.user_id = ? AND b.asset_id = a.asset_id) AS is_bookmarked
+            FROM ai_assets a
+            JOIN user u ON u.user_id = a.created_by
+            WHERE a.approval_status = 'approved' AND a.is_active = 1
+            ORDER BY a.diffusion_attempt_count DESC, a.updated_at DESC
+            """,
+            (current_user.user_id,),
+        ).fetchall()
+        return [ai_asset_catalog_payload(con, row) for row in rows]
+
+
+@app.post("/api/assets/catalog/{asset_id}/bookmark", status_code=status.HTTP_204_NO_CONTENT)
+def create_ai_asset_bookmark(
+    asset_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> None:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        asset = con.execute(
+            """
+            SELECT 1 FROM ai_assets
+            WHERE asset_id = ? AND approval_status = 'approved' AND is_active = 1
+            """,
+            (asset_id,),
+        ).fetchone()
+        if asset is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="운영 중인 AI 자산을 찾을 수 없습니다.")
+        con.execute(
+            "INSERT OR IGNORE INTO ai_asset_bookmarks (user_id, asset_id, created_at) VALUES (?, ?, ?)",
+            (current_user.user_id, asset_id, utc_now()),
+        )
+
+
+@app.delete("/api/assets/catalog/{asset_id}/bookmark", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ai_asset_bookmark(
+    asset_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> None:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        con.execute(
+            "DELETE FROM ai_asset_bookmarks WHERE user_id = ? AND asset_id = ?",
+            (current_user.user_id, asset_id),
+        )
+
+
+@app.get("/api/assets/catalog/{asset_id}")
+def get_ai_asset_catalog_detail(
+    asset_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> dict[str, Any]:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        updated = con.execute(
+            """
+            UPDATE ai_assets SET view_count = view_count + 1
+            WHERE asset_id = ? AND approval_status = 'approved' AND is_active = 1
+            """,
+            (asset_id,),
+        )
+        if updated.rowcount == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="운영 중인 AI 자산을 찾을 수 없습니다.")
+        row = con.execute(
+            """
+            SELECT a.*, u.displayed_name AS owner_name, u.org_name AS owner_org,
+                   u.job_title AS owner_job_title,
+                   EXISTS(SELECT 1 FROM ai_asset_bookmarks b WHERE b.user_id = ? AND b.asset_id = a.asset_id) AS is_bookmarked
+            FROM ai_assets a
+            JOIN user u ON u.user_id = a.created_by
+            WHERE a.asset_id = ?
+            """,
+            (current_user.user_id, asset_id),
+        ).fetchone()
+        return ai_asset_catalog_payload(con, row, include_detail=True)
+
+
+def catalog_asset_file(con: sqlite3.Connection, asset_id: str, table: str, id_column: str, file_id: str) -> sqlite3.Row:
+    row = con.execute(
+        f"""
+        SELECT f.file_path, f.file_name
+        FROM {table} f
+        JOIN ai_assets a ON a.asset_id = f.asset_id
+        WHERE f.{id_column} = ? AND f.asset_id = ?
+          AND a.approval_status = 'approved' AND a.is_active = 1
+        """,
+        (file_id, asset_id),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="자산 파일을 찾을 수 없습니다.")
+    path = (BASE_DIR / row["file_path"]).resolve()
+    if not path.is_file() or asset_dir(asset_id).resolve() not in path.parents:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="자산 파일을 찾을 수 없습니다.")
+    return row
+
+
+@app.get("/api/assets/catalog/{asset_id}/slides/{slide_id}")
+def get_ai_asset_catalog_slide(
+    asset_id: str,
+    slide_id: str,
+) -> FileResponse:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        row = catalog_asset_file(con, asset_id, "ai_asset_slides", "slide_id", slide_id)
+    return FileResponse(BASE_DIR / row["file_path"], media_type=mimetypes.guess_type(row["file_name"])[0])
+
+
+@app.get("/api/assets/catalog/{asset_id}/data/{data_file_id}")
+def download_ai_asset_catalog_data(
+    asset_id: str,
+    data_file_id: str,
+    _: Annotated[UserResponse, Depends(get_current_user)],
+) -> FileResponse:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        row = catalog_asset_file(con, asset_id, "ai_asset_data_files", "data_file_id", data_file_id)
+    return FileResponse(BASE_DIR / row["file_path"], filename=row["file_name"])
+
+
+@app.get("/api/assets/catalog/{asset_id}/skills.zip")
+def download_ai_asset_catalog_skills(
+    asset_id: str,
+    _: Annotated[UserResponse, Depends(get_current_user)],
+) -> FileResponse:
+    asset_id = validate_asset_id(asset_id)
+    with get_connection() as con:
+        row = con.execute(
+            """
+            SELECT skill_zip_path, asset_name FROM ai_assets
+            WHERE asset_id = ? AND approval_status = 'approved' AND is_active = 1
+            """,
+            (asset_id,),
+        ).fetchone()
+        if row is None or not row["skill_zip_path"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="확산 패키지를 찾을 수 없습니다.")
+        path = (BASE_DIR / row["skill_zip_path"]).resolve()
+        if not path.is_file() or asset_dir(asset_id).resolve() not in path.parents:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="확산 패키지를 찾을 수 없습니다.")
+        con.execute(
+            "UPDATE ai_assets SET diffusion_attempt_count = diffusion_attempt_count + 1 WHERE asset_id = ?",
+            (asset_id,),
+        )
+    safe_name = re.sub(r"[^0-9A-Za-z가-힣._-]+", "_", row["asset_name"]).strip("_") or "ai_asset"
+    return FileResponse(path, filename=f"{safe_name}_skills.zip", media_type="application/zip")
 
 
 @app.get("/api/assets/mine", response_model=list[AiAssetResponse])
