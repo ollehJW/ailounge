@@ -2889,7 +2889,7 @@ function App() {
 
   const dxDocFields = resolveDxDocFields(dxDefinitionFields);
   const introBusinessMax = Math.max(1, ...(introSummary?.business_distribution || []).map((item) => Number(item.count || 0)));
-  const introActivityMax = Math.max(1, ...(introSummary?.monthly_activity || []).flatMap((item) => [Number(item.registrations || 0), Number(item.completions || 0)]));
+  const introActivityMax = Math.max(1, ...(introSummary?.monthly_activity || []).flatMap((item) => [Number(item.registrations || 0), Number(item.downloads || 0)]));
 
   return (
     <div className="portal-shell">
@@ -3067,21 +3067,26 @@ function App() {
                   <div className="ai-intro-kpis">
                     <article><span><Bot size={17} /></span><b>{formatViewCount(introSummary.totals.asset_count)}</b><small>운영 자산</small></article>
                     <article><span><Eye size={17} /></span><b>{formatViewCount(introSummary.totals.view_count)}</b><small>누적 조회</small></article>
-                    <article><span><Download size={17} /></span><b>{formatViewCount(introSummary.totals.diffusion_attempt_count)}</b><small>확산 시도</small></article>
+                    <article><span><Download size={17} /></span><b>{formatViewCount(introSummary.totals.diffusion_attempt_count)}</b><small>누적 다운로드 수</small></article>
                     <article><span><CheckCircle2 size={17} /></span><b>{formatViewCount(introSummary.totals.diffusion_completed_count)}</b><small>확산 완료</small></article>
                   </div>
 
                   <div className="ai-intro-dashboard">
                     <article className="ai-intro-chart ai-intro-monthly">
-                      <header><div><small>6 MONTH ACTIVITY</small><h3>월별 등록·확산 완료</h3></div><div className="ai-intro-legend"><span><i className="registered" />등록</span><span><i className="completed" />확산 완료</span></div></header>
+                      <header><div><small>6 MONTH ACTIVITY</small><h3>월별 등록 및 다운로드</h3></div><div className="ai-intro-legend"><span><i className="registered" />등록</span><span><i className="downloaded" />다운로드</span></div></header>
                       <div className="ai-intro-bars">
                         {introSummary.monthly_activity.map((item) => (
-                          <div key={item.month}>
+                          <div key={item.month} tabIndex="0" aria-label={`${item.label} 등록 ${item.registrations}건, 다운로드 ${item.downloads}건`}>
                             <div className="ai-intro-bar-pair">
-                              <i className="registered" style={{ height: `${Math.max(4, Number(item.registrations || 0) / introActivityMax * 100)}%` }} title={`등록 ${item.registrations}건`} />
-                              <i className="completed" style={{ height: `${Math.max(4, Number(item.completions || 0) / introActivityMax * 100)}%` }} title={`확산 완료 ${item.completions}건`} />
+                              <i className="registered" style={{ height: `${Math.max(4, Number(item.registrations || 0) / introActivityMax * 100)}%` }} />
+                              <i className="downloaded" style={{ height: `${Math.max(4, Number(item.downloads || 0) / introActivityMax * 100)}%` }} />
                             </div>
                             <span>{item.label}</span>
+                            <div className="ai-intro-chart-tooltip" role="tooltip">
+                              <strong>{item.label}</strong>
+                              <span><i className="registered" />등록 <b>{item.registrations}건</b></span>
+                              <span><i className="downloaded" />다운로드 <b>{item.downloads}건</b></span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -3097,10 +3102,10 @@ function App() {
                     </article>
 
                     <article className="ai-intro-chart ai-intro-top-assets">
-                      <header><div><small>TOP ASSETS</small><h3>확산 시도 상위 자산</h3></div><button type="button" onClick={() => setActivePage('explore')}>전체 보기 <ArrowRight size={13} /></button></header>
+                      <header><div><small>TOP ASSETS</small><h3>누적 다운로드 상위 자산</h3></div><button type="button" onClick={() => setActivePage('explore')}>전체 보기 <ArrowRight size={13} /></button></header>
                       <div>
                         {introSummary.top_assets.length ? introSummary.top_assets.map((asset, index) => (
-                          <button type="button" key={asset.asset_id} onClick={() => setActivePage('explore')}>
+                          <button type="button" key={asset.asset_id} onClick={() => { setActivePage('explore'); openAssetCatalogDetail(asset); }}>
                             <span>{String(index + 1).padStart(2, '0')}</span>
                             <div><b>{asset.asset_name}</b><small>{asset.business_area} · {asset.maturity_level}</small></div>
                             <em>{formatViewCount(asset.diffusion_attempt_count)}회</em>

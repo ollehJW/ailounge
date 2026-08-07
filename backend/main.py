@@ -1903,15 +1903,15 @@ def get_ai_asset_intro_summary(
                 """
             ).fetchall()
         }
-        completed_by_month = {
+        downloaded_by_month = {
             row["month"]: row["count"]
             for row in con.execute(
                 """
-                SELECT substr(c.created_at, 1, 7) AS month, COUNT(*) AS count
-                FROM ai_asset_diffusion_cases c
-                JOIN ai_assets a ON a.asset_id = c.asset_id
+                SELECT substr(d.first_attempted_at, 1, 7) AS month, COUNT(*) AS count
+                FROM ai_asset_diffusion_attempts d
+                JOIN ai_assets a ON a.asset_id = d.asset_id
                 WHERE a.approval_status = 'approved' AND a.is_active = 1
-                GROUP BY substr(c.created_at, 1, 7)
+                GROUP BY substr(d.first_attempted_at, 1, 7)
                 """
             ).fetchall()
         }
@@ -1932,7 +1932,7 @@ def get_ai_asset_intro_summary(
             "month": key,
             "label": f"{int(key[5:]):02d}월",
             "registrations": int(registered_by_month.get(key, 0)),
-            "completions": int(completed_by_month.get(key, 0)),
+            "downloads": int(downloaded_by_month.get(key, 0)),
         }
         for key in month_keys
     ]
