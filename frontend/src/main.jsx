@@ -485,6 +485,11 @@ function App() {
   const [assetCatalogQuery, setAssetCatalogQuery] = useState('');
   const [assetCatalogSort, setAssetCatalogSort] = useState('popular');
   const [assetCatalogFilters, setAssetCatalogFilters] = useState({});
+  const [assetRecommendationQuery, setAssetRecommendationQuery] = useState('');
+  const [assetRecommendations, setAssetRecommendations] = useState([]);
+  const [isRecommendingAssets, setIsRecommendingAssets] = useState(false);
+  const [assetRecommendationError, setAssetRecommendationError] = useState('');
+  const [hasAssetRecommendationRun, setHasAssetRecommendationRun] = useState(false);
   const [assetBookmarks, setAssetBookmarks] = useState(() => new Set());
   const [selectedCatalogAsset, setSelectedCatalogAsset] = useState(null);
   const [selectedCatalogTab, setSelectedCatalogTab] = useState('overview');
@@ -638,6 +643,10 @@ function App() {
       : Number(b.diffusion_attempt_count || 0) - Number(a.diffusion_attempt_count || 0) || String(b.updated_at).localeCompare(String(a.updated_at)));
   }, [assetCatalog, assetCatalogQuery, assetCatalogFilters, assetCatalogSort]);
   const bookmarkedAssetCatalog = useMemo(() => assetCatalog.filter((asset) => assetBookmarks.has(asset.asset_id)), [assetCatalog, assetBookmarks]);
+  const recommendedAssetCatalog = useMemo(() => assetRecommendations.map((recommendation) => {
+    const asset = assetCatalog.find((item) => item.asset_id === recommendation.asset_id);
+    return asset ? { ...asset, recommendation } : null;
+  }).filter(Boolean), [assetCatalog, assetRecommendations]);
   const filteredAiUsagePosts = useMemo(() => {
     const query = aiUsageQuery.trim().toLowerCase();
     const filtered = aiUsagePosts.filter((post) => {
@@ -1112,6 +1121,31 @@ function App() {
       setAssetCatalogError(error.message);
     } finally {
       setIsLoadingAssetCatalog(false);
+    }
+  };
+
+  const requestAssetRecommendations = async (event) => {
+    event.preventDefault();
+    const query = assetRecommendationQuery.trim();
+    if (query.length < 5 || isRecommendingAssets) return;
+    setIsRecommendingAssets(true);
+    setAssetRecommendationError('');
+    setAssetRecommendations([]);
+    setHasAssetRecommendationRun(false);
+    try {
+      const response = await fetch(API_BASE + '/api/assets/recommendations', {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      if (!response.ok) throw await apiError(response, 'AI 자산을 추천하지 못했습니다.');
+      const data = await response.json();
+      setAssetRecommendations(Array.isArray(data.recommendations) ? data.recommendations : []);
+      setHasAssetRecommendationRun(true);
+    } catch (error) {
+      setAssetRecommendationError(error.message);
+    } finally {
+      setIsRecommendingAssets(false);
     }
   };
 
@@ -3130,6 +3164,41 @@ function App() {
                 <p>검증된 AI 모델, Agent와 업무 자동화 자산을 탐색하고 우리 조직의 업무에 맞게 확산할 수 있습니다.</p>
               </div>
             </div>
+            <section className={'asset-recommendation-panel' + (recommendedAssetCatalog.length ? ' has-results' : '')}>
+              <div className="asset-recommendation-intro">
+                <div className="asset-recommendation-icon"><Sparkles size={20} /></div>
+                <div><span>AI ASSET MATCH</span><h2>해결하려는 과제를 알려주세요</h2><p>운영 중인 AI 자산을 분석해 업무에 적합한 자산과 활용 방향을 추천합니다.</p></div>
+              </div>
+              <form className="asset-recommendation-form" onSubmit={requestAssetRecommendations}>
+                <textarea value={assetRecommendationQuery} maxLength={1000} onChange={(event) => setAssetRecommendationQuery(event.target.value)} placeholder="예: 생산라인별 품질 데이터를 취합해 주간 보고서를 자동으로 작성하고 싶어요." aria-label="해결하려는 과제" />
+                <button type="submit" disabled={assetRecommendationQuery.trim().length < 5 || isRecommendingAssets || isLoadingAssetCatalog || assetCatalog.length === 0}>
+                  {isRecommendingAssets ? <><span className="loading-spinner" /> 분석 중</> : <><Wand2 size={16} /> 자산 추천</>}
+                </button>
+              </form>
+              {isRecommendingAssets && <div className="asset-recommendation-progress"><span className="loading-spinner" /><div><b>등록된 자산을 분석하고 있습니다</b><small>과제 적합성과 활용 가능성을 비교해 최대 3개를 선별합니다.</small></div></div>}
+              {!isRecommendingAssets && assetRecommendationError && <div className="asset-recommendation-error">{assetRecommendationError}</div>}
+              {!isRecommendingAssets && !assetRecommendationError && assetRecommendations.length > 0 && recommendedAssetCatalog.length === 0 && <div className="asset-recommendation-error">추천된 자산 정보를 현재 목록에서 찾을 수 없습니다.</div>}
+              {!isRecommendingAssets && !assetRecommendationError && hasAssetRecommendationRun && assetRecommendations.length === 0 && <div className="asset-recommendation-empty">현재 과제와 충분히 일치하는 운영 자산을 찾지 못했습니다. 업무 목적이나 처리 방식을 조금 더 구체적으로 작성해보세요.</div>}
+              {recommendedAssetCatalog.length > 0 && (
+                <div className="asset-recommendation-results">
+                  <header><div><span>RECOMMENDED ASSETS</span><h3>이 과제에 적합한 자산</h3></div><small>{recommendedAssetCatalog.length}개 추천</small></header>
+                  <div className="asset-recommendation-grid">
+                    {recommendedAssetCatalog.map((asset, index) => (
+                      <article key={asset.asset_id} tabIndex="0" role="button" onClick={() => openAssetCatalogDetail(asset)} onKeyDown={(event) => { if (event.key === 'Enter') openAssetCatalogDetail(asset); }}>
+                        <div className="asset-recommendation-rank"><span>0{index + 1}</span><b>{asset.recommendation.score}</b><small>적합도</small></div>
+                        <div className="asset-recommendation-content">
+                          <span>{asset.business_area} · {asset.maturity_level}</span>
+                          <h4>{asset.asset_name}</h4>
+                          <p>{asset.description}</p>
+                          <dl><div><dt>추천 이유</dt><dd>{asset.recommendation.reason}</dd></div><div><dt>수정·활용 방향</dt><dd>{asset.recommendation.adaptation}</dd></div></dl>
+                          <button type="button">자산 상세보기 <ArrowRight size={13} /></button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
             <section className="asset-collection-section">
               <header>
                 <div><span>MY COLLECTION</span><h2>내 컬렉션</h2><p>관심 자산을 모아두고 상세 정보와 확산 현황을 빠르게 확인합니다.</p></div>

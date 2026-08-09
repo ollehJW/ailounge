@@ -369,6 +369,21 @@ class AssetSkillGenerateRequest(BaseModel):
     selected_skill_slugs: list[str] = Field(default_factory=list)
 
 
+class AssetRecommendationRequest(BaseModel):
+    query: str = Field(min_length=5, max_length=1000)
+
+
+class AssetRecommendationItem(BaseModel):
+    asset_id: str
+    score: int = Field(ge=0, le=100)
+    reason: str
+    adaptation: str
+
+
+class AssetRecommendationResponse(BaseModel):
+    recommendations: list[AssetRecommendationItem] = Field(default_factory=list)
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -1962,6 +1977,72 @@ def list_ai_asset_catalog(
             (current_user.user_id,),
         ).fetchall()
         return [ai_asset_catalog_payload(con, row) for row in rows]
+
+
+@app.post("/api/assets/recommendations", response_model=AssetRecommendationResponse)
+def recommend_ai_assets(
+    request: AssetRecommendationRequest,
+    _: Annotated[UserResponse, Depends(get_current_user)],
+) -> AssetRecommendationResponse:
+    query = request.query.strip()
+    if len(query) < 5:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="해결하려는 과제를 조금 더 구체적으로 입력하세요.")
+
+    with get_connection() as con:
+        rows = con.execute(
+            """
+            SELECT asset_id, asset_name, description, problem_definition, ai_effect
+            FROM ai_assets
+            WHERE approval_status = 'approved' AND is_active = 1
+            ORDER BY updated_at DESC
+            """
+        ).fetchall()
+
+    if not rows:
+        return AssetRecommendationResponse()
+
+    assets = [dict(row) for row in rows]
+    prompt = read_prompt("asset_recommendations.txt")
+    prompt = prompt.replace(
+        "{{ASSETS_JSON}}",
+        json.dumps(assets, ensure_ascii=False, separators=(",", ":")),
+        1,
+    ).replace("{{USER_QUERY}}", query, 1)
+    try:
+        raw_response = chat_completion(prompt, temperature=0)
+        data = extract_json_object(raw_response)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"AI 자산 추천을 생성하지 못했습니다: {exc}") from exc
+
+    raw_recommendations = data.get("recommendations")
+    if not isinstance(raw_recommendations, list):
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI 자산 추천 결과 형식이 올바르지 않습니다.")
+
+    allowed_ids = {asset["asset_id"] for asset in assets}
+    recommendations: list[AssetRecommendationItem] = []
+    seen_ids: set[str] = set()
+    for item in raw_recommendations:
+        if not isinstance(item, dict):
+            continue
+        asset_id = str(item.get("asset_id") or "").strip()
+        reason = str(item.get("reason") or "").strip()
+        adaptation = str(item.get("adaptation") or "").strip()
+        if asset_id not in allowed_ids or asset_id in seen_ids or not reason or not adaptation:
+            continue
+        try:
+            score = max(0, min(100, int(item.get("score", 0))))
+        except (TypeError, ValueError):
+            continue
+        recommendations.append(AssetRecommendationItem(
+            asset_id=asset_id,
+            score=score,
+            reason=reason[:1000],
+            adaptation=adaptation[:1000],
+        ))
+        seen_ids.add(asset_id)
+
+    recommendations.sort(key=lambda item: item.score, reverse=True)
+    return AssetRecommendationResponse(recommendations=recommendations[:3])
 
 
 @app.post("/api/assets/catalog/{asset_id}/bookmark", status_code=status.HTTP_204_NO_CONTENT)
