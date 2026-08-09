@@ -1,0 +1,18 @@
+[Unit]
+Description=AI Lounge Vite frontend
+Wants=network-online.target ailounge-backend.service
+After=network-online.target ailounge-backend.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/home/wia/projects/ailounge/frontend
+Environment=NODE_ENV=development
+ExecStart=/usr/bin/node /home/wia/projects/ailounge/frontend/node_modules/vite/bin/vite.js --host 0.0.0.0 --port 9001 --strictPort
+Restart=always
+RestartSec=2
+TimeoutStopSec=20
+KillSignal=SIGINT
+
+[Install]
+WantedBy=default.target

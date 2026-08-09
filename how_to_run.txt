@@ -7,6 +7,22 @@ uvicorn main:app --host 0.0.0.0 --port 9002 --reload
 cd /home/wia/projects/ailounge/frontend
 npm run dev
 
+# Always-on frontend/backend services
+# User lingering is enabled, so these services start automatically after an OS reboot.
+systemctl --user link /home/wia/projects/ailounge/deploy/systemd/ailounge-backend.service /home/wia/projects/ailounge/deploy/systemd/ailounge-frontend.service
+systemctl --user daemon-reload
+systemctl --user enable --now ailounge-backend.service ailounge-frontend.service
+
+# Check service status.
+systemctl --user status ailounge-backend.service ailounge-frontend.service --no-pager
+
+# Restart after changing backend dependencies/configuration or when needed.
+systemctl --user restart ailounge-backend.service ailounge-frontend.service
+
+# Follow service logs.
+journalctl --user -u ailounge-backend.service -f
+journalctl --user -u ailounge-frontend.service -f
+
 # Staging cleanup timer
 # Runs automatically every day at 05:00 KST.
 # One-time setup only (already completed on the current machine).

@@ -3066,7 +3066,7 @@ function App() {
                 <>
                   <div className="ai-intro-kpis">
                     <article><span><Bot size={17} /></span><b>{formatViewCount(introSummary.totals.asset_count)}</b><small>운영 자산</small></article>
-                    <article><span><Eye size={17} /></span><b>{formatViewCount(introSummary.totals.view_count)}</b><small>누적 조회</small></article>
+                    <article><span><Eye size={17} /></span><b>{formatViewCount(introSummary.totals.view_count)}</b><small>누적 조회 수</small></article>
                     <article><span><Download size={17} /></span><b>{formatViewCount(introSummary.totals.diffusion_attempt_count)}</b><small>누적 다운로드 수</small></article>
                     <article><span><CheckCircle2 size={17} /></span><b>{formatViewCount(introSummary.totals.diffusion_completed_count)}</b><small>확산 완료</small></article>
                   </div>
