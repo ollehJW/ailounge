@@ -102,7 +102,7 @@ const navGroups = [
 
 const externalLinks = [
   { label: 'WIA Report', href: 'http://10.217.183.72:9602/', icon: FilePenLine },
-  { label: 'WIA Meet', href: 'https://10.217.183.34:9702/', icon: NotebookPen },
+  { label: 'WIA Meet', href: 'https://10.217.183.72:9702/', icon: NotebookPen },
 ];
 
 const emptyAiIdeaForm = {
