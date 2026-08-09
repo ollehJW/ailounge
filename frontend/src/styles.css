@@ -1479,6 +1479,93 @@ a { color: inherit; text-decoration: none; }
   font-weight: 900;
 }
 
+.ai-idea-form-progress {
+  width: 126px;
+  display: grid;
+  gap: 6px;
+}
+
+.ai-idea-form-progress > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-idea-form-progress span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ai-idea-form-progress span b {
+  color: var(--wia-blue);
+  font-size: 15px;
+}
+
+.ai-idea-form-progress small {
+  color: #8b97a8;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.ai-idea-form-progress > i {
+  height: 4px;
+  overflow: hidden;
+  background: #dfe6ef;
+}
+
+.ai-idea-form-progress > i > b {
+  display: block;
+  height: 100%;
+  background: var(--wia-blue);
+  transition: width 180ms ease;
+}
+
+.ai-idea-form .form-field .ai-idea-field-label {
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ai-idea-field-label em {
+  flex: none;
+  width: 23px;
+  color: var(--wia-blue);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.ai-idea-field-label b {
+  color: #273244;
+  font-size: 11.5px;
+}
+
+.ai-idea-form .form-field .ai-idea-field-label small {
+  color: #98a3b2;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.ai-idea-field-label svg,
+.ai-idea-field-label > i {
+  margin-left: auto;
+}
+
+.ai-idea-field-label svg {
+  color: #218055;
+}
+
+.ai-idea-field-label > i {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #ccd5e1;
+  border-radius: 50%;
+  background: #fff;
+}
+
 .ai-idea-form input,
 .ai-idea-form textarea {
   width: 100%;
@@ -2464,11 +2551,14 @@ a { color: inherit; text-decoration: none; }
 }
 
 .ai-usage-filter {
+  width: 96px;
+  flex: 0 0 96px;
   min-height: 32px;
   border: 1px solid #dde5f0;
   background: #fff;
   color: #66758d;
-  padding: 0 13px;
+  padding: 0 8px;
+  text-align: center;
   font-size: 12px;
   font-weight: 900;
   transition: var(--transition);

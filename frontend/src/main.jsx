@@ -647,6 +647,7 @@ function App() {
     const asset = assetCatalog.find((item) => item.asset_id === recommendation.asset_id);
     return asset ? { ...asset, recommendation } : null;
   }).filter(Boolean), [assetCatalog, assetRecommendations]);
+  const aiIdeaCompletedFieldCount = ['title', 'problem_definition', 'proposal', 'effect'].filter((field) => aiIdeaForm[field].trim()).length;
   const filteredAiUsagePosts = useMemo(() => {
     const query = aiUsageQuery.trim().toLowerCase();
     const filtered = aiUsagePosts.filter((post) => {
@@ -4205,31 +4206,34 @@ function App() {
                     <span>SUBMIT</span>
                     <h2>아이디어 작성</h2>
                   </div>
-                  <Send size={18} />
+                  <div className="ai-idea-form-progress">
+                    <div><span><b>{aiIdeaCompletedFieldCount}</b>/4</span><small>필수 항목 작성</small></div>
+                    <i><b style={{ width: `${aiIdeaCompletedFieldCount / 4 * 100}%` }} /></i>
+                  </div>
                 </div>
 
                 <label className="form-field">
-                  <span>제목</span>
+                  <span className="ai-idea-field-label"><em>01</em><b>제목</b><small>필수</small>{aiIdeaForm.title.trim() ? <CheckCircle2 size={15} /> : <i />}</span>
                   <input value={aiIdeaForm.title} onChange={(event) => updateAiIdeaField('title', event.target.value)} placeholder="예: 설비 알람 원인 자동 분류" required />
                 </label>
 
                 <label className="form-field">
-                  <span>문제 정의</span>
+                  <span className="ai-idea-field-label"><em>02</em><b>문제 정의</b><small>필수</small>{aiIdeaForm.problem_definition.trim() ? <CheckCircle2 size={15} /> : <i />}</span>
                   <textarea value={aiIdeaForm.problem_definition} onChange={(event) => updateAiIdeaField('problem_definition', event.target.value)} placeholder="현재 업무에서 어떤 문제가 반복되는지 작성해 주세요." rows="4" required />
                 </label>
 
                 <label className="form-field">
-                  <span>제안 내용</span>
+                  <span className="ai-idea-field-label"><em>03</em><b>제안 내용</b><small>필수</small>{aiIdeaForm.proposal.trim() ? <CheckCircle2 size={15} /> : <i />}</span>
                   <textarea value={aiIdeaForm.proposal} onChange={(event) => updateAiIdeaField('proposal', event.target.value)} placeholder="AI를 어떻게 적용하면 좋을지 구체적으로 작성해 주세요." rows="5" required />
                 </label>
 
                 <label className="form-field">
-                  <span>예상 효과</span>
+                  <span className="ai-idea-field-label"><em>04</em><b>예상 효과</b><small>필수</small>{aiIdeaForm.effect.trim() ? <CheckCircle2 size={15} /> : <i />}</span>
                   <textarea value={aiIdeaForm.effect} onChange={(event) => updateAiIdeaField('effect', event.target.value)} placeholder="시간 절감, 오류 감소, 표준화 등 기대 효과를 작성해 주세요." rows="3" required />
                 </label>
 
                 <div className="form-field">
-                  <span>참고자료</span>
+                  <span className="ai-idea-field-label"><em>05</em><b>참고자료</b><small>선택</small>{aiIdeaForm.attachments.length > 0 ? <CheckCircle2 size={15} /> : <i />}</span>
                   <input
                     ref={aiIdeaFileInputRef}
                     className="ai-idea-file-input"
