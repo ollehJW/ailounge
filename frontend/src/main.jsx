@@ -29,6 +29,7 @@ import {
   LogIn,
   LogOut,
   Layers3,
+  Maximize2,
   Mail,
   MessageCircle,
   Newspaper,
@@ -106,11 +107,12 @@ const externalLinks = [
   { label: 'WIA Meet', href: 'https://10.217.183.72:9702/', icon: NotebookPen },
 ];
 
+// TODO: Clear these demo values after the AI idea submission demonstration.
 const emptyAiIdeaForm = {
-  title: '',
-  problem_definition: '',
-  proposal: '',
-  effect: '',
+  title: '생산설비 이상 징후 조기 감지 AI',
+  problem_definition: '생산설비의 진동, 온도, 전류 데이터는 수집되고 있지만 담당자가 여러 화면을 직접 확인해야 해 이상 징후를 조기에 발견하기 어렵습니다. 이상이 실제 고장으로 이어진 후 대응하는 경우가 많아 비계획 정지와 긴급 보전 작업이 반복됩니다.',
+  proposal: '설비별 센서 데이터와 과거 고장·정비 이력을 AI가 실시간으로 분석하여 평소와 다른 패턴을 조기에 탐지합니다. 이상 가능성이 높아지면 영향 설비, 주요 변화 지표, 예상 원인을 정리해 담당자에게 알리고 점검 우선순위를 추천합니다.',
+  effect: '설비 이상을 고장 전에 확인해 비계획 정지와 생산 손실을 줄일 수 있습니다. 담당자는 모든 설비 데이터를 반복 확인하는 대신 위험도가 높은 설비부터 점검할 수 있으며, 축적된 이상 징후와 조치 이력을 예방보전 기준으로 활용할 수 있습니다.',
   attachments: [],
 };
 
@@ -142,6 +144,11 @@ const assetDataTypes = ['테이블·정형데이터', '시계열 데이터', '�
 const assetMaturityLevels = ['아이디어', 'PoC', 'Pilot', '운영'];
 const assetTaskTypes = ['예측', '탐지', '분류', '검색', '질의응답', '요약', '생성', '추출', '추천', '분석', '최적화', '자동화'];
 const assetImplementationTypes = ['ML', 'DL', 'Computer Vision', 'LLM', 'RAG', 'Agent', 'Rule-Based', 'Hybrid'];
+// TODO: Remove the demo repository defaults after the asset registration demonstration.
+const assetDemoRepository = {
+  url: 'https://github.com/ollehJW/meeting_write_agent.git',
+  branch: 'main',
+};
 const createAssetTechItem = (overrides = {}) => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, ...overrides });
 const createAssetImageItem = (overrides = {}) => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, fileName: '', previewUrl: '', file: null, caption: '', description: '', ...overrides });
 const assetRegistrySteps = [
@@ -399,13 +406,14 @@ const copyTextToClipboard = async (text) => {
   if (!copied) throw new Error('클립보드 복사를 지원하지 않는 브라우저입니다.');
 };
 
+// TODO: Clear these demo values after the diffusion case demonstration.
 const emptyDiffusionCaseForm = {
-  title: '',
-  stage: '',
-  applied_work: '',
-  customization: '',
-  effect: '',
-  git_url: '',
+  title: '기획 회의 회의록 작성 및 후속 업무 관리 자동화',
+  stage: 'pilot',
+  applied_work: '기획팀의 주간 기획회의와 유관부서 협업회의에 적용했습니다. 회의 종료 후 담당자가 녹음 내용을 다시 들으며 주요 논의사항, 의사결정 내용, 담당자별 후속 업무를 정리해 배포하던 업무입니다.',
+  customization: '회의록 자동 작성 Agent에 기획 업무 용어와 프로젝트명을 추가하고, 결과가 회의 개요·주요 논의·의사결정·후속 업무 순서로 작성되도록 템플릿을 수정했습니다. 후속 업무는 담당자와 완료 예정일을 함께 추출하도록 보완해 주간 업무 관리에 바로 활용했습니다.',
+  effect: '회의당 약 60분이 걸리던 회의록 초안 작성 시간을 약 15분으로 단축했습니다. 결정사항과 후속 업무의 누락이 줄었고, 회의 당일 유관부서에 결과를 공유할 수 있어 업무 전달과 진행 상황 확인이 빨라졌습니다.',
+  git_url: 'https://github.com/ollehJW/meeting_write_agent.git',
 };
 
 function App() {
@@ -497,6 +505,7 @@ function App() {
   const [isLoadingCatalogDetail, setIsLoadingCatalogDetail] = useState(false);
   const [catalogDetailError, setCatalogDetailError] = useState('');
   const [catalogSlideIndex, setCatalogSlideIndex] = useState(0);
+  const [catalogImagePreview, setCatalogImagePreview] = useState(null);
   const [isCatalogRepoCopied, setIsCatalogRepoCopied] = useState(false);
   const [assetDiffusionCases, setAssetDiffusionCases] = useState({});
   const [isDiffusionCaseFormOpen, setIsDiffusionCaseFormOpen] = useState(false);
@@ -604,6 +613,20 @@ function App() {
   const assetRegistryRef = useRef(null);
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${authToken}` }), [authToken]);
+
+  useEffect(() => {
+    if (!catalogImagePreview) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setCatalogImagePreview(null);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [catalogImagePreview]);
   const isAdminView = Boolean(authUser?.is_admin);
   const adminPage = ['accounts', 'tech-news-write', 'idea-review', 'asset-management'].includes(activePage) ? activePage : 'accounts';
   const orgFilterOptions = useMemo(() => Array.from(new Set(accounts.map((account) => account.org_name).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko')), [accounts]);
@@ -1207,6 +1230,7 @@ function App() {
   };
 
   const closeAssetCatalogDetail = () => {
+    setCatalogImagePreview(null);
     setSelectedCatalogAsset(null);
     setCatalogDetailError('');
     setIsCatalogRepoCopied(false);
@@ -2788,10 +2812,30 @@ function App() {
         </section>
       </div>
     );
-    if (selectedCatalogTab === 'demo') {
+    if (selectedCatalogTab === "demo") {
       const slides = asset.slides || [];
       const slide = slides[catalogSlideIndex] || slides[0];
-      return slide ? <div className="asset-detail-demo"><div className="asset-demo-stage"><img src={API_BASE + slide.url} alt={slide.caption || asset.asset_name} /></div><div className="asset-demo-caption"><span>{String(catalogSlideIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}</span><div><b>{slide.caption || '자산 활용 화면'}</b><p>{slide.description}</p></div><div><button type="button" aria-label="이전 이미지" disabled={catalogSlideIndex === 0} onClick={() => setCatalogSlideIndex((index) => index - 1)}>←</button><button type="button" aria-label="다음 이미지" disabled={catalogSlideIndex >= slides.length - 1} onClick={() => setCatalogSlideIndex((index) => index + 1)}>→</button></div></div></div> : <div className="asset-detail-empty"><Layers3 size={26} /><b>등록된 자산 활용 화면이 없습니다.</b></div>;
+      if (!slide) return <div className="asset-detail-empty"><Layers3 size={26} /><b>등록된 자산 활용 화면이 없습니다.</b></div>;
+      const imageSource = API_BASE + slide.url;
+      const imageAlt = slide.caption || asset.asset_name;
+      return (
+        <div className="asset-detail-demo">
+          <button
+            className="asset-demo-stage"
+            type="button"
+            aria-label={`${imageAlt} 원본 이미지 보기`}
+            onClick={() => setCatalogImagePreview({ src: imageSource, alt: imageAlt, caption: slide.caption || "자산 활용 화면", description: slide.description || "" })}
+          >
+            <img src={imageSource} alt={imageAlt} />
+            <span className="asset-demo-expand" title="원본 이미지 보기"><Maximize2 size={16} /></span>
+          </button>
+          <div className="asset-demo-caption">
+            <span>{String(catalogSlideIndex + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}</span>
+            <div><b>{slide.caption || "자산 활용 화면"}</b><p>{slide.description}</p></div>
+            <div><button type="button" aria-label="이전 이미지" disabled={catalogSlideIndex === 0} onClick={() => setCatalogSlideIndex((index) => index - 1)}>←</button><button type="button" aria-label="다음 이미지" disabled={catalogSlideIndex >= slides.length - 1} onClick={() => setCatalogSlideIndex((index) => index + 1)}>→</button></div>
+          </div>
+        </div>
+      );
     }
     if (selectedCatalogTab === 'qa') {
       const questions = assetQaThreads[asset.asset_id] || [];
@@ -3250,6 +3294,15 @@ function App() {
               <nav className="asset-detail-tabs">{[['overview', '과제 설명'], ['tech', '적용 기술'], ['data', '데이터'], ['performance', '성능 지표'], ['demo', '자산 활용'], ['diffusion', '확산 가이드'], ['diffusion-cases', '확산 사례'], ['qa', 'Q&A']].map(([key, label]) => <button className={selectedCatalogTab === key ? 'active' : ''} type="button" key={key} onClick={() => selectAssetCatalogTab(key)}>{label}</button>)}</nav>
               <div className="asset-detail-body">{renderAssetCatalogDetailTab()}</div>
             </aside></>}
+            {catalogImagePreview && (
+              <div className="asset-image-lightbox" role="dialog" aria-modal="true" aria-label="자산 활용 원본 이미지" onMouseDown={() => setCatalogImagePreview(null)}>
+                <section className="asset-image-lightbox-panel" onMouseDown={(event) => event.stopPropagation()}>
+                  <header><div><span>ORIGINAL IMAGE</span><b>{catalogImagePreview.caption}</b></div><button type="button" aria-label="원본 이미지 닫기" onClick={() => setCatalogImagePreview(null)}><X size={19} /></button></header>
+                  <div className="asset-image-lightbox-canvas"><img src={catalogImagePreview.src} alt={catalogImagePreview.alt} /></div>
+                  {catalogImagePreview.description && <p>{catalogImagePreview.description}</p>}
+                </section>
+              </div>
+            )}
             {isDiffusionCaseFormOpen && selectedCatalogAsset && (
               <div className="asset-diffusion-case-backdrop" role="presentation" onMouseDown={closeDiffusionCaseForm}>
                 <form className="asset-diffusion-case-modal" onSubmit={submitDiffusionCase} onMouseDown={(event) => event.stopPropagation()}>
@@ -3550,12 +3603,12 @@ function App() {
                 <div className="asset-reg-card-body">
                   <div className="asset-reg-repo-panel">
                     <div className="asset-reg-repo-grid">
-                      <input name="repo_url" defaultValue={assetDraft.repo_url || ''} placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" />
-                      <input name="repo_branch" defaultValue={assetDraft.repo_branch || ''} placeholder="브랜치명 (예: main)" />
+                      <input name="repo_url" defaultValue={assetDraft.repo_url || assetDemoRepository.url} placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" />
+                      <input name="repo_branch" defaultValue={assetDraft.repo_branch || assetDemoRepository.branch} placeholder="브랜치명 (예: main)" />
                       <button type="button" disabled={isCloningAssetRepo} onClick={cloneAssetRepository}>{isCloningAssetRepo ? '연결 중...' : '연결'}</button>
                     </div>
                     <div className="asset-reg-file-tree">
-                      <div>저장소 구조 <span>{assetDraft.repo_branch || 'default branch'}</span></div>
+                      <div>저장소 구조 <span>{assetDraft.repo_branch || assetDemoRepository.branch}</span></div>
                       {isCloningAssetRepo ? <p>Git 저장소를 가져오는 중입니다.</p> : assetRepoTree.length ? renderAssetRepoTree(assetRepoTree) : <p>Git을 연결하면 이 영역에 폴더 구조가 표시됩니다.</p>}
                     </div>
                   </div>
