@@ -49,6 +49,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 const emptyAccountForm = {
   login_id: '',
+  email: '',
   org_name: '',
   displayed_name: '',
   job_title: '',
@@ -2679,6 +2680,7 @@ function App() {
     setEditingUserId(account.user_id);
     setAccountForm({
       login_id: account.login_id,
+      email: account.email,
       org_name: account.org_name,
       displayed_name: account.displayed_name,
       job_title: account.job_title,
@@ -2695,6 +2697,7 @@ function App() {
 
     const payload = {
       login_id: accountForm.login_id.trim(),
+      email: accountForm.email.trim(),
       org_name: accountForm.org_name.trim(),
       displayed_name: accountForm.displayed_name.trim(),
       job_title: accountForm.job_title.trim(),
@@ -4706,6 +4709,10 @@ function App() {
                     <input value={accountForm.displayed_name} onChange={(event) => updateAccountField('displayed_name', event.target.value)} required />
                   </label>
                 </div>
+                <label className="form-field">
+                  <span>이메일</span>
+                  <input type="email" value={accountForm.email} onChange={(event) => updateAccountField('email', event.target.value)} placeholder="name@hyundai-wia.com" required />
+                </label>
                 <div className="form-row">
                   <label className="form-field">
                     <span>조직</span>
@@ -4757,6 +4764,7 @@ function App() {
                       <tr>
                         <th>사번</th>
                         <th>이름</th>
+                        <th>이메일</th>
                         <th>조직</th>
                         <th>직책</th>
                         <th>권한</th>
@@ -4765,13 +4773,14 @@ function App() {
                     </thead>
                     <tbody>
                       {isLoadingAccounts ? (
-                        <tr><td colSpan="6" className="table-empty">계정 목록을 불러오는 중입니다.</td></tr>
+                        <tr><td colSpan="7" className="table-empty">계정 목록을 불러오는 중입니다.</td></tr>
                       ) : filteredAccounts.length === 0 ? (
-                        <tr><td colSpan="6" className="table-empty">조건에 맞는 계정이 없습니다.</td></tr>
+                        <tr><td colSpan="7" className="table-empty">조건에 맞는 계정이 없습니다.</td></tr>
                       ) : filteredAccounts.map((account) => (
                         <tr key={account.user_id}>
                           <td>{account.login_id}</td>
                           <td>{account.displayed_name}</td>
+                          <td className="account-email-cell">{account.email || '-'}</td>
                           <td>{account.org_name}</td>
                           <td>{account.job_title}</td>
                           <td><span className={`role-badge ${account.is_admin ? 'admin' : ''}`}>{account.is_admin ? '관리자' : '사용자'}</span></td>

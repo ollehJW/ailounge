@@ -15,12 +15,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile, status
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from llm_client import chat_completion
+from mailing import send_review_completed_email_safely
 from harness_generator import iter_generate_skill_package, plan_skill_candidates
 
 
@@ -61,6 +62,7 @@ class LoginRequest(BaseModel):
 class UserResponse(BaseModel):
     user_id: str
     login_id: str
+    email: str
     org_name: str
     displayed_name: str
     job_title: str
@@ -76,6 +78,7 @@ class LoginResponse(BaseModel):
 
 class UserCreateRequest(BaseModel):
     login_id: str = Field(min_length=1)
+    email: str = Field(min_length=3, max_length=254)
     org_name: str = Field(min_length=1)
     displayed_name: str = Field(min_length=1)
     job_title: str = Field(min_length=1)
@@ -85,6 +88,7 @@ class UserCreateRequest(BaseModel):
 
 class UserUpdateRequest(BaseModel):
     login_id: str = Field(min_length=1)
+    email: str = Field(min_length=3, max_length=254)
     org_name: str = Field(min_length=1)
     displayed_name: str = Field(min_length=1)
     job_title: str = Field(min_length=1)
@@ -575,6 +579,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS user (
                 user_id TEXT PRIMARY KEY,
                 login_id TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL DEFAULT '',
                 password TEXT NOT NULL,
                 org_name TEXT NOT NULL,
                 job_title TEXT NOT NULL,
@@ -590,7 +595,10 @@ def init_db() -> None:
             con.execute("UPDATE user SET login_id = user_id WHERE login_id IS NULL OR login_id = ''")
         if "is_admin" not in columns:
             con.execute("ALTER TABLE user ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+        if "email" not in columns:
+            con.execute("ALTER TABLE user ADD COLUMN email TEXT NOT NULL DEFAULT ''")
         con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_login_id ON user(login_id)")
+        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_email ON user(email) WHERE email <> ''")
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS user_sessions (
@@ -1046,12 +1054,20 @@ def user_from_row(row: sqlite3.Row) -> UserResponse:
     return UserResponse(
         user_id=row["user_id"],
         login_id=row["login_id"],
+        email=row["email"],
         org_name=row["org_name"],
         displayed_name=row["displayed_name"],
         job_title=row["job_title"],
         is_admin=bool(row["is_admin"]),
         created_at=row["created_at"],
     )
+
+
+def normalize_email(value: str) -> str:
+    email = value.strip().lower()
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="올바른 이메일 주소를 입력하세요.")
+    return email
 
 
 def news_cover_url(news_id: str, cover_image: str | None) -> str | None:
@@ -1437,7 +1453,7 @@ def get_current_user(authorization: Annotated[str | None, Header()] = None) -> U
     with get_connection() as con:
         row = con.execute(
             """
-            SELECT u.user_id, u.login_id, u.org_name, u.displayed_name, u.job_title, u.is_admin, u.created_at
+            SELECT u.user_id, u.login_id, u.email, u.org_name, u.displayed_name, u.job_title, u.is_admin, u.created_at
             FROM user_sessions s
             JOIN user u ON u.user_id = s.user_id
             WHERE s.token = ?
@@ -1471,7 +1487,7 @@ def login(payload: LoginRequest) -> LoginResponse:
     with get_connection() as con:
         row = con.execute(
             """
-            SELECT user_id, login_id, org_name, displayed_name, job_title, password, is_admin, created_at
+            SELECT user_id, login_id, email, org_name, displayed_name, job_title, password, is_admin, created_at
             FROM user
             WHERE login_id = ?
             """,
@@ -1494,7 +1510,7 @@ def list_users(_: Annotated[UserResponse, Depends(require_admin)]) -> list[UserR
     with get_connection() as con:
         rows = con.execute(
             """
-            SELECT user_id, login_id, org_name, displayed_name, job_title, is_admin, created_at
+            SELECT user_id, login_id, email, org_name, displayed_name, job_title, is_admin, created_at
             FROM user
             WHERE is_admin = 0
             ORDER BY
@@ -1517,16 +1533,18 @@ def list_users(_: Annotated[UserResponse, Depends(require_admin)]) -> list[UserR
 @app.post("/api/admin/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreateRequest, _: Annotated[UserResponse, Depends(require_admin)]) -> UserResponse:
     user_id = str(uuid.uuid4())
+    email = normalize_email(payload.email)
     try:
         with get_connection() as con:
             con.execute(
                 """
-                INSERT INTO user (user_id, login_id, org_name, displayed_name, job_title, password, is_admin, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO user (user_id, login_id, email, org_name, displayed_name, job_title, password, is_admin, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     user_id,
                     payload.login_id.strip(),
+                    email,
                     payload.org_name.strip(),
                     payload.displayed_name.strip(),
                     payload.job_title.strip(),
@@ -1537,14 +1555,14 @@ def create_user(payload: UserCreateRequest, _: Annotated[UserResponse, Depends(r
             )
             row = con.execute(
                 """
-                SELECT user_id, login_id, org_name, displayed_name, job_title, is_admin, created_at
+                SELECT user_id, login_id, email, org_name, displayed_name, job_title, is_admin, created_at
                 FROM user
                 WHERE user_id = ?
                 """,
                 (user_id,),
             ).fetchone()
     except sqlite3.IntegrityError:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번입니다.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번 또는 이메일입니다.")
 
     return user_from_row(row)
 
@@ -1553,6 +1571,7 @@ def create_user(payload: UserCreateRequest, _: Annotated[UserResponse, Depends(r
 def update_user(user_id: str, payload: UserUpdateRequest, _: Annotated[UserResponse, Depends(require_admin)]) -> UserResponse:
     values: list[object] = [
         payload.login_id.strip(),
+        normalize_email(payload.email),
         payload.org_name.strip(),
         payload.displayed_name.strip(),
         payload.job_title.strip(),
@@ -1569,7 +1588,7 @@ def update_user(user_id: str, payload: UserUpdateRequest, _: Annotated[UserRespo
             result = con.execute(
                 f"""
                 UPDATE user
-                SET login_id = ?, org_name = ?, displayed_name = ?, job_title = ?, is_admin = ?{password_sql}
+                SET login_id = ?, email = ?, org_name = ?, displayed_name = ?, job_title = ?, is_admin = ?{password_sql}
                 WHERE user_id = ?
                 """,
                 values,
@@ -1578,14 +1597,14 @@ def update_user(user_id: str, payload: UserUpdateRequest, _: Annotated[UserRespo
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없습니다.")
             row = con.execute(
                 """
-                SELECT user_id, login_id, org_name, displayed_name, job_title, is_admin, created_at
+                SELECT user_id, login_id, email, org_name, displayed_name, job_title, is_admin, created_at
                 FROM user
                 WHERE user_id = ?
                 """,
                 (user_id,),
             ).fetchone()
     except sqlite3.IntegrityError:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번입니다.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번 또는 이메일입니다.")
 
     return user_from_row(row)
 
@@ -1690,7 +1709,7 @@ def stage_ai_asset(
 
     asset_id = validate_asset_id(str(payload.get("asset_id") or "").strip() or None)
     payload["asset_id"] = asset_id
-    user_email = str(payload.get("owner_email") or "jongwook.lee@hyundai-wia.com").strip() or "jongwook.lee@hyundai-wia.com"
+    user_email = current_user.email
     payload["user_id"] = current_user.user_id
     payload["user_email"] = user_email
     payload["staged_by"] = current_user.user_id
@@ -2655,6 +2674,7 @@ def list_admin_ai_assets(
 def update_admin_ai_asset_status(
     asset_id: str,
     payload: AssetStatusUpdateRequest,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[UserResponse, Depends(require_admin)],
 ) -> AiAssetResponse:
     asset_id = validate_asset_id(asset_id)
@@ -2693,6 +2713,8 @@ def update_admin_ai_asset_status(
             """,
             (asset_id,),
         ).fetchone()
+        recipient_email = con.execute("SELECT email FROM user WHERE user_id = ?", (row["created_by"],)).fetchone()["email"]
+    background_tasks.add_task(send_review_completed_email_safely, recipient_email, row["asset_name"], "asset")
     return AiAssetResponse(**dict(row))
 
 
@@ -3156,6 +3178,7 @@ def list_admin_ideas(_: Annotated[UserResponse, Depends(require_admin)]) -> list
 def update_admin_idea_status(
     idea_id: str,
     payload: IdeaStatusUpdateRequest,
+    background_tasks: BackgroundTasks,
     _: Annotated[UserResponse, Depends(require_admin)],
 ) -> IdeaResponse:
     clean_status = payload.status.strip()
@@ -3171,12 +3194,15 @@ def update_admin_idea_status(
             """
             UPDATE ideas
             SET status = ?, updated_at = ?, reviewed_at = ?, review_comment = ?
-            WHERE idea_id = ?
+            WHERE idea_id = ? AND status = '접수완료'
             """,
             (clean_status, now, reviewed_at, clean_comment, idea_id),
         )
         if result.rowcount == 0:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="아이디어를 찾을 수 없습니다.")
+            existing = con.execute("SELECT status FROM ideas WHERE idea_id = ?", (idea_id,)).fetchone()
+            if existing is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="아이디어를 찾을 수 없습니다.")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 심사가 완료된 아이디어입니다.")
         row = con.execute(
             """
             SELECT
@@ -3201,7 +3227,10 @@ def update_admin_idea_status(
             """,
             (idea_id,),
         ).fetchone()
-        return idea_from_row(row, fetch_idea_attachments(con, idea_id))
+        recipient_email = con.execute("SELECT email FROM user WHERE user_id = ?", (row["user_id"],)).fetchone()["email"]
+        response = idea_from_row(row, fetch_idea_attachments(con, idea_id))
+    background_tasks.add_task(send_review_completed_email_safely, recipient_email, row["title"], "idea")
+    return response
 
 
 @app.post("/api/dx-discovery/chat", response_model=DxDiscoveryChatResponse)

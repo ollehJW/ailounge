@@ -780,7 +780,13 @@ a { color: inherit; text-decoration: none; }
 .account-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  min-width: 900px;
+}
+
+.account-email-cell {
+  color: #536176 !important;
+  font-size: 11.5px !important;
+  white-space: nowrap;
 }
 
 .account-table th,
