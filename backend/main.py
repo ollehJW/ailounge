@@ -38,6 +38,7 @@ SAMPLE_ASSET_DIR = BASE_DIR.parent / "sample"
 PROMPTS_DIR = BASE_DIR / "prompts"
 PBKDF2_ITERATIONS = 210_000
 MAX_ASSET_DATA_FILE_SIZE = 10 * 1024 * 1024
+NEWS_CATEGORIES = {"wia", "external", "bp"}
 
 app = FastAPI(title="AI Lounge API")
 
@@ -99,6 +100,9 @@ class UserUpdateRequest(BaseModel):
 class NewsResponse(BaseModel):
     news_id: str
     title: str
+    category: str
+    source_url: str | None = None
+    org_name: str | None = None
     writer: str
     writer_name: str | None = None
     cover_image: str | None = None
@@ -114,6 +118,9 @@ class NewsDetailResponse(NewsResponse):
 
 class NewsDraftRequest(BaseModel):
     source: str = Field(min_length=1)
+    category: str = "external"
+    title: str | None = None
+    org_name: str | None = None
 
 
 class NewsDraftResponse(BaseModel):
@@ -614,6 +621,9 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS news (
                 news_id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
+                category TEXT NOT NULL DEFAULT 'external',
+                source_url TEXT,
+                org_name TEXT,
                 writer TEXT NOT NULL,
                 cover_image TEXT,
                 view_count INTEGER NOT NULL DEFAULT 0,
@@ -628,7 +638,15 @@ def init_db() -> None:
             con.execute("ALTER TABLE news ADD COLUMN cover_image TEXT")
         if "view_count" not in news_columns:
             con.execute("ALTER TABLE news ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0")
+        if "category" not in news_columns:
+            con.execute("ALTER TABLE news ADD COLUMN category TEXT NOT NULL DEFAULT 'external'")
+        if "source_url" not in news_columns:
+            con.execute("ALTER TABLE news ADD COLUMN source_url TEXT")
+        if "org_name" not in news_columns:
+            con.execute("ALTER TABLE news ADD COLUMN org_name TEXT")
+        con.execute("UPDATE news SET category = 'external' WHERE category IS NULL OR category NOT IN ('wia', 'external', 'bp')")
         con.execute("CREATE INDEX IF NOT EXISTS idx_news_created_at ON news(created_at)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_news_category_created_at ON news(category, created_at)")
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS ai_usage_posts (
@@ -1070,6 +1088,33 @@ def normalize_email(value: str) -> str:
     return email
 
 
+
+
+def normalize_news_category(value: str) -> str:
+    category = value.strip().lower()
+    if category not in NEWS_CATEGORIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="올바른 뉴스 유형을 선택하세요.")
+    return category
+
+
+def normalize_news_source_url(value: str | None) -> str | None:
+    source_url = (value or "").strip()
+    if not source_url:
+        return None
+    if not re.fullmatch(r"https?://[^\s]+", source_url):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="원문 URL은 http:// 또는 https:// 형식으로 입력하세요.")
+    return source_url
+
+
+def normalize_news_org_name(value: str | None, category: str) -> str | None:
+    org_name = (value or "").strip()
+    if category != "bp":
+        return None
+    if not org_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="BP 사례의 조직을 입력하세요.")
+    return org_name
+
+
 def news_cover_url(news_id: str, cover_image: str | None) -> str | None:
     if not cover_image:
         return None
@@ -1080,6 +1125,9 @@ def news_from_row(row: sqlite3.Row) -> NewsResponse:
     return NewsResponse(
         news_id=row["news_id"],
         title=row["title"],
+        category=row["category"] if "category" in row.keys() else "external",
+        source_url=row["source_url"] if "source_url" in row.keys() else None,
+        org_name=row["org_name"] if "org_name" in row.keys() else None,
         writer=row["writer"],
         writer_name=row["writer_name"] if "writer_name" in row.keys() else None,
         cover_image=row["cover_image"],
@@ -3836,16 +3884,31 @@ def get_ai_usage_post_asset(usage_post_id: str, filename: str) -> FileResponse:
 
 
 @app.get("/api/news", response_model=list[NewsResponse])
-def list_news() -> list[NewsResponse]:
+def list_news(category: Annotated[str | None, Query()] = None) -> list[NewsResponse]:
+    clean_category = normalize_news_category(category) if category else None
     with get_connection() as con:
-        rows = con.execute(
-            """
-            SELECT n.news_id, n.title, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
-            FROM news n
-            LEFT JOIN user u ON u.user_id = n.writer
-            ORDER BY n.created_at DESC
-            """
-        ).fetchall()
+        if clean_category:
+            rows = con.execute(
+                """
+                SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name,
+                       n.cover_image, n.view_count, n.created_at, n.updated_at
+                FROM news n
+                LEFT JOIN user u ON u.user_id = n.writer
+                WHERE n.category = ?
+                ORDER BY n.created_at DESC
+                """,
+                (clean_category,),
+            ).fetchall()
+        else:
+            rows = con.execute(
+                """
+                SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name,
+                       n.cover_image, n.view_count, n.created_at, n.updated_at
+                FROM news n
+                LEFT JOIN user u ON u.user_id = n.writer
+                ORDER BY n.created_at DESC
+                """
+            ).fetchall()
     return [news_from_row(row) for row in rows]
 
 
@@ -3858,7 +3921,7 @@ def get_news(news_id: str, count_view: Annotated[bool, Query()] = True) -> NewsD
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="뉴스를 찾을 수 없습니다.")
         row = con.execute(
             """
-            SELECT n.news_id, n.title, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
+            SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
             FROM news n
             LEFT JOIN user u ON u.user_id = n.writer
             WHERE n.news_id = ?
@@ -3875,6 +3938,9 @@ def get_news(news_id: str, count_view: Annotated[bool, Query()] = True) -> NewsD
     return NewsDetailResponse(
         news_id=news.news_id,
         title=news.title,
+        category=news.category,
+        source_url=news.source_url,
+        org_name=news.org_name,
         writer=news.writer,
         writer_name=news.writer_name,
         cover_image=news.cover_image,
@@ -3901,21 +3967,26 @@ def get_news_cover(news_id: str) -> FileResponse:
 
 @app.post("/api/admin/news/draft", response_model=NewsDraftResponse)
 def draft_news(payload: NewsDraftRequest, _: Annotated[UserResponse, Depends(require_admin)]) -> NewsDraftResponse:
-    prompt = f"""
-다음 기사 소스 또는 원문 자료를 바탕으로 사내 AI Tech News 게시글을 작성해줘.
-
-작성 규칙:
-- 출력은 Markdown 본문만 작성한다. 코드블록으로 감싸지 않는다.
-- 첫 줄은 게시글 제목으로 쓰기 좋은 H1(`# ...`)을 작성한다.
-- 전체 본문은 한글로 작성한다. 단, 고유명사, 제품명, 기술명, 원문 인용은 필요한 경우 원문 표기를 유지한다.
-- 원문에 없는 사실을 새로 만들지 않는다. 추론이 필요한 내용은 조심스럽게 표현한다.
-- 핵심 요약, 주요 내용, 시사점, 현업 적용 아이디어 순서로 구성한다.
-- 독자는 제조업/사내 업무 담당자라고 가정하고 쉬운 한국어로 쓴다.
-- 과장된 홍보 문구는 피하고, 구체적이고 실무적인 표현을 사용한다.
-
-기사 소스:
-{payload.source.strip()}
-"""
+    category = normalize_news_category(payload.category)
+    if category == "external":
+        prompt = (
+            read_prompt("tech_news_external.txt")
+            .replace("{{ARTICLE_SOURCE}}", payload.source.strip())
+            .replace("{{ARTICLE_TITLE}}", (payload.title or "별도 제목 없음").strip())
+        )
+    elif category == "wia":
+        prompt = (
+            read_prompt("tech_news_wia.txt")
+            .replace("{{ARTICLE_SOURCE}}", payload.source.strip())
+            .replace("{{ARTICLE_TITLE}}", (payload.title or "별도 제목 없음").strip())
+        )
+    else:
+        prompt = (
+            read_prompt("tech_news_bp.txt")
+            .replace("{{ARTICLE_SOURCE}}", payload.source.strip())
+            .replace("{{ARTICLE_TITLE}}", (payload.title or "별도 제목 없음").strip())
+            .replace("{{ORG_NAME}}", (payload.org_name or "미입력").strip())
+        )
     try:
         markdown = chat_completion(prompt, temperature=0)
     except Exception as exc:
@@ -3928,11 +3999,17 @@ def create_news(
     current_user: Annotated[UserResponse, Depends(require_admin)],
     title: Annotated[str, Form()],
     markdown: Annotated[str, Form()],
+    category: Annotated[str, Form()],
+    source_url: Annotated[str | None, Form()] = None,
+    org_name: Annotated[str | None, Form()] = None,
     cover_image: Annotated[UploadFile | None, File()] = None,
 ) -> NewsResponse:
     clean_title = title.strip()
     if not clean_title:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="제목을 입력하세요.")
+    clean_category = normalize_news_category(category)
+    clean_source_url = normalize_news_source_url(source_url)
+    clean_org_name = normalize_news_org_name(org_name, clean_category)
 
     news_id = str(uuid.uuid4())
     now = utc_now()
@@ -3944,14 +4021,14 @@ def create_news(
     with get_connection() as con:
         con.execute(
             """
-            INSERT INTO news (news_id, title, writer, cover_image, view_count, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 0, ?, ?)
+            INSERT INTO news (news_id, title, category, source_url, org_name, writer, cover_image, view_count, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
             """,
-            (news_id, clean_title, current_user.user_id, cover_filename, now, now),
+            (news_id, clean_title, clean_category, clean_source_url, clean_org_name, current_user.user_id, cover_filename, now, now),
         )
         row = con.execute(
             """
-            SELECT n.news_id, n.title, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
+            SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
             FROM news n
             LEFT JOIN user u ON u.user_id = n.writer
             WHERE n.news_id = ?
@@ -3968,11 +4045,17 @@ def update_news(
     _: Annotated[UserResponse, Depends(require_admin)],
     title: Annotated[str, Form()],
     markdown: Annotated[str, Form()],
+    category: Annotated[str, Form()],
+    source_url: Annotated[str | None, Form()] = None,
+    org_name: Annotated[str | None, Form()] = None,
     cover_image: Annotated[UploadFile | None, File()] = None,
 ) -> NewsResponse:
     clean_title = title.strip()
     if not clean_title:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="제목을 입력하세요.")
+    clean_category = normalize_news_category(category)
+    clean_source_url = normalize_news_source_url(source_url)
+    clean_org_name = normalize_news_org_name(org_name, clean_category)
 
     folder = news_dir(news_id)
     with get_connection() as con:
@@ -3994,14 +4077,14 @@ def update_news(
         con.execute(
             """
             UPDATE news
-            SET title = ?, cover_image = ?, updated_at = ?
+            SET title = ?, category = ?, source_url = ?, org_name = ?, cover_image = ?, updated_at = ?
             WHERE news_id = ?
             """,
-            (clean_title, cover_filename, utc_now(), news_id),
+            (clean_title, clean_category, clean_source_url, clean_org_name, cover_filename, utc_now(), news_id),
         )
         row = con.execute(
             """
-            SELECT n.news_id, n.title, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
+            SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
             FROM news n
             LEFT JOIN user u ON u.user_id = n.writer
             WHERE n.news_id = ?

@@ -128,6 +128,13 @@ const assetApprovalStatusMeta = {
   rejected: { label: '반려', className: 'rejected' },
 };
 
+const newsCategoryOptions = [
+  { value: "wia", label: "위아 뉴스", eyebrow: "WIA NEWS" },
+  { value: "external", label: "외부 뉴스", eyebrow: "EXTERNAL NEWS" },
+  { value: "bp", label: "BP 사례", eyebrow: "BP CASE" },
+];
+const newsCategoryMeta = Object.fromEntries(newsCategoryOptions.map((item) => [item.value, item]));
+
 
 const dxInitialMessages = [
   { role: 'agent', text: '어떤 업무가 가장 힘드신가요? 편하게 이야기해주시면, 대화를 통해 과제를 구체화하고 과제 정의서와 참고할 Data·AI 자산까지 정리해드릴게요.' },
@@ -416,6 +423,41 @@ const emptyDiffusionCaseForm = {
   git_url: 'https://github.com/ollehJW/meeting_write_agent.git',
 };
 
+function ManagedNewsPreviewModal({ news, isLoading, onClose }) {
+  return (
+    <div className="news-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <article className="news-modal" role="dialog" aria-modal="true" aria-label="Tech News 미리보기" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="news-modal-close" type="button" aria-label="닫기" onClick={onClose}>×</button>
+        {isLoading ? (
+          <div className="news-empty">게시글을 불러오는 중입니다.</div>
+        ) : (
+          <>
+            <div className="news-detail-head">
+              <div className="news-detail-meta">
+                <span className={"news-category " + news.category}>{newsCategoryMeta[news.category]?.label || "AI Tech News"}</span>
+                {news.category === "bp" && news.org_name && <span className="news-org-meta"><Building2 size={13} />{news.org_name}</span>}
+                <span>{news.created_at.slice(0, 10)}</span>
+                <span className="news-view-count"><Eye size={14} />{formatViewCount(news.view_count)}</span>
+              </div>
+              <h2>{news.title}</h2>
+            </div>
+            {news.cover_image_url && <div className="news-modal-cover-frame"><img className="news-modal-cover" src={API_BASE + news.cover_image_url} alt="" /></div>}
+            {news.category === "external" && news.source_url && (
+              <div className="news-source-link-row">
+                <a className="news-source-link" href={news.source_url} target="_blank" rel="noreferrer">
+                  <span className="news-source-link-icon"><ExternalLink size={17} /></span>
+                  <span className="news-source-link-copy"><small>ORIGINAL SOURCE</small><b>외부 원문 기사 보기</b><em>{news.source_url}</em></span>
+                </a>
+              </div>
+            )}
+            <div className="markdown-report"><ReactMarkdown remarkPlugins={[remarkGfm]}>{news.markdown || ""}</ReactMarkdown></div>
+          </>
+        )}
+      </article>
+    </div>
+  );
+}
+
 function App() {
   const [authUser, setAuthUser] = useState(null);
   const [authToken, setAuthToken] = useState(() => window.localStorage.getItem('ailounge_token') || '');
@@ -536,6 +578,8 @@ function App() {
   const [isSavingAccount, setIsSavingAccount] = useState(false);
   const [orgFilter, setOrgFilter] = useState('all');
   const [newsList, setNewsList] = useState([]);
+  const [newsCategory, setNewsCategory] = useState("external");
+  const [newsManageCategory, setNewsManageCategory] = useState("all");
   const [selectedNewsId, setSelectedNewsId] = useState('');
   const [selectedNews, setSelectedNews] = useState(null);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
@@ -543,11 +587,18 @@ function App() {
   const [newsTitle, setNewsTitle] = useState('');
   const [newsMarkdown, setNewsMarkdown] = useState('');
   const [newsSource, setNewsSource] = useState('');
+  const [newsFormCategory, setNewsFormCategory] = useState("wia");
+  const [newsSourceUrl, setNewsSourceUrl] = useState("");
+  const [newsOrgName, setNewsOrgName] = useState("");
   const [newsCover, setNewsCover] = useState(null);
+  const [newsCoverInputKey, setNewsCoverInputKey] = useState(0);
   const [isPublishingNews, setIsPublishingNews] = useState(false);
   const [isDraftingNews, setIsDraftingNews] = useState(false);
+  const [isNewsDraftReady, setIsNewsDraftReady] = useState(false);
   const [newsAdminTab, setNewsAdminTab] = useState('write');
   const [editingNewsId, setEditingNewsId] = useState('');
+  const [managedNewsPreview, setManagedNewsPreview] = useState(null);
+  const [isLoadingManagedNewsPreview, setIsLoadingManagedNewsPreview] = useState(false);
   const [dxMessages, setDxMessages] = useState(dxInitialMessages);
   const [dxSessions, setDxSessions] = useState([]);
   const [activeDxSessionId, setActiveDxSessionId] = useState('');
@@ -631,6 +682,9 @@ function App() {
   const adminPage = ['accounts', 'tech-news-write', 'idea-review', 'asset-management'].includes(activePage) ? activePage : 'accounts';
   const orgFilterOptions = useMemo(() => Array.from(new Set(accounts.map((account) => account.org_name).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko')), [accounts]);
   const filteredAccounts = useMemo(() => (orgFilter === 'all' ? accounts : accounts.filter((account) => account.org_name === orgFilter)), [accounts, orgFilter]);
+  const filteredNewsList = useMemo(() => newsList.filter((news) => news.category === newsCategory), [newsList, newsCategory]);
+  const managedNewsList = useMemo(() => (newsManageCategory === "all" ? newsList : newsList.filter((news) => news.category === newsManageCategory)), [newsList, newsManageCategory]);
+  const newsCategoryCounts = useMemo(() => Object.fromEntries(newsCategoryOptions.map((item) => [item.value, newsList.filter((news) => news.category === item.value).length])), [newsList]);
   const hotAiUsagePosts = useMemo(() => [...aiUsagePosts].sort((a, b) => b.like_count - a.like_count || b.created_at.localeCompare(a.created_at)).slice(0, 3), [aiUsagePosts]);
   const hottestAiUsagePost = hotAiUsagePosts[hotAiUsageIndex] || hotAiUsagePosts[0] || null;
   const pendingReviewIdeas = useMemo(() => adminIdeas.filter((idea) => idea.status === '접수완료'), [adminIdeas]);
@@ -2157,7 +2211,12 @@ function App() {
     setNewsTitle('');
     setNewsMarkdown('');
     setNewsSource('');
+    setNewsFormCategory("wia");
+    setNewsSourceUrl("");
+    setNewsOrgName("");
     setNewsCover(null);
+    setNewsCoverInputKey((current) => current + 1);
+    setIsNewsDraftReady(false);
   };
 
   const loadAiUsagePosts = async () => {
@@ -2205,9 +2264,18 @@ function App() {
       return;
     }
 
+    if (!editingNewsId && !isNewsDraftReady) {
+      setNewsError('마크다운 자동 작성을 먼저 완료하세요.');
+      setIsPublishingNews(false);
+      return;
+    }
+
     const formData = new FormData();
     formData.append('title', newsTitle.trim());
     formData.append('markdown', newsMarkdown);
+    formData.append("category", newsFormCategory);
+    if (newsFormCategory === "external" && newsSourceUrl.trim()) formData.append("source_url", newsSourceUrl.trim());
+    if (newsFormCategory === "bp") formData.append("org_name", newsOrgName.trim());
     if (newsCover) formData.append('cover_image', newsCover);
 
     try {
@@ -2232,18 +2300,20 @@ function App() {
   const draftNewsMarkdown = async () => {
     setNewsError('');
     setIsDraftingNews(true);
+    setIsNewsDraftReady(false);
 
     try {
       const response = await fetch(`${API_BASE}/api/admin/news/draft`, {
         method: 'POST',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: newsSource.trim() }),
+        body: JSON.stringify({ source: newsSource.trim(), category: newsFormCategory, title: newsTitle.trim() || null, org_name: newsFormCategory === "bp" ? newsOrgName.trim() : null }),
       });
       if (!response.ok) throw await apiError(response, '마크다운 초안을 생성하지 못했습니다.');
 
       const data = await response.json();
       const markdown = data.markdown || '';
       setNewsMarkdown(markdown);
+      setIsNewsDraftReady(Boolean(markdown.trim()));
 
       const titleMatch = markdown.match(/^#\s+(.+)$/m);
       if (!newsTitle.trim() && titleMatch) setNewsTitle(titleMatch[1].trim());
@@ -2262,10 +2332,29 @@ function App() {
       setNewsTitle(detail.title);
       setNewsMarkdown(detail.markdown || '');
       setNewsSource('');
+      setNewsFormCategory(detail.category || "external");
+      setNewsSourceUrl(detail.source_url || "");
+      setNewsOrgName(detail.org_name || "");
       setNewsCover(null);
+      setNewsCoverInputKey((current) => current + 1);
+      setIsNewsDraftReady(true);
       setNewsAdminTab('write');
     } catch (error) {
       setNewsError(error.message);
+    }
+  };
+
+  const viewManagedNews = async (news) => {
+    setNewsError("");
+    setManagedNewsPreview(news);
+    setIsLoadingManagedNewsPreview(true);
+    try {
+      setManagedNewsPreview(await fetchNewsDetail(news.news_id, { countView: false }));
+    } catch (error) {
+      setManagedNewsPreview(null);
+      setNewsError(error.message);
+    } finally {
+      setIsLoadingManagedNewsPreview(false);
     }
   };
 
@@ -2677,7 +2766,10 @@ function App() {
     setNewsTitle('');
     setNewsMarkdown('');
     setNewsSource('');
+    setNewsOrgName("");
     setNewsCover(null);
+    setNewsCoverInputKey((current) => current + 1);
+    setIsNewsDraftReady(false);
   };
 
   const toggleGroup = (group) => {
@@ -3859,19 +3951,28 @@ function App() {
               <div>
                 <span>AX COMMUNITY</span>
                 <h1>AI Tech News</h1>
-                <p>최신 AI 기술 동향 뉴스를 확인합니다.</p>
+                <p>위아 소식과 외부 AI 동향, 업무 혁신 BP 사례를 확인합니다.</p>
               </div>
-            </div>
+             </div>
+
+
+            <nav className="news-category-tabs" aria-label="AI Tech News 유형">
+              {newsCategoryOptions.map((category) => (
+                <button className={newsCategory === category.value ? "active" : ""} type="button" key={category.value} onClick={() => setNewsCategory(category.value)}>
+                  <span>{category.label}</span><small>{newsCategoryCounts[category.value] || 0}</small>
+                </button>
+              ))}
+            </nav>
 
             {newsError && <div className="form-error">{newsError}</div>}
 
             {isLoadingNews ? (
               <div className="news-empty">뉴스 목록을 불러오는 중입니다.</div>
-            ) : newsList.length === 0 ? (
-              <div className="news-empty">등록된 Tech News가 없습니다.</div>
+            ) : filteredNewsList.length === 0 ? (
+              <div className="news-empty">등록된 {newsCategoryMeta[newsCategory]?.label}가 없습니다.</div>
             ) : (
               <div className="news-card-grid">
-                {newsList.map((news) => (
+                {filteredNewsList.map((news) => (
                   <button className="news-card" type="button" key={news.news_id} onClick={() => setSelectedNewsId(news.news_id)}>
                     <div className="news-thumb">
                       {news.cover_image_url ? (
@@ -3881,7 +3982,10 @@ function App() {
                       )}
                     </div>
                     <div className="news-card-body">
-                      <span className="news-category">AI TECH NEWS</span>
+                      <div className="news-card-kicker">
+                        <span className={"news-category " + news.category}>{newsCategoryMeta[news.category]?.label || "AI Tech News"}</span>
+                        {news.category === "bp" && news.org_name && <span className="news-org-meta"><Building2 size={12} />{news.org_name}</span>}
+                      </div>
                       <h2>{news.title}</h2>
                       <div className="news-card-footer">
                         <span>{news.created_at.slice(0, 10)}</span>
@@ -3899,14 +4003,32 @@ function App() {
                   <button className="news-modal-close" type="button" aria-label="닫기" onClick={() => setSelectedNewsId('')}>×</button>
                   {selectedNews ? (
                     <>
-                      {selectedNews.cover_image_url && <img className="news-modal-cover" src={`${API_BASE}${selectedNews.cover_image_url}`} alt="" />}
                       <div className="news-detail-head">
                         <div className="news-detail-meta">
+                          <span className={"news-category " + selectedNews.category}>{newsCategoryMeta[selectedNews.category]?.label || "AI Tech News"}</span>
+                          {selectedNews.category === "bp" && selectedNews.org_name && <span className="news-org-meta"><Building2 size={13} />{selectedNews.org_name}</span>}
                           <span>{selectedNews.created_at.slice(0, 10)}</span>
                           <span className="news-view-count"><Eye size={14} />{formatViewCount(selectedNews.view_count)}</span>
                         </div>
                         <h2>{selectedNews.title}</h2>
                       </div>
+                      {selectedNews.cover_image_url && (
+                        <div className="news-modal-cover-frame">
+                          <img className="news-modal-cover" src={`${API_BASE}${selectedNews.cover_image_url}`} alt="" />
+                        </div>
+                      )}
+                      {selectedNews.category === "external" && selectedNews.source_url && (
+                        <div className="news-source-link-row">
+                          <a className="news-source-link" href={selectedNews.source_url} target="_blank" rel="noreferrer">
+                            <span className="news-source-link-icon"><ExternalLink size={17} /></span>
+                            <span className="news-source-link-copy">
+                              <small>ORIGINAL SOURCE</small>
+                              <b>외부 원문 기사 보기</b>
+                              <em>{selectedNews.source_url}</em>
+                            </span>
+                          </a>
+                        </div>
+                      )}
                       <div className="markdown-report">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedNews.markdown}</ReactMarkdown>
                       </div>
@@ -4874,26 +4996,34 @@ function App() {
                     <span>{editingNewsId ? 'EDIT' : 'WRITE'}</span>
                     <h2>{editingNewsId ? '게시글 수정' : '게시글 작성'}</h2>
                   </div>
+                  <div className="news-editor-category-field">
+                    <span>콘텐츠 유형</span>
+                    <div className="news-editor-category-options">
+                      {newsCategoryOptions.map((category) => <button className={newsFormCategory === category.value ? "active" : ""} type="button" key={category.value} onClick={() => { setNewsFormCategory(category.value); if (!editingNewsId) setIsNewsDraftReady(false); }}>{category.label}</button>)}
+                    </div>
+                  </div>
+                  {newsFormCategory === "bp" && <label className="form-field"><span>조직</span><input value={newsOrgName} onChange={(event) => { setNewsOrgName(event.target.value); if (!editingNewsId) setIsNewsDraftReady(false); }} placeholder="BP 사례를 적용한 조직명을 입력하세요." required /></label>}
+                  {newsFormCategory === "external" && <label className="form-field"><span>외부 원문 URL <small>선택</small></span><input type="url" value={newsSourceUrl} onChange={(event) => setNewsSourceUrl(event.target.value)} placeholder="https://..." /></label>}
                   <label className="form-field">
                     <span>제목</span>
                     <input value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} required />
                   </label>
                   <label className="form-field">
-                    <span>커버 이미지</span>
-                    <input key={editingNewsId || 'new-cover'} type="file" accept="image/*" onChange={(event) => setNewsCover(event.target.files?.[0] || null)} />
+                    <span>커버 이미지 {newsFormCategory === "bp" && <small>선택</small>}</span>
+                    <input key={(editingNewsId || "new-cover") + "-" + newsCoverInputKey} type="file" accept="image/*" onChange={(event) => setNewsCover(event.target.files?.[0] || null)} />
                   </label>
                   <label className="form-field">
-                    <span>기사 소스</span>
-                    <textarea className="source-input" value={newsSource} onChange={(event) => setNewsSource(event.target.value)} placeholder="기사 원문, 주요 문단, 메모를 붙여 넣으세요." />
+                    <span>{newsFormCategory === "bp" ? "내용" : "소스 자료"}</span>
+                    <textarea className="source-input" value={newsSource} onChange={(event) => { setNewsSource(event.target.value); if (!editingNewsId) setIsNewsDraftReady(false); }} placeholder={newsFormCategory === "bp" ? "기존 업무의 문제, 적용한 방식, 적용 단계(PoC·시범 적용·운영), 적용 기간, 확인된 성과, 다른 조직이 참고할 내용을 입력하세요." : "기사 원문이나 작성할 소스 자료를 붙여 넣으세요."} />
                   </label>
-                  <button className="line-btn draft-btn" type="button" onClick={draftNewsMarkdown} disabled={isDraftingNews || !newsSource.trim()}>
-                    {isDraftingNews ? <span className="btn-spinner blue" /> : <Wand2 size={16} />}
-                    마크다운 자동 작성
-                  </button>
                   {newsError && <div className="form-error">{newsError}</div>}
-                  <div className="form-actions">
+                  <div className={editingNewsId ? "news-publish-actions has-cancel" : "news-publish-actions"}>
+                    <button className="line-btn draft-btn" type="button" onClick={draftNewsMarkdown} disabled={isDraftingNews || !newsSource.trim() || (newsFormCategory === "bp" && !newsOrgName.trim())}>
+                      {isDraftingNews ? <span className="btn-spinner blue" /> : <Wand2 size={16} />}
+                      마크다운 자동 작성
+                    </button>
                     {editingNewsId && <button className="line-btn" type="button" onClick={resetNewsForm}>취소</button>}
-                    <button className="primary-btn" type="submit" disabled={isPublishingNews}>
+                    <button className="primary-btn" type="submit" disabled={isPublishingNews || isDraftingNews || (!editingNewsId && !isNewsDraftReady) || (newsFormCategory === "bp" && !newsOrgName.trim())}>
                       {isPublishingNews ? <span className="btn-spinner" /> : <Send size={16} />}
                       {editingNewsId ? '수정 저장' : '발행'}
                     </button>
@@ -4923,7 +5053,12 @@ function App() {
                     <span>MANAGE</span>
                     <h2>작성된 글 관리</h2>
                   </div>
-                  <button className="line-btn" type="button" onClick={loadNewsList} disabled={isLoadingNews}>새로고침</button>
+                  <div className="news-manage-filters" role="group" aria-label="작성된 글 유형 필터">
+                    <button className={newsManageCategory === "all" ? "active" : ""} type="button" onClick={() => setNewsManageCategory("all")}><span>전체</span><small>{newsList.length}</small></button>
+                    {newsCategoryOptions.map((category) => (
+                      <button className={newsManageCategory === category.value ? "active" : ""} type="button" key={category.value} onClick={() => setNewsManageCategory(category.value)}><span>{category.label}</span><small>{newsCategoryCounts[category.value] || 0}</small></button>
+                    ))}
+                  </div>
                 </div>
 
                 {newsError && <div className="form-error">{newsError}</div>}
@@ -4933,6 +5068,7 @@ function App() {
                     <thead>
                       <tr>
                         <th>커버</th>
+                        <th>유형</th>
                         <th>제목</th>
                         <th>작성일</th>
                         <th>수정일</th>
@@ -4942,22 +5078,24 @@ function App() {
                     </thead>
                     <tbody>
                       {isLoadingNews ? (
-                        <tr><td colSpan="6" className="table-empty">뉴스 목록을 불러오는 중입니다.</td></tr>
-                      ) : newsList.length === 0 ? (
-                        <tr><td colSpan="6" className="table-empty">작성된 Tech News가 없습니다.</td></tr>
-                      ) : newsList.map((news) => (
+                        <tr><td colSpan="7" className="table-empty">뉴스 목록을 불러오는 중입니다.</td></tr>
+                      ) : managedNewsList.length === 0 ? (
+                        <tr><td colSpan="7" className="table-empty">{newsList.length === 0 ? "작성된 Tech News가 없습니다." : "선택한 유형에 작성된 Tech News가 없습니다."}</td></tr>
+                      ) : managedNewsList.map((news) => (
                         <tr key={news.news_id}>
                           <td>
                             <div className="manage-news-thumb">
                               {news.cover_image_url ? <img src={`${API_BASE}${news.cover_image_url}`} alt="" /> : <span>AI</span>}
                             </div>
                           </td>
-                          <td><b className="manage-news-title">{news.title}</b></td>
+                          <td><span className={"news-category " + news.category}>{newsCategoryMeta[news.category]?.label || "외부 뉴스"}</span></td>
+                          <td><div className="manage-news-title-cell"><b className="manage-news-title">{news.title}</b>{news.category === "bp" && news.org_name && <small><Building2 size={12} />{news.org_name}</small>}</div></td>
                           <td>{news.created_at.slice(0, 10)}</td>
                           <td>{news.updated_at.slice(0, 10)}</td>
                           <td><span className="news-view-count manage-view-count"><Eye size={14} />{formatViewCount(news.view_count)}</span></td>
                           <td>
                             <div className="table-actions">
+                              <button className="line-btn manage-news-view-btn" type="button" onClick={() => viewManagedNews(news)}><Eye size={14} />View</button>
                               <button className="icon-line-btn" type="button" aria-label="수정" onClick={() => startEditNews(news)}><Pencil size={14} /></button>
                               <button className="icon-line-btn danger" type="button" aria-label="삭제" onClick={() => deleteNews(news)}><Trash2 size={14} /></button>
                             </div>
@@ -4972,6 +5110,9 @@ function App() {
           </section>
         )}
 
+      {managedNewsPreview && (
+        <ManagedNewsPreviewModal news={managedNewsPreview} isLoading={isLoadingManagedNewsPreview} onClose={() => setManagedNewsPreview(null)} />
+      )}
 
       {assetFeedbackTarget && (
         <div className="news-modal-backdrop asset-feedback-backdrop" role="presentation" onMouseDown={() => setAssetFeedbackTarget(null)}>
