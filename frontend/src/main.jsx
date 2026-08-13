@@ -8,6 +8,7 @@ import {
   Bot,
   Bold,
   Building2,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
   Clock3,
@@ -102,17 +103,19 @@ const navGroups = [
   },
 ];
 
+const AI_CALENDAR_URL = "http://10.217.183.34:8888/";
+
 const externalLinks = [
+  { id: "ai-calendar", label: "AI Calendar", icon: CalendarDays },
   { label: 'WIA Report', href: 'http://10.217.183.72:9602/', icon: FilePenLine },
   { label: 'WIA Meet', href: 'https://10.217.183.72:9702/', icon: NotebookPen },
 ];
 
-// TODO: Clear these demo values after the AI idea submission demonstration.
 const emptyAiIdeaForm = {
-  title: '생산설비 이상 징후 조기 감지 AI',
-  problem_definition: '생산설비의 진동, 온도, 전류 데이터는 수집되고 있지만 담당자가 여러 화면을 직접 확인해야 해 이상 징후를 조기에 발견하기 어렵습니다. 이상이 실제 고장으로 이어진 후 대응하는 경우가 많아 비계획 정지와 긴급 보전 작업이 반복됩니다.',
-  proposal: '설비별 센서 데이터와 과거 고장·정비 이력을 AI가 실시간으로 분석하여 평소와 다른 패턴을 조기에 탐지합니다. 이상 가능성이 높아지면 영향 설비, 주요 변화 지표, 예상 원인을 정리해 담당자에게 알리고 점검 우선순위를 추천합니다.',
-  effect: '설비 이상을 고장 전에 확인해 비계획 정지와 생산 손실을 줄일 수 있습니다. 담당자는 모든 설비 데이터를 반복 확인하는 대신 위험도가 높은 설비부터 점검할 수 있으며, 축적된 이상 징후와 조치 이력을 예방보전 기준으로 활용할 수 있습니다.',
+  title: "",
+  problem_definition: "",
+  proposal: "",
+  effect: "",
   attachments: [],
 };
 
@@ -151,11 +154,6 @@ const assetDataTypes = ['테이블·정형데이터', '시계열 데이터', '�
 const assetMaturityLevels = ['아이디어', 'PoC', 'Pilot', '운영'];
 const assetTaskTypes = ['예측', '탐지', '분류', '검색', '질의응답', '요약', '생성', '추출', '추천', '분석', '최적화', '자동화'];
 const assetImplementationTypes = ['ML', 'DL', 'Computer Vision', 'LLM', 'RAG', 'Agent', 'Rule-Based', 'Hybrid'];
-// TODO: Remove the demo repository defaults after the asset registration demonstration.
-const assetDemoRepository = {
-  url: 'https://github.com/ollehJW/meeting_write_agent.git',
-  branch: 'main',
-};
 const createAssetTechItem = (overrides = {}) => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, ...overrides });
 const createAssetImageItem = (overrides = {}) => ({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, fileName: '', previewUrl: '', file: null, caption: '', description: '', ...overrides });
 const assetRegistrySteps = [
@@ -413,14 +411,13 @@ const copyTextToClipboard = async (text) => {
   if (!copied) throw new Error('클립보드 복사를 지원하지 않는 브라우저입니다.');
 };
 
-// TODO: Clear these demo values after the diffusion case demonstration.
 const emptyDiffusionCaseForm = {
-  title: '기획 회의 회의록 작성 및 후속 업무 관리 자동화',
-  stage: 'pilot',
-  applied_work: '기획팀의 주간 기획회의와 유관부서 협업회의에 적용했습니다. 회의 종료 후 담당자가 녹음 내용을 다시 들으며 주요 논의사항, 의사결정 내용, 담당자별 후속 업무를 정리해 배포하던 업무입니다.',
-  customization: '회의록 자동 작성 Agent에 기획 업무 용어와 프로젝트명을 추가하고, 결과가 회의 개요·주요 논의·의사결정·후속 업무 순서로 작성되도록 템플릿을 수정했습니다. 후속 업무는 담당자와 완료 예정일을 함께 추출하도록 보완해 주간 업무 관리에 바로 활용했습니다.',
-  effect: '회의당 약 60분이 걸리던 회의록 초안 작성 시간을 약 15분으로 단축했습니다. 결정사항과 후속 업무의 누락이 줄었고, 회의 당일 유관부서에 결과를 공유할 수 있어 업무 전달과 진행 상황 확인이 빨라졌습니다.',
-  git_url: 'https://github.com/ollehJW/meeting_write_agent.git',
+  title: "",
+  stage: "",
+  applied_work: "",
+  customization: "",
+  effect: "",
+  git_url: "",
 };
 
 function ManagedNewsPreviewModal({ news, isLoading, onClose }) {
@@ -467,6 +464,7 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(Boolean(authToken));
   const [activePage, setActivePage] = useState('home');
+  const [isAiCalendarLoaded, setIsAiCalendarLoaded] = useState(false);
   const [openGroups, setOpenGroups] = useState(() => new Set(navGroups.map((group) => group.id)));
   const [assetRegistryStep, setAssetRegistryStep] = useState(0);
   const [isAssetRegistrySubmitted, setIsAssetRegistrySubmitted] = useState(false);
@@ -520,10 +518,8 @@ function App() {
   const [isCloningAssetRepo, setIsCloningAssetRepo] = useState(false);
   const [isStagingAssetSpec, setIsStagingAssetSpec] = useState(false);
   const [assetRepoErrorMessage, setAssetRepoErrorMessage] = useState('');
-  const [isAssetSampleLoaded, setIsAssetSampleLoaded] = useState(false);
   const [isAssetSpecReady, setIsAssetSpecReady] = useState(false);
   const [assetSpecSectionStatus, setAssetSpecSectionStatus] = useState({});
-  const [assetSampleVersion, setAssetSampleVersion] = useState(0);
   const [openAssetGuides, setOpenAssetGuides] = useState({});
   const [assetTagInput, setAssetTagInput] = useState('');
   const [assetTags, setAssetTags] = useState([]);
@@ -1817,65 +1813,6 @@ function App() {
       setIsDeletingAsset(false);
     }
   };
-  const fetchAssetSampleFile = async (fileInfo) => {
-    if (!fileInfo?.url) return null;
-    const response = await fetch(`${API_BASE}${fileInfo.url}`, { headers: authHeaders });
-    if (!response.ok) throw await apiError(response, '샘플 파일을 불러오지 못했습니다.');
-    const blob = await response.blob();
-    return new File([blob], fileInfo.original_name || fileInfo.stored_name || 'sample.file', { type: fileInfo.content_type || blob.type || 'application/octet-stream' });
-  };
-  // TODO: Remove this sample preset loader after AI asset registration QA/testing is complete.
-  const loadAssetSamplePreset = async () => {
-    if (isAssetSampleLoaded || !authToken) return;
-    try {
-      const response = await fetch(`${API_BASE}/api/assets/sample`, { headers: authHeaders });
-      if (!response.ok) return;
-      const sample = await response.json();
-      const payload = sample.payload || {};
-      const nextDraft = { ...payload, asset_id: '' };
-      delete nextDraft.staged_by;
-      delete nextDraft.staged_at;
-      nextDraft.owner_email = nextDraft.owner_email || nextDraft.user_email || 'jongwook.lee@hyundai-wia.com';
-      delete nextDraft.user_id;
-      delete nextDraft.user_email;
-      setAssetDraft(nextDraft);
-      setAssetDraftId('');
-      setSelectedAssetTasks(Array.isArray(payload.task_types) ? payload.task_types : []);
-      setSelectedAssetImplementations(Array.isArray(payload.implementation_types) ? payload.implementation_types : []);
-      setAssetTags(Array.isArray(payload.tags) ? payload.tags : []);
-      setIsAssetNoData(!payload.has_data);
-      setHasAssetTrainValidationSplit(Boolean(payload.has_train_validation_split));
-      setAssetModelItems((Array.isArray(payload.models) && payload.models.length ? payload.models : [{}]).map((item) => createAssetTechItem(item)));
-      setAssetStackItems((Array.isArray(payload.tech_stacks) && payload.tech_stacks.length ? payload.tech_stacks : [{}]).map((item) => createAssetTechItem(item)));
-      setAssetBeforeAfterItems((Array.isArray(payload.before_after_metrics) && payload.before_after_metrics.length ? payload.before_after_metrics : [{}]).map((item) => createAssetTechItem(item)));
-      setAssetKpiItems((Array.isArray(payload.performance_metrics) && payload.performance_metrics.length ? payload.performance_metrics : [{}]).map((item) => createAssetTechItem(item)));
-      const sortedSlides = Array.isArray(sample.slides) ? [...sample.slides].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) : [];
-      const slideItems = await Promise.all(sortedSlides.map(async (slide) => {
-        const file = await fetchAssetSampleFile(slide);
-        return createAssetImageItem({
-          fileName: file?.name || slide.original_name || '',
-          previewUrl: file ? URL.createObjectURL(file) : '',
-          file,
-          caption: slide.caption || '',
-          description: slide.description || '',
-        });
-      }));
-      setAssetImageItems(slideItems.length ? slideItems : [createAssetImageItem()]);
-      const dataFiles = Array.isArray(sample.data_files) ? sample.data_files : [];
-      const sampleFile = dataFiles.find((file) => file.role === 'sample');
-      const trainFile = dataFiles.find((file) => file.role === 'train');
-      const validationFile = dataFiles.find((file) => file.role === 'validation');
-      setAssetSampleFiles(sampleFile ? [await fetchAssetSampleFile(sampleFile)].filter(Boolean) : []);
-      setAssetTrainFiles(trainFile ? [await fetchAssetSampleFile(trainFile)].filter(Boolean) : []);
-      setAssetValidationFiles(validationFile ? [await fetchAssetSampleFile(validationFile)].filter(Boolean) : []);
-      setAssetSampleVersion((version) => version + 1);
-    } finally {
-      setIsAssetSampleLoaded(true);
-    }
-  };
-  useEffect(() => {
-    if (activePage === 'registry') loadAssetSamplePreset();
-  }, [activePage, isAssetSampleLoaded, authToken]);
   useEffect(() => {
     if (authUser && !isAdminView && activePage === 'registry') loadMyAiAssets();
   }, [authUser, isAdminView, activePage]);
@@ -1883,7 +1820,7 @@ function App() {
     if (activePage !== 'registry' || assetRegistryStep !== 0) return undefined;
     const timer = window.setTimeout(refreshAssetSpecReady, 0);
     return () => window.clearTimeout(timer);
-  }, [activePage, assetRegistryStep, selectedAssetTasks, selectedAssetImplementations, assetTags, isAssetNoData, hasAssetTrainValidationSplit, assetTrainFiles, assetValidationFiles, assetSampleFiles, assetImageItems, assetModelItems, assetStackItems, assetBeforeAfterItems, assetKpiItems, assetDraft, assetSampleVersion]);
+  }, [activePage, assetRegistryStep, selectedAssetTasks, selectedAssetImplementations, assetTags, isAssetNoData, hasAssetTrainValidationSplit, assetTrainFiles, assetValidationFiles, assetSampleFiles, assetImageItems, assetModelItems, assetStackItems, assetBeforeAfterItems, assetKpiItems, assetDraft]);
   const buildAssetFormData = (formPayload) => {
     const formData = new FormData();
     formData.append('payload_json', JSON.stringify(formPayload));
@@ -3138,6 +3075,14 @@ function App() {
 
               {externalLinks.map((link) => {
                 const Icon = link.icon;
+                if (!link.href) {
+                  return (
+                    <button className={"side-item " + (activePage === link.id ? "active" : "")} key={link.id} type="button" onClick={() => { setIsAiCalendarLoaded(false); setActivePage(link.id); }}>
+                      <Icon size={17} />
+                      <span className="side-name">{link.label}</span>
+                    </button>
+                  );
+                }
                 return (
                   <a className="side-item side-external-link" href={link.href} key={link.label} target="_blank" rel="noreferrer">
                     <Icon size={17} />
@@ -3168,6 +3113,22 @@ function App() {
       </aside>
 
       <main className="main" aria-label="콘텐츠 영역">
+        {!isAdminView && activePage === 'ai-calendar' && (
+          <section className="ai-calendar-page" aria-label="AI Calendar">
+            <header className="account-head ai-calendar-toolbar">
+              <div>
+                <span>AI EVENTS</span>
+                <h1>AI Calendar</h1>
+                <p>향후 1년간 예정된 AI 학회와 세미나 일정을 확인합니다.</p>
+              </div>
+            </header>
+            <div className="ai-calendar-frame-wrap">
+              {!isAiCalendarLoaded && <div className="ai-calendar-loading"><span className="btn-spinner blue" /><b>AI Calendar를 불러오고 있습니다.</b></div>}
+              <iframe src={AI_CALENDAR_URL} title="AI 학회 및 세미나 일정" onLoad={() => setIsAiCalendarLoaded(true)} />
+            </div>
+          </section>
+        )}
+
         {!isAdminView && activePage === 'intro' && (
           <section className="content ai-intro-page" aria-label="AI STUDIO 소개">
             <section className="ai-intro-hero">
@@ -3500,7 +3461,7 @@ function App() {
             )}
 
             {!isAssetRegistrySubmitted && assetRegistryStep === 0 && (
-              <section className="asset-reg-card" key={`asset-spec-${assetSampleVersion}`}>
+              <section className="asset-reg-card" >
                 <header className="asset-reg-card-head">
                   <span>Step 1 / 4</span>
                   <h2>자산 명세서 작성</h2>
@@ -3512,7 +3473,7 @@ function App() {
                     <label><span>이름 *</span><input name="owner_name" defaultValue={assetDraft.owner_name || authUser.displayed_name || ''} placeholder="예: 홍길동" /></label>
                     <label><span>직급 *</span><input name="owner_job_title" defaultValue={assetDraft.owner_job_title || authUser.job_title || ''} placeholder="예: 책임매니저" /></label>
                     <label><span>조직명 *</span><input name="owner_org" defaultValue={assetDraft.owner_org || authUser.org_name || ''} placeholder="예: DX추진랩" /></label>
-                    <label><span>이메일 *</span><input name="owner_email" type="email" defaultValue={assetDraft.owner_email || 'jongwook.lee@hyundai-wia.com'} placeholder="예: gildong@hyundai-wia.com" /></label>
+                    <label><span>이메일 *</span><input name="owner_email" type="email" defaultValue={assetDraft.owner_email || authUser.email || ""} placeholder="예: gildong@hyundai-wia.com" /></label>
                   </div>
 
                   {renderAssetSectionLabel('자산 기본 정보', 'basic')}
@@ -3521,7 +3482,7 @@ function App() {
                     <label className="full"><span>설명 *</span><textarea name="asset_description" defaultValue={assetDraft.description || ''} rows="3" placeholder="이 자산이 해결하는 문제와 핵심 기능을 2-3문장으로 설명하세요." /></label>
                     <div className="asset-reg-two-row full">
                       <label><span>업무 영역 *</span><select name="business_area" defaultValue={assetDraft.business_area || ''}><option value="">선택</option><option>생산·제조</option><option>품질</option><option>R&D·설계</option><option>SCM·구매·물류</option><option>영업·마케팅</option><option>경영지원</option><option>안전·환경·보건</option><option>IT·DX</option><option>공통</option></select></label>
-                      <label><span>자산 성숙도 *</span><select name="maturity_level" defaultValue={assetDraft.maturity_level || '아이디어'}><option>아이디어</option><option>PoC</option><option>Pilot</option><option>운영</option></select></label>
+                      <label><span>자산 성숙도 *</span><select name="maturity_level" defaultValue={assetDraft.maturity_level || ""}><option value="">선택</option><option>아이디어</option><option>PoC</option><option>Pilot</option><option>운영</option></select></label>
                     </div>
                     <div className="asset-reg-chip-field full">
                       <div className="asset-reg-chip-label"><span>Task 유형 *</span><small>복수 선택 가능</small></div>
@@ -3695,12 +3656,12 @@ function App() {
                 <div className="asset-reg-card-body">
                   <div className="asset-reg-repo-panel">
                     <div className="asset-reg-repo-grid">
-                      <input name="repo_url" defaultValue={assetDraft.repo_url || assetDemoRepository.url} placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" />
-                      <input name="repo_branch" defaultValue={assetDraft.repo_branch || assetDemoRepository.branch} placeholder="브랜치명 (예: main)" />
+                      <input name="repo_url" defaultValue={assetDraft.repo_url || ""} placeholder="저장소 URL (예: https://github.com/hyundai-wia/asset-name)" />
+                      <input name="repo_branch" defaultValue={assetDraft.repo_branch || ""} placeholder="브랜치명 (예: main)" />
                       <button type="button" disabled={isCloningAssetRepo} onClick={cloneAssetRepository}>{isCloningAssetRepo ? '연결 중...' : '연결'}</button>
                     </div>
                     <div className="asset-reg-file-tree">
-                      <div>저장소 구조 <span>{assetDraft.repo_branch || assetDemoRepository.branch}</span></div>
+                      <div>저장소 구조 <span>{assetDraft.repo_branch || ""}</span></div>
                       {isCloningAssetRepo ? <p>Git 저장소를 가져오는 중입니다.</p> : assetRepoTree.length ? renderAssetRepoTree(assetRepoTree) : <p>Git을 연결하면 이 영역에 폴더 구조가 표시됩니다.</p>}
                     </div>
                   </div>

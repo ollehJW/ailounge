@@ -8351,3 +8351,48 @@ button.asset-demo-stage:hover .asset-demo-expand,button.asset-demo-stage:focus-v
   .news-modal > .markdown-report h2 { margin-top: 34px; font-size: 18px; }
   .news-source-link-copy em { max-width: calc(100vw - 145px); }
 }
+
+
+/* AI Calendar embedded page */
+.ai-calendar-page {
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-width: 1540px;
+  margin: 0 auto;
+  padding: 28px 36px 32px;
+}
+.ai-calendar-toolbar {
+  min-height: 0;
+  align-items: center;
+}
+.ai-calendar-toolbar > div { min-width: 0; }
+.ai-calendar-frame-wrap {
+  position: relative;
+  min-height: 680px;
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #d8e0eb;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(17, 38, 75, .06);
+}
+.ai-calendar-frame-wrap iframe { width: 100%; height: 100%; min-height: calc(100vh - 145px); display: block; border: 0; background: #fff; }
+.ai-calendar-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #f8fafc;
+  color: #607087;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .ai-calendar-page { min-height: auto; padding: 18px; }
+  .ai-calendar-toolbar { align-items: flex-start; }
+  .ai-calendar-toolbar p { max-width: 260px; line-height: 1.55; }
+  .ai-calendar-frame-wrap iframe { min-height: 720px; }
+}

@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import base64
 import hashlib
 import hmac
@@ -34,7 +33,6 @@ ASSETS_WORKSPACE = BASE_DIR / "workspace" / "assets"
 STAGING_WORKSPACE = BASE_DIR / "staging" / "assets"
 TEMPLATES_DIR = BASE_DIR / "templates"
 ASSET_REGISTRATION_TEMPLATE = TEMPLATES_DIR / "asset_registration.html"
-SAMPLE_ASSET_DIR = BASE_DIR.parent / "sample"
 PROMPTS_DIR = BASE_DIR / "prompts"
 PBKDF2_ITERATIONS = 210_000
 MAX_ASSET_DATA_FILE_SIZE = 10 * 1024 * 1024
@@ -1667,36 +1665,6 @@ def delete_user(user_id: str, current_user: Annotated[UserResponse, Depends(requ
         if result.rowcount == 0:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없습니다.")
 
-
-
-# TODO: Remove this sample preset API after AI asset registration QA/testing is complete.
-@app.get("/api/assets/sample")
-def get_sample_asset(_: Annotated[UserResponse, Depends(get_current_user)]) -> dict:
-    meta_path = SAMPLE_ASSET_DIR / "meta.json"
-    if not meta_path.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="샘플 자산 정보를 찾을 수 없습니다.")
-    try:
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="샘플 자산 정보 형식이 올바르지 않습니다.")
-    if not isinstance(meta, dict):
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="샘플 자산 정보 형식이 올바르지 않습니다.")
-    for slide in meta.get("slides", []):
-        if isinstance(slide, dict) and slide.get("stored_name"):
-            slide["url"] = f"/api/assets/sample/files/slides/{slide['stored_name']}"
-    for data_file in meta.get("data_files", []):
-        if isinstance(data_file, dict) and data_file.get("role") and data_file.get("stored_name"):
-            data_file["url"] = f"/api/assets/sample/files/data/{data_file['role']}/{data_file['stored_name']}"
-    return meta
-
-
-@app.get("/api/assets/sample/files/{file_path:path}")
-def get_sample_asset_file(file_path: str, _: Annotated[UserResponse, Depends(get_current_user)]) -> FileResponse:
-    path = (SAMPLE_ASSET_DIR / file_path).resolve()
-    sample_root = SAMPLE_ASSET_DIR.resolve()
-    if not path.is_file() or sample_root not in path.parents:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="샘플 파일을 찾을 수 없습니다.")
-    return FileResponse(path, filename=path.name)
 
 
 @app.post("/api/assets/repository/clone", response_model=AssetRepositoryCloneResponse)
