@@ -1,5 +1,6 @@
 from __future__ import annotations
 import base64
+from contextlib import asynccontextmanager
 import hashlib
 import hmac
 import json
@@ -13,6 +14,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import urlparse
+
+import bleach
+from bleach.css_sanitizer import CSSSanitizer
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,9 +41,24 @@ ASSET_REGISTRATION_TEMPLATE = TEMPLATES_DIR / "asset_registration.html"
 PROMPTS_DIR = BASE_DIR / "prompts"
 PBKDF2_ITERATIONS = 210_000
 MAX_ASSET_DATA_FILE_SIZE = 10 * 1024 * 1024
+MAX_USAGE_POST_HTML_LENGTH = 30 * 1024 * 1024
+MAX_USAGE_POST_IMAGE_BYTES = 20 * 1024 * 1024
 NEWS_CATEGORIES = {"wia", "external", "bp"}
 
-app = FastAPI(title="AI Lounge API")
+USAGE_POST_ALLOWED_TAGS = {
+    "p", "br", "strong", "b", "u", "em", "i", "span", "img",
+    "ul", "ol", "li", "blockquote", "h2", "h3", "h4", "a",
+}
+USAGE_POST_CSS_SANITIZER = CSSSanitizer(allowed_css_properties=["color"])
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="AI Lounge API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -173,7 +193,7 @@ class DxDiscoverySessionCreateResponse(DxDiscoverySessionDetailResponse):
 class AiUsagePostCreateRequest(BaseModel):
     title: str = Field(min_length=1)
     category: str = Field(min_length=1)
-    content_html: str = Field(min_length=1)
+    content_html: str = Field(min_length=1, max_length=MAX_USAGE_POST_HTML_LENGTH)
 
 
 class AiUsagePostResponse(BaseModel):
@@ -1390,7 +1410,10 @@ def normalize_usage_post_content(usage_post_id: str, content_html: str) -> str:
         "image/webp": ".webp",
     }
 
+    total_image_bytes = 0
+
     def replace_match(match: re.Match[str]) -> str:
+        nonlocal total_image_bytes
         mime = match.group("mime").lower()
         suffix = ext_by_mime.get(mime, ".img")
         filename = f"{uuid.uuid4().hex}{suffix}"
@@ -1400,10 +1423,41 @@ def normalize_usage_post_content(usage_post_id: str, content_html: str) -> str:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="본문 이미지 데이터를 읽을 수 없습니다.")
         if len(image_bytes) > 10 * 1024 * 1024:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="본문 이미지는 10MB 이하만 사용할 수 있습니다.")
+        total_image_bytes += len(image_bytes)
+        if total_image_bytes > MAX_USAGE_POST_IMAGE_BYTES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="본문 이미지 전체 용량은 20MB 이하만 사용할 수 있습니다.")
         (assets_dir / filename).write_bytes(image_bytes)
         return f'src="/api/usage-posts/{usage_post_id}/assets/{filename}"'
 
     return pattern.sub(replace_match, content_html)
+
+
+def sanitize_usage_post_content(usage_post_id: str, content_html: str) -> str:
+    asset_prefix = f"/api/usage-posts/{usage_post_id}/assets/"
+
+    def allow_attribute(tag: str, name: str, value: str) -> bool:
+        if tag == "span" and name == "style":
+            return True
+        if tag == "img":
+            if name in {"alt", "title"}:
+                return True
+            if name == "src":
+                parsed = urlparse(value)
+                return not parsed.netloc and parsed.path.startswith(asset_prefix)
+            return False
+        if tag == "a":
+            return name in {"href", "title", "target", "rel"}
+        return False
+
+    return bleach.clean(
+        content_html,
+        tags=USAGE_POST_ALLOWED_TAGS,
+        attributes=allow_attribute,
+        protocols={"http", "https", "mailto"},
+        css_sanitizer=USAGE_POST_CSS_SANITIZER,
+        strip=True,
+        strip_comments=True,
+    )
 
 
 def ai_usage_post_from_row(row: sqlite3.Row) -> AiUsagePostResponse:
@@ -1517,10 +1571,6 @@ def require_admin(current_user: Annotated[UserResponse, Depends(get_current_user
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 권한이 필요합니다.")
     return current_user
 
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
 
 
 @app.get("/api/health")
@@ -3656,7 +3706,7 @@ def get_ai_usage_post(
     post = ai_usage_post_from_row(row)
     content_path = usage_post_content_path(usage_post_id)
     content_html = content_path.read_text(encoding="utf-8") if content_path.exists() else ""
-    return AiUsagePostDetailResponse(**post.__dict__, content_html=content_html)
+    return AiUsagePostDetailResponse(**post.__dict__, content_html=sanitize_usage_post_content(usage_post_id, content_html))
 
 
 @app.post("/api/usage-posts", response_model=AiUsagePostDetailResponse, status_code=status.HTTP_201_CREATED)
@@ -3678,7 +3728,10 @@ def create_ai_usage_post(
     folder = usage_post_dir(usage_post_id)
     folder.mkdir(parents=True, exist_ok=True)
     try:
-        normalized_html = normalize_usage_post_content(usage_post_id, content_html)
+        normalized_html = sanitize_usage_post_content(
+            usage_post_id,
+            normalize_usage_post_content(usage_post_id, content_html),
+        )
         usage_post_content_path(usage_post_id).write_text(normalized_html, encoding="utf-8")
     except Exception:
         shutil.rmtree(folder, ignore_errors=True)
@@ -3749,7 +3802,10 @@ def update_ai_usage_post(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="내가 작성한 글만 수정할 수 있습니다.")
 
         folder.mkdir(parents=True, exist_ok=True)
-        normalized_html = normalize_usage_post_content(usage_post_id, content_html)
+        normalized_html = sanitize_usage_post_content(
+            usage_post_id,
+            normalize_usage_post_content(usage_post_id, content_html),
+        )
         usage_post_content_path(usage_post_id).write_text(normalized_html, encoding="utf-8")
         content_text = text_from_html(normalized_html)
         con.execute(

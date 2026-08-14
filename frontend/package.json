@@ -2,15 +2,32 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 9001",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 9001"
+    "preview": "vite preview --host 0.0.0.0 --port 9001",
+    "lint": "eslint src",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "4.3.4",
+    "@tiptap/extension-color": "^3.30.1",
+    "@tiptap/extension-image": "^3.30.1",
+    "@tiptap/extension-text-style": "^3.30.1",
+    "@tiptap/extension-underline": "^3.30.1",
+    "@tiptap/react": "^3.30.1",
+    "@tiptap/starter-kit": "^3.30.1",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
-    "vite": "5.4.11"
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "jsdom": "^24.1.3",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.6"
   }
 }
