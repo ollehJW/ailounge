@@ -3,7 +3,12 @@
     <div class="community-page ideas-page">
       <section class="idea-process">
         <div class="idea-process-intro"><span>PROCESS GUIDE</span><h2>아이디어를 보내면 이렇게 진행됩니다</h2><p>작성한 제안은 DX추진랩에 전달되며, 업무 영향도와 AI 적용 가능성 검토 후 심사평과 함께 결과가 업데이트됩니다.</p></div>
-        <div class="idea-process-steps"><article><b>01</b><div><strong>접수완료</strong><span>제안 내용과 첨부자료가 검토 목록에 등록됩니다.</span></div></article><article><b>02</b><div><strong>심사</strong><span>제안 내용을 검토하고 결과와 함께 심사평을 작성합니다.</span></div></article><article class="selected"><b>03A</b><div><strong>선정</strong><span>PoC 또는 과제화를 위한 후속 논의를 진행합니다.</span></div></article><article class="rejected"><b>03B</b><div><strong>미선정</strong><span>심사평을 바탕으로 보완 방향을 확인할 수 있습니다.</span></div></article></div>
+        <div class="idea-process-steps">
+          <article><b>01</b><strong>접수완료</strong><span>제안 내용과 첨부자료가 DX추진랩 검토 목록에 등록됩니다.</span></article>
+          <article class="review"><b>02</b><strong>심사</strong><span>DX추진랩이 제안 내용을 검토하고, 결과와 함께 심사평을 제공합니다.</span></article>
+          <article class="selected"><b>03A</b><strong>선정</strong><span>PoC 또는 과제화를 위해 담당자와 후속 논의를 진행합니다.</span></article>
+          <article class="rejected"><b>03B</b><strong>미선정</strong><span>현재 추진은 어렵지만, 심사평을 바탕으로 보완 방향을 확인할 수 있습니다.</span></article>
+        </div>
       </section>
 
       <p v-if="error" class="form-error page-error">{{ error }}</p>
@@ -14,7 +19,7 @@
           <div v-else class="content-state empty"><Lightbulb :size="34" /><strong>아직 보낸 아이디어가 없습니다.</strong><span>업무에서 반복되는 문제를 제안해 주세요.</span></div>
         </section>
 
-        <form class="idea-panel idea-form" @submit.prevent="submitIdea"><header><div><span>SUBMIT</span><h2>아이디어 작성</h2></div><div class="form-progress"><strong>{{ completedFields }}</strong><span>/4</span><small>필수 항목</small></div></header><div class="progress-bar"><i :style="{ width: `${completedFields * 25}%` }"></i></div>
+        <form class="idea-panel idea-form" @submit.prevent="submitIdea"><header><div><span>SUBMIT</span><h2>아이디어 작성</h2></div><div class="idea-form-progress"><div><span><b>{{ completedFields }}</b>/4</span><small>필수 항목 작성</small></div><i><b :style="{ width: `${completedFields * 25}%` }"></b></i></div></header>
           <label class="form-field numbered"><span><em>01</em>제목 <b>*</b><CheckCircle2 v-if="form.title.trim()" :size="16" /></span><input v-model="form.title" placeholder="제안하려는 아이디어가 드러나는 제목을 작성해 주세요." required /></label>
           <label class="form-field numbered"><span><em>02</em>문제 정의 <b>*</b><CheckCircle2 v-if="form.problem_definition.trim()" :size="16" /></span><textarea v-model="form.problem_definition" rows="4" placeholder="현재 업무에서 어떤 문제가 반복되는지 작성해 주세요." required></textarea></label>
           <label class="form-field numbered"><span><em>03</em>제안 내용 <b>*</b><CheckCircle2 v-if="form.proposal.trim()" :size="16" /></span><textarea v-model="form.proposal" rows="5" placeholder="AI를 어떻게 적용하면 좋을지 구체적으로 작성해 주세요." required></textarea></label>
@@ -24,7 +29,30 @@
         </form>
       </div>
 
-      <BaseModal v-if="selectedIdea" title="AI 아이디어 제안서" size="large" @close="selectedIdea = null"><article class="idea-document"><header><div><span>AI IDEA PROPOSAL</span><h2>{{ selectedIdea.title }}</h2><p>DX추진랩 검토 대상 제안서</p></div><dl><div><dt>상태</dt><dd><span :class="['status-chip', statusClass(selectedIdea.status)]">{{ selectedIdea.status }}</span></dd></div><div><dt>제출일</dt><dd>{{ formatDate(selectedIdea.created_at) }}</dd></div></dl></header><section v-if="selectedIdea.review_comment" :class="['review-result', statusClass(selectedIdea.status)]"><div><span>심사 완료</span><strong>{{ selectedIdea.status }}</strong></div><p>{{ selectedIdea.review_comment }}</p><time>{{ formatDate(selectedIdea.reviewed_at) }}</time></section><div class="idea-document-body"><section><b>01</b><div><h3>문제 정의</h3><p>{{ selectedIdea.problem_definition }}</p></div></section><section><b>02</b><div><h3>제안 내용</h3><p>{{ selectedIdea.proposal }}</p></div></section><section class="highlight"><b>03</b><div><h3>예상 효과</h3><p>{{ selectedIdea.effect }}</p></div></section><section><b>04</b><div><h3>참고자료</h3><div v-if="selectedIdea.attachments?.length" class="document-files"><button v-for="attachment in selectedIdea.attachments" :key="attachment.attachment_id" type="button" @click="downloadAttachment(attachment)"><Download :size="15" />{{ attachment.original_name }}</button></div><p v-else>첨부된 참고자료가 없습니다.</p></div></section></div></article></BaseModal>
+      <BaseModal v-if="selectedIdea" title="AI 아이디어 제안서" size="idea" @close="selectedIdea = null">
+        <article class="idea-proposal">
+          <header class="idea-proposal-head">
+            <div class="idea-proposal-title"><span>AI IDEA PROPOSAL</span><h2>{{ selectedIdea.title }}</h2><p>DX추진랩 검토 대상 제안서</p></div>
+            <div class="idea-proposal-meta">
+              <div><span>상태</span><strong :class="['idea-proposal-status', statusClass(selectedIdea.status)]">{{ selectedIdea.status }}</strong></div>
+              <div><span>제출일</span><strong>{{ formatDate(selectedIdea.created_at) }}</strong></div>
+            </div>
+          </header>
+
+          <section v-if="selectedIdea.status !== '접수완료' && selectedIdea.review_comment" :class="['idea-proposal-review', statusClass(selectedIdea.status)]">
+            <div><span>심사 완료</span><strong>{{ selectedIdea.status }}</strong></div>
+            <div class="idea-proposal-review-message">{{ selectedIdea.review_comment }}</div>
+            <time v-if="selectedIdea.reviewed_at">{{ formatDate(selectedIdea.reviewed_at) }}</time>
+          </section>
+
+          <div class="idea-proposal-body">
+            <section><span>01</span><div><h3>문제 정의</h3><p>{{ selectedIdea.problem_definition }}</p></div></section>
+            <section><span>02</span><div><h3>제안 내용</h3><p>{{ selectedIdea.proposal }}</p></div></section>
+            <section class="highlight"><span>03</span><div><h3>예상 효과</h3><p>{{ selectedIdea.effect }}</p></div></section>
+            <section><span>04</span><div><h3>참고자료</h3><div v-if="selectedIdea.attachments?.length" class="idea-proposal-files"><button v-for="attachment in selectedIdea.attachments" :key="attachment.attachment_id" type="button" @click="downloadAttachment(attachment)">{{ attachment.original_name }}</button></div><p v-else>첨부된 참고자료가 없습니다.</p></div></section>
+          </div>
+        </article>
+      </BaseModal>
       <BaseModal v-if="successOpen" title="아이디어 접수 완료" size="small" @close="successOpen = false"><div class="confirm-content"><span class="confirm-icon success"><CheckCircle2 :size="25" /></span><h2>접수 완료</h2><p>DX추진랩에 아이디어가 접수되었습니다.</p><button type="button" class="primary-button" @click="successOpen = false">확인</button></div></BaseModal>
       <BaseModal v-if="deleteTarget" title="아이디어 삭제 확인" size="small" @close="deleteTarget = null"><div class="confirm-content"><span class="confirm-icon delete"><Trash2 :size="24" /></span><h2>아이디어를 삭제할까요?</h2><p><strong>{{ deleteTarget.title }}</strong> 제안은 삭제 후 되돌릴 수 없습니다.</p><div class="form-buttons equal"><button type="button" class="secondary-button" @click="deleteTarget = null">아니오</button><button type="button" class="danger-button" :disabled="deleting" @click="deleteIdea">예</button></div></div></BaseModal>
     </div>
@@ -33,7 +61,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { CheckCircle2, Download, FileText, Lightbulb, LoaderCircle, Paperclip, Send, Trash2, X } from "lucide-vue-next";
+import { CheckCircle2, FileText, Lightbulb, LoaderCircle, Paperclip, Send, Trash2, X } from "lucide-vue-next";
 import AppLayout from "../layouts/AppLayout.vue"; import BaseModal from "../components/BaseModal.vue"; import { apiFetch, readApiError } from "../api/client";
 const ideas=ref([]);const loading=ref(true);const error=ref("");const submitting=ref(false);const deleting=ref(false);const selectedIdea=ref(null);const deleteTarget=ref(null);const successOpen=ref(false);const fileInput=ref(null);
 const form=reactive({title:"",problem_definition:"",proposal:"",effect:"",attachments:[]});const completedFields=computed(()=>[form.title,form.problem_definition,form.proposal,form.effect].filter((value)=>value.trim()).length);

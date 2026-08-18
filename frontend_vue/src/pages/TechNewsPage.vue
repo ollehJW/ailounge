@@ -27,16 +27,23 @@
       </div>
       <div v-else class="content-state empty"><Newspaper :size="34" /><strong>등록된 뉴스가 없습니다.</strong><span>선택한 유형에 게시된 뉴스가 없습니다.</span></div>
 
-      <BaseModal v-if="selectedNewsId" title="AI Tech News 상세" size="large" @close="closeNews">
-        <div v-if="detailLoading" class="content-state modal-loading"><LoaderCircle class="spin" :size="28" /><span>뉴스를 불러오는 중입니다.</span></div>
-        <article v-else-if="selectedNews" class="news-reader">
-          <header>
-            <div class="news-reader-meta"><span :class="['category-chip', selectedNews.category]">{{ categoryLabel(selectedNews.category) }}</span><span v-if="selectedNews.category === 'bp' && selectedNews.org_name" class="org-label"><Building2 :size="13" />{{ selectedNews.org_name }}</span><time>{{ formatDate(selectedNews.created_at) }}</time><span><Eye :size="14" />{{ selectedNews.view_count }}</span></div>
+      <BaseModal v-if="selectedNewsId" title="AI Tech News 상세" size="news" @close="closeNews">
+        <div v-if="detailLoading" class="news-popup-empty"><LoaderCircle class="spin" :size="28" /><span>뉴스를 불러오는 중입니다.</span></div>
+        <article v-else-if="selectedNews" class="news-popup">
+          <header class="news-popup-head">
+            <div class="news-popup-meta">
+              <span :class="['news-popup-category', selectedNews.category]">{{ categoryLabel(selectedNews.category) }}</span>
+              <span v-if="selectedNews.category === 'bp' && selectedNews.org_name" class="news-popup-org"><Building2 :size="13" />{{ selectedNews.org_name }}</span>
+              <time>{{ formatDate(selectedNews.created_at) }}</time>
+              <span class="news-popup-views"><Eye :size="14" />{{ formatCount(selectedNews.view_count) }}</span>
+            </div>
             <h2>{{ selectedNews.title }}</h2>
           </header>
-          <div v-if="selectedNews.cover_image_url" class="reader-cover"><img :src="apiUrl(selectedNews.cover_image_url)" alt="" /></div>
-          <a v-if="selectedNews.category === 'external' && selectedNews.source_url" class="source-link" :href="selectedNews.source_url" target="_blank" rel="noreferrer"><span><small>ORIGINAL SOURCE</small><strong>외부 원문 기사 보기</strong><em>{{ selectedNews.source_url }}</em></span><ExternalLink :size="19" /></a>
-          <div class="markdown-body" v-html="renderedMarkdown"></div>
+          <div v-if="selectedNews.cover_image_url" class="news-popup-cover"><img :src="apiUrl(selectedNews.cover_image_url)" alt="" /></div>
+          <div v-if="selectedNews.category === 'external' && selectedNews.source_url" class="news-popup-source-row">
+            <a class="news-popup-source" :href="selectedNews.source_url" target="_blank" rel="noreferrer"><span class="news-popup-source-icon"><ExternalLink :size="17" /></span><span class="news-popup-source-copy"><small>ORIGINAL SOURCE</small><b>외부 원문 기사 보기</b><em>{{ selectedNews.source_url }}</em></span></a>
+          </div>
+          <div class="news-popup-markdown" v-html="renderedMarkdown"></div>
         </article>
       </BaseModal>
     </div>
