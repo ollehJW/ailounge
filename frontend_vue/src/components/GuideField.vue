@@ -1,0 +1,2 @@
+<template><label><span>{{ label }} * <button type="button" title="작성 가이드" @click="open=!open"><CircleHelp :size="15" /></button></span><p v-if="open" class="field-guide">{{ guide }}</p><textarea v-model="model" rows="4" :placeholder="guide"></textarea></label></template>
+<script setup>import{ref}from"vue";import{CircleHelp}from"lucide-vue-next";defineProps({label:String,guide:String});const model=defineModel({type:String,default:""}),open=ref(false);</script>

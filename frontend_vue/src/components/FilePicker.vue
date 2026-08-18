@@ -1,0 +1,2 @@
+<template><label class="file-picker-reg"><span>{{ label }} *</span><input type="file" @change="change" /><div><FileUp :size="21" /><span><strong>{{ file?.name||`${label} 선택` }}</strong><small>10MB 이하 파일 1개 · 다수 데이터는 ZIP으로 첨부</small></span></div></label></template>
+<script setup>import{FileUp}from"lucide-vue-next";defineProps({label:String,file:Object});const emit=defineEmits(["change"]);function change(event){emit("change",event.target.files?.[0]||null);event.target.value="";}</script>
