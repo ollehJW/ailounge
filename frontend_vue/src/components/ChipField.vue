@@ -1,2 +1,11 @@
-<template><div class="chip-field"><header><span>{{ label }} *</span><small>복수 선택 가능</small></header><div><button v-for="option in options" :key="option" type="button" :class="{active:modelValue.includes(option)}" @click="toggle(option)">{{ option }}</button></div></div></template>
-<script setup>const props=defineProps({label:String,options:Array,modelValue:Array}),emit=defineEmits(["update:modelValue"]);const toggle=value=>emit("update:modelValue",props.modelValue.includes(value)?props.modelValue.filter(item=>item!==value):[...props.modelValue,value]);</script>
+<template>
+  <div class="chip-field">
+    <header><span>{{ label }} *</span><small>복수 선택 가능</small></header>
+    <div><button v-for="option in options" :key="option" type="button" :class="{active:modelValue.includes(option)}" :aria-pressed="modelValue.includes(option)" @click="toggle(option)">{{ option }}</button></div>
+  </div>
+</template>
+<script setup>
+const props=defineProps({label:String,options:Array,modelValue:Array});
+const emit=defineEmits(["update:modelValue"]);
+const toggle=value=>emit("update:modelValue",props.modelValue.includes(value)?props.modelValue.filter(item=>item!==value):[...props.modelValue,value]);
+</script>

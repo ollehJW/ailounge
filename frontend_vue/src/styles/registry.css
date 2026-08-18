@@ -1,0 +1,129 @@
+.registry-page .registry-card{overflow:hidden;border:1px solid #dfe6f1;border-radius:0;background:#fff;box-shadow:0 7px 20px rgba(16,24,40,.06)}
+.registry-page .registry-card>header{padding:22px 24px;border-bottom:1px solid #e2e8f2;background:#f8fbff}
+.registry-page .registry-card>header>span{display:inline-flex;margin-bottom:8px;padding:4px 9px;background:#eef4ff;color:var(--navy);font-size:11px;font-weight:900}
+.registry-page .registry-card>header h2{margin:0;color:#172033;font-size:21px;font-weight:900}
+.registry-page .registry-card>header p{margin:7px 0 0;color:#657082;font-size:13px;line-height:1.55}
+.registry-page .registry-body{padding:24px}
+.registry-page .registry-section{margin:0;padding:0;border:0}
+.registry-page .registry-section>header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:34px 0 16px;padding:11px 14px 11px 13px;border:1px solid #e0e7f2;border-left:4px solid var(--navy);background:linear-gradient(90deg,#f3f7ff 0%,#fff 100%);box-shadow:0 1px 0 rgba(16,24,40,.03)}
+.registry-page .registry-section:first-child>header{margin-top:0}
+.registry-page .registry-section>header h3{margin:0;color:#172033;font-size:14px;font-weight:900}
+.registry-page .registry-section>header>span{display:inline-grid;width:24px;height:24px;place-items:center;flex:none;padding:0;border:1px solid #f1c4c4;border-radius:0;background:#fff5f5;color:#c24141}
+.registry-page .registry-section.complete>header{border-left-color:#2f7d52;background:linear-gradient(90deg,#eefaf2 0%,#fff 100%)}
+.registry-page .registry-section.complete>header>span{border-color:#bfe0ca;background:#e6f5eb;color:#2f7d52}
+.registry-page .registry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.registry-page .registry-grid .full,.registry-page .chip-field.full{grid-column:1/-1}
+.registry-page .registry-grid label,.registry-page .guided-field{display:grid;gap:6px}
+.registry-page .registry-grid label>span,.registry-page .guided-field-label>span{color:#354154;font-size:12px;font-weight:800}
+.registry-page .registry-grid label>span small{margin-left:5px;color:#9aa4b2;font-size:10px;font-weight:600}
+.registry-page .registry-section input:not([type=checkbox]):not([type=file]),.registry-page .registry-section select,.registry-page .registry-section textarea{width:100%;min-height:42px;padding:10px 12px;border:1px solid #dfe6f0;border-radius:0;background:#fff;color:#222a36;font:inherit;font-size:13px;outline:0}
+.registry-page .registry-section textarea{resize:vertical;line-height:1.6}
+.registry-page .registry-section input:not([type=checkbox]):not([type=file]):focus,.registry-page .registry-section select:focus,.registry-page .registry-section textarea:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(6,41,131,.07)}
+.registry-page .registry-section input::placeholder,.registry-page .registry-section textarea::placeholder{color:#9aa3b1}
+.registry-page .chip-field{margin-top:3px}
+.registry-page .chip-field header{display:inline-flex;align-items:center;gap:8px;margin-bottom:10px}
+.registry-page .chip-field header span{color:#354154;font-size:12px;font-weight:800}
+.registry-page .chip-field header small{color:#9aa4b2;font-size:11px;font-weight:600}
+.registry-page .chip-field>div{display:flex;flex-wrap:wrap;gap:7px;padding:0}
+.registry-page .chip-field button{height:auto;padding:6px 13px;border:1.5px solid #dde4f0;border-radius:999px;background:#fff;color:#4a5568;font-size:12.5px;font-weight:700}
+.registry-page .chip-field button:hover{border-color:var(--navy);background:#f0f5ff;color:var(--navy)}
+.registry-page .chip-field button.active{border-color:var(--navy);background:var(--navy);color:#fff;box-shadow:0 6px 14px rgba(6,41,131,.16)}
+.registry-page .tag-list{display:flex;flex-wrap:wrap;gap:7px}
+.registry-page .tag-list button{display:inline-flex;height:auto;align-items:center;gap:7px;padding:6px 9px 6px 11px;border:1px solid #d8e2f0;border-radius:999px;background:#f6f9fe;color:#334155;font-size:12px;font-weight:800}
+.registry-page .tag-list button:hover{border-color:#f0b9b9;background:#fff5f5;color:#c24141}
+.registry-page .guided-field{grid-column:1/-1}
+.registry-page .guided-field-label{display:inline-flex;align-items:center;gap:7px}
+.registry-page .guided-field-label button{display:inline-grid;width:18px;height:18px;place-items:center;padding:0;border:1px solid #cfd8e7;border-radius:50%;background:#fff;color:#7b8798;font-size:11px;font-weight:900;line-height:1}
+.registry-page .guided-field-label button:hover{border-color:var(--navy);background:#f2f6ff;color:var(--navy)}
+.registry-page .field-guide{margin:0;padding:10px 12px;border:1px solid #f1d778;border-left:3px solid #d49a00;background:#fff8c9;color:#6c5514;font-size:12px;font-weight:700;line-height:1.6}
+.registry-page .registry-section:has(.data-switch)>div{display:grid;gap:14px;padding:16px;border:1px solid #e3eaf4;background:#f9fbfe}
+.registry-page .data-switch{display:flex;margin:0}
+.registry-page .data-switch label{display:inline-flex;align-items:center;gap:7px;color:#354154;font-size:13px;font-weight:800}
+.registry-page input[type=checkbox]{flex:none;width:15px;height:15px;accent-color:var(--navy)}
+.registry-page .data-attachment-head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 -2px;padding:0;border:0}
+.registry-page .data-attachment-head strong{color:#354154;font-size:13px;font-weight:900}
+.registry-page .data-attachment-head label{display:inline-flex;flex-direction:row;align-items:center;gap:7px;color:#5f6b7d;font-size:12px;font-weight:800;white-space:nowrap}
+.registry-page .file-picker-reg{position:relative;display:grid!important;min-height:110px;align-content:center;gap:6px;padding:16px;border:1px dashed #cfd8e7;background:#fff;color:#657082;cursor:pointer;transition:.16s}
+.registry-page .file-picker-reg:hover{transform:translateY(-1px);border-color:#6f8fc2;background:#f7fbff;box-shadow:0 10px 24px -20px rgba(30,74,135,.65)}
+.registry-page .file-picker-reg>input{display:none}
+.registry-page .file-picker-reg .file-picker-action{position:absolute;top:12px;right:12px;padding:5px 9px;border:1px solid #c8d5e8;background:#eef5ff;color:#315f9c;font-size:11px;font-weight:800;line-height:1}
+.registry-page .file-picker-reg:hover .file-picker-action{border-color:#6f8fc2;background:#315f9c;color:#fff}
+.registry-page .file-picker-reg>b{color:#1d2837;font-size:13px}
+.registry-page .file-picker-reg>span{color:#707a8b;font-size:11.5px}
+.registry-page .file-picker-reg>em{color:#8a94a5;font-size:11px;font-style:normal}
+.registry-page .item-editor{display:grid;gap:10px;margin-top:14px;padding:16px;border:1px solid #e3eaf4;background:#f9fbfe}
+.registry-page .item-editor:first-child{margin-top:0}
+.registry-page .item-editor>h4{margin:0;color:#172033;font-size:14px;font-weight:900}
+.registry-page .item-editor>h4 small{margin-left:6px;color:#8c96a8;font-size:11.5px;font-weight:600}
+.registry-page .item-editor>article{position:relative;display:grid;gap:8px;padding:13px;border:1px solid #dfe7f3;border-radius:0;background:#fff}
+.registry-page .item-editor>article>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px}
+.registry-page .item-editor>article>header span{color:#7d8797;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.registry-page .item-editor>article>header button,.registry-page .item-editor>article>button{position:static;display:block;width:auto;height:auto;padding:4px 8px;border:1px solid #e3e8f2;border-radius:0;background:#fff;color:#8a94a6;font-size:11px;font-weight:800}
+.registry-page .item-editor>article>header button:hover,.registry-page .item-editor>article>button:hover{border-color:#f0b9b9;background:#fff5f5;color:#c24141}
+.registry-page .item-editor .item-add-button,.registry-page .add-slide{display:inline-flex;width:100%;min-height:46px;align-items:center;justify-content:center;gap:5px;padding:0;border:1.5px dashed #b9c7dc;border-radius:0;background:#fff;color:var(--navy);font-size:13px;font-weight:900}
+.registry-page .item-editor .item-add-button:hover,.registry-page .add-slide:hover{transform:translateY(-1px);border-color:var(--navy);background:#f0f5ff}
+.registry-page .metric-editor>article{grid-template-columns:1fr auto;align-items:center;padding:0;border:0;background:transparent}
+.registry-page .metric-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px;margin:0!important}
+.registry-page .metric-fields.kpi{grid-template-columns:.8fr .5fr 1.2fr!important}
+.registry-page .metric-editor>article>button{padding:9px 10px}
+.registry-page .section-guide{margin:-6px 0 14px;color:#6b7688;font-size:12.5px;line-height:1.6}
+.registry-page .slide-list{display:grid;gap:12px}
+.registry-page .slide-list>article{display:grid;grid-template-columns:minmax(180px,220px) 1fr 38px;align-items:stretch;gap:12px;padding:14px;border:1px solid #e3eaf4;border-radius:0;background:#f9fbfe}
+.registry-page .slide-preview{position:relative;display:grid;height:auto;min-height:132px;align-content:center;place-items:center;overflow:hidden;padding:34px 10px 10px;border:1px dashed #cfd8e7;border-radius:0;background:#fff;color:#657082;cursor:pointer;transition:.16s}
+.registry-page .slide-preview:hover{transform:translateY(-1px);border-color:#6f8fc2;background:#f7fbff}
+.registry-page .slide-preview:after{content:"이미지 선택";position:absolute;top:12px;right:12px;padding:5px 9px;border:1px solid #c8d5e8;background:#eef5ff;color:#315f9c;font-size:11px;font-weight:800}
+.registry-page .slide-preview:hover:after{border-color:#6f8fc2;background:#315f9c;color:#fff}
+.registry-page .slide-preview img{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;border:1px solid #e3eaf4;background:#f3f6fb}
+.registry-page .slide-preview span{top:10px;left:10px;padding:3px 6px;border-radius:0;background:#fff;color:var(--navy);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}
+.registry-page .slide-list>article>div:nth-child(2){display:grid;gap:8px}
+.registry-page .slide-list>article>button{position:static;width:38px;height:38px;padding:0;border:1px solid #dce5f2;background:#fff;color:#657082}
+.registry-page .slide-list>article>button:not(:disabled):hover{border-color:#f0b9b9;background:#fff5f5;color:#c24141}
+.registry-page .registry-actions{margin-top:28px;padding-top:18px;border-top:1px solid #e7ebf1}
+@media(max-width:820px){.registry-page .registry-grid{grid-template-columns:1fr}.registry-page .metric-fields,.registry-page .metric-fields.kpi{grid-template-columns:1fr!important}.registry-page .slide-list>article{grid-template-columns:1fr}.registry-page .slide-list>article>button{width:100%}}
+.registry-page .slide-list>article{grid-template-columns:minmax(180px,220px) 1fr 74px}.registry-page .slide-preview b{margin-top:8px;color:#1d2837;font-size:13px}.registry-page .slide-preview small{margin-top:4px;color:#707a8b;font-size:11px}.registry-page .slide-actions{display:grid;grid-template-columns:repeat(2,34px);grid-auto-rows:34px;gap:6px;align-content:start}.registry-page .slide-actions button{border:1px solid #dce5f2;background:#fff;color:#657082;font-size:12px;font-weight:900}.registry-page .slide-actions button:disabled{opacity:.35}.registry-page .slide-actions button:not(:disabled):hover{border-color:var(--navy);background:#f2f6ff;color:var(--navy)}.registry-page .slide-actions .delete{grid-column:1/-1}.registry-page .slide-actions .delete:not(:disabled):hover{border-color:#f0b9b9;background:#fff5f5;color:#c24141}@media(max-width:820px){.registry-page .slide-list>article{grid-template-columns:1fr}.registry-page .slide-actions{grid-template-columns:repeat(3,34px)}}
+@media(min-width:821px){.registry-page .registry-history-list article{grid-template-columns:38px minmax(0,1fr) 96px 132px 72px}.registry-page .registry-history-list time{width:96px}.registry-page .registry-history-list nav{width:132px;justify-content:flex-start}}
+
+/* Registration history is a scanning surface, so keep its type comfortably readable. */
+.registry-page .registry-history>header{padding:24px 28px}
+.registry-page .registry-history>header span{color:#315f9c;font-size:12px;font-weight:800}
+.registry-page .registry-history>header h2{margin-top:5px;color:#17243a;font-size:21px;line-height:1.35}
+.registry-page .registry-history>header p{margin-top:5px;color:#596577;font-size:12px;line-height:1.55}
+.registry-page .registry-history>header>b{min-width:42px;padding:6px 10px;color:#173f78;font-size:12px;font-weight:800;text-align:center}
+.registry-page .registry-history-list{padding:8px 20px 18px}
+.registry-page .registry-history-list article{gap:14px;min-height:80px}
+.registry-page .registry-history-list article>span{width:38px;height:38px;border:1px solid #dbe5f3;background:#edf3fb;color:#173f78}
+.registry-page .registry-history-list article strong{overflow:hidden;color:#17243a;font-size:14px;font-weight:800;line-height:1.4;text-overflow:ellipsis;white-space:nowrap}
+.registry-page .registry-history-list article small{overflow:hidden;margin-top:4px;color:#5d6878;font-size:11px;font-weight:500;line-height:1.4;text-overflow:ellipsis;white-space:nowrap}
+.registry-page .registry-history-list time{color:#485568;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.registry-page .registry-history-list nav{gap:6px}
+.registry-page .registry-history-list nav button{height:32px;gap:5px;padding:0 10px;border-color:#cbd5e3;color:#354b6b;font-size:11px;font-weight:700}
+.registry-page .registry-history-list nav button:hover{border-color:#7691ba;background:#f2f6fc;color:#173f78}
+.registry-page .registry-history-list article>em{min-width:72px;padding:6px 9px;font-size:11px;font-weight:800;line-height:1.3;white-space:nowrap}
+@media(min-width:821px){.registry-page .registry-history-list article{grid-template-columns:38px minmax(0,1fr) 104px 150px 78px}.registry-page .registry-history-list time{width:104px}.registry-page .registry-history-list nav{width:150px}}
+
+/* Match the original AI asset registration process guide. */
+.registry-page .asset-reg-guide{display:block;padding:24px 28px;border:1px solid #d6e2f5;border-left:4px solid var(--navy);border-radius:0;background:linear-gradient(135deg,#f0f5ff 0%,#f7f9ff 100%);box-shadow:none}
+.registry-page .asset-reg-guide-label{display:block;margin-bottom:20px;color:var(--navy);font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.registry-page .asset-reg-guide-steps{display:flex;align-items:flex-start;gap:0}
+.registry-page .asset-reg-guide-step{display:flex;min-width:0;flex:1;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.registry-page .asset-reg-guide-num{display:grid;width:36px;height:36px;place-items:center;flex:none;border-radius:50%;background:var(--navy);color:#fff;font-size:13px;font-weight:900}
+.registry-page .asset-reg-guide-step>div:last-child{min-width:0}
+.registry-page .asset-reg-guide-step b{display:block;margin-bottom:4px;color:#1a2236;font-size:13px;font-weight:900;line-height:1.45}
+.registry-page .asset-reg-guide-step span{display:block;color:#657082;font-size:11.5px;font-weight:500;line-height:1.5}
+.registry-page .asset-reg-guide-arrow{flex:none;margin-top:8px;padding:0 8px;color:#b0bcce;font-size:18px;line-height:36px}
+@media(max-width:1100px){.registry-page .asset-reg-guide-steps{flex-direction:column;align-items:stretch;gap:16px}.registry-page .asset-reg-guide-step{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:center;text-align:left}.registry-page .asset-reg-guide-arrow{display:none}.registry-page .asset-reg-guide-step b{margin-bottom:2px}}
+
+/* Registration progress follows the original four-step flow with clearer states. */
+.registry-page .asset-reg-flow{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr) 44px minmax(0,1fr) 44px minmax(0,1fr);align-items:center;gap:0;margin-bottom:18px;padding:18px;border:1px solid #dfe6f1;border-radius:0;background:#fff;box-shadow:0 5px 14px rgba(10,36,105,.04)}
+.registry-page .asset-reg-flow-step{display:grid;min-width:0;min-height:68px;place-items:center;align-content:center;gap:8px;padding:8px 10px;border:1px solid transparent;border-radius:0;background:transparent;color:#697587;cursor:pointer;transition:background .16s,border-color .16s,color .16s}
+.registry-page .asset-reg-flow-step:hover:not(:disabled){border-color:#d7e2f2;background:#f7f9fd;color:var(--navy)}
+.registry-page .asset-reg-flow-step span{display:grid;width:36px;height:36px;place-items:center;border:1.5px solid #c7d2e2;border-radius:50%;background:#fff;color:#697587;font-size:12px;font-weight:900;line-height:1}
+.registry-page .asset-reg-flow-step b{overflow:hidden;max-width:100%;color:inherit;font-size:13px;font-weight:900;line-height:1.4;text-align:center;text-overflow:ellipsis;white-space:nowrap}
+.registry-page .asset-reg-flow-step.active{border-color:#cbdaf0;background:#f2f6fd;color:var(--navy)}
+.registry-page .asset-reg-flow-step.active span,.registry-page .asset-reg-flow-step.done span{border-color:var(--navy);background:var(--navy);color:#fff}
+.registry-page .asset-reg-flow-step.done{color:var(--navy)}
+.registry-page .asset-reg-flow-step.locked{color:#98a2b1;cursor:not-allowed;opacity:.62}
+.registry-page .asset-reg-flow-step.locked span{border-color:#d9e0ea;background:#f5f7fa;color:#98a2b1}
+.registry-page .asset-reg-flow>i{display:block;width:100%;height:2px;margin:0;background:#d9e2ef}
+.registry-page .asset-reg-flow-step.done+i{background:#7894c0}
+@media(max-width:760px){.registry-page .asset-reg-flow{grid-template-columns:1fr;align-items:stretch;padding:14px 16px}.registry-page .asset-reg-flow-step{grid-template-columns:38px minmax(0,1fr);min-height:54px;justify-items:start;align-content:center;gap:12px;padding:8px 10px}.registry-page .asset-reg-flow-step span{grid-column:1;grid-row:1}.registry-page .asset-reg-flow-step b{grid-column:2;grid-row:1;text-align:left;white-space:normal}.registry-page .asset-reg-flow>i{width:2px;height:14px;margin:0 0 0 27px}}
