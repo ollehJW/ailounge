@@ -127,3 +127,126 @@
 .registry-page .asset-reg-flow>i{display:block;width:100%;height:2px;margin:0;background:#d9e2ef}
 .registry-page .asset-reg-flow-step.done+i{background:#7894c0}
 @media(max-width:760px){.registry-page .asset-reg-flow{grid-template-columns:1fr;align-items:stretch;padding:14px 16px}.registry-page .asset-reg-flow-step{grid-template-columns:38px minmax(0,1fr);min-height:54px;justify-items:start;align-content:center;gap:12px;padding:8px 10px}.registry-page .asset-reg-flow-step span{grid-column:1;grid-row:1}.registry-page .asset-reg-flow-step b{grid-column:2;grid-row:1;text-align:left;white-space:normal}.registry-page .asset-reg-flow>i{width:2px;height:14px;margin:0 0 0 27px}}
+
+/* Asset repository connection mirrors the original registration step. */
+.registry-page .asset-reg-repo-body{padding:24px}
+.registry-page .asset-reg-repo-panel{display:grid;gap:10px;padding:16px;border:1px solid #e3eaf4;background:#f9fbfe}
+.registry-page .asset-reg-repo-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(160px,.7fr) 112px;gap:10px}
+.registry-page .asset-reg-repo-grid input{width:100%;height:42px;padding:10px 12px;border:1px solid #dfe6f0;border-radius:0;background:#fff;color:#222a36;font:inherit;font-size:13px;outline:0}
+.registry-page .asset-reg-repo-grid input::placeholder{color:#929cac}
+.registry-page .asset-reg-repo-grid input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(6,41,131,.07)}
+.registry-page .asset-reg-repo-grid button{height:42px;border:1px solid var(--navy);border-radius:0;background:var(--navy);color:#fff;font-size:13px;font-weight:900}
+.registry-page .asset-reg-repo-grid button:hover:not(:disabled){background:#0a338f}
+.registry-page .asset-reg-repo-grid button:disabled{cursor:not-allowed;opacity:.58}
+.registry-page .asset-reg-repo-inline-error{display:flex;align-items:flex-start;gap:7px;margin:2px 0 0;padding:10px 12px;border:1px solid #f3c7c7;background:#fff8f8;color:#9d3636;font-size:12px;font-weight:700;line-height:1.55}
+.registry-page .asset-reg-repo-inline-error svg{flex:none;margin-top:1px}
+.registry-page .asset-reg-file-tree{overflow:auto;max-height:390px;margin-top:12px;padding:14px;background:#101828;color:#d7e2f1;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.7}
+.registry-page .asset-reg-file-tree-title{margin-bottom:8px;color:#fff;font-weight:900}
+.registry-page .asset-reg-file-tree-title span{margin-left:6px;color:#9db5e2;font-size:11px;font-weight:700}
+.registry-page .asset-reg-file-tree>p{display:flex;align-items:center;gap:8px;margin:0;color:#9aa9bd}
+.registry-page .asset-reg-file-tree .repo-tree{overflow:visible;max-height:none;margin:0;border:0;border-radius:0;background:transparent}
+.registry-page .asset-reg-file-tree .repo-tree>header{display:none}
+.registry-page .asset-reg-file-tree .repo-tree>ul{margin:0;padding:0}
+.registry-page .asset-reg-file-tree .repo-tree ul{list-style:none}
+.registry-page .asset-reg-file-tree .repo-tree ul ul{padding-left:20px}
+.registry-page .asset-reg-file-tree .repo-tree li>span{display:flex;align-items:center;gap:7px;padding:3px 0;color:#cbd8ea;font-size:12px;font-weight:500}
+.registry-page .asset-reg-file-tree .repo-tree li>span svg{flex:none;color:#9db5e2}
+.registry-page .asset-reg-file-tree .repo-tree li>span .lucide-folder{color:#f4c56f}
+.registry-page .asset-reg-nav{display:flex;justify-content:space-between;gap:12px;padding:16px 24px;border-top:1px solid #e2e8f2;background:#fff}
+.registry-page .asset-reg-nav button{min-width:96px;height:42px}
+@media(max-width:820px){.registry-page .asset-reg-repo-grid{grid-template-columns:1fr}.registry-page .asset-reg-repo-grid button{width:100%}.registry-page .asset-reg-file-tree{max-height:320px}}
+
+/* Diffusion package generation and progress modal. */
+.registry-page .asset-reg-skill-body{padding:24px}
+.registry-page .asset-reg-skill-trigger{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px;border:1px solid #d9e7ff;background:linear-gradient(135deg,#eef4ff 0%,#fff 82%)}
+.registry-page .asset-reg-skill-trigger.loading{border-color:#bcd0f4;background:linear-gradient(135deg,#eef4ff 0%,#f8fbff 100%)}
+.registry-page .asset-reg-skill-trigger>div{display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:3px 8px;min-width:0}
+.registry-page .asset-reg-skill-trigger>div>svg{grid-column:1;grid-row:1/3;color:var(--navy)}
+.registry-page .asset-reg-skill-trigger b{grid-column:2;color:#0f2b6f;font-size:14px;font-weight:900}
+.registry-page .asset-reg-skill-trigger span{grid-column:2;color:#657082;font-size:12px;line-height:1.55}
+.registry-page .asset-reg-skill-generate{display:inline-flex;min-width:150px;height:42px;align-items:center;justify-content:center;gap:7px;flex:none}
+.registry-page .asset-reg-skill-loading{display:flex;align-items:center;gap:12px;margin-top:14px;padding:14px 16px;border:1px solid #d9e7ff;background:#f6f9ff}
+.registry-page .asset-reg-skill-loading>svg{flex:none;color:var(--navy)}
+.registry-page .asset-reg-skill-loading b{color:#172033;font-size:13px}
+.registry-page .asset-reg-skill-loading p{margin:3px 0 0;color:#657082;font-size:12px}
+
+.asset-reg-skill-progress-backdrop{z-index:1300;padding:22px}
+.asset-reg-skill-progress-modal{width:min(880px,calc(100vw - 32px));max-height:min(760px,calc(100vh - 44px));overflow:auto;border:1px solid #dde6f2;border-radius:0;background:#fff;box-shadow:0 30px 90px rgba(15,23,42,.24)}
+.asset-reg-skill-progress-head{padding:24px 26px 20px;border-bottom:1px solid #e6edf6;background:linear-gradient(135deg,#f3f7ff 0%,#fff 74%)}
+.asset-reg-skill-progress-head>span{display:inline-flex;align-items:center;gap:7px;color:var(--navy);font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.asset-reg-skill-progress-head h2{margin:10px 0 8px;color:#172033;font-size:24px;line-height:1.25}
+.asset-reg-skill-progress-head p{margin:0;color:#647086;font-size:13px;line-height:1.65}
+.asset-reg-plan-loading{display:flex;align-items:center;gap:14px;margin:22px 26px 26px;padding:18px;border:1px solid #d9e7ff;background:#f7faff}
+.asset-reg-plan-loading>svg{flex:none;color:var(--navy)}
+.asset-reg-plan-loading b{color:#172033;font-size:14px}
+.asset-reg-plan-loading p{margin:4px 0 0;color:#657082;font-size:12.5px}
+
+.asset-reg-skill-plan-summary{margin:18px 26px 12px;padding:14px 16px;border:1px solid #e5ecf6;background:#fafcff}
+.asset-reg-skill-plan-summary b{display:block;margin-bottom:6px;color:#172033;font-size:13px;font-weight:900}
+.asset-reg-skill-plan-summary p{margin:0;color:#5d687a;font-size:12.5px;line-height:1.6}
+.asset-reg-skill-candidate-list{display:grid;gap:10px;margin:0 26px}
+.asset-reg-skill-candidate{display:grid;width:100%;grid-template-columns:30px minmax(0,1fr);gap:12px;padding:15px;border:1px solid #e2e9f3;border-radius:0;background:#fff;text-align:left;transition:.16s}
+.asset-reg-skill-candidate:hover{transform:translateY(-1px);border-color:#b9cdec;background:#fbfdff;box-shadow:0 14px 32px -26px rgba(30,74,135,.7)}
+.asset-reg-skill-candidate.selected{border-color:#6f92cb;background:#f5f9ff}
+.asset-reg-skill-check{display:grid;width:24px;height:24px;place-items:center;border:1px solid #c9d5e6;background:#fff;color:#fff;font-size:13px;font-weight:900}
+.asset-reg-skill-candidate.selected .asset-reg-skill-check{border-color:var(--navy);background:var(--navy)}
+.asset-reg-skill-candidate-top{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.asset-reg-skill-candidate-top strong{color:#172033;font-size:14px;font-weight:900}
+.asset-reg-skill-candidate-top em{color:#6c7a8f;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;font-style:normal}
+.asset-reg-skill-candidate-top small{padding:3px 7px;border:1px solid #bfe3cd;background:#eefaf3;color:#18864f;font-size:10.5px;font-weight:900}
+.asset-reg-skill-candidate p{margin:8px 0 10px;color:#4e5b70;font-size:12.5px;line-height:1.6}
+.asset-reg-skill-score{display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid #dce6f4;background:#fff}
+.asset-reg-skill-score span{color:#69788d;font-size:10.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.asset-reg-skill-score b{color:var(--navy);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;font-weight:900}
+.asset-reg-skill-candidate blockquote{margin:10px 0 0;padding:9px 11px;border-left:2px solid #9db7df;background:#f8fbff;color:#5e6b7d;font-size:12px;line-height:1.55}
+.asset-reg-skill-progress-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px 26px 24px}
+.asset-reg-skill-progress-actions button{width:118px;height:40px}
+
+.asset-reg-generation-steps{display:grid;gap:10px;margin:22px 26px 26px}
+.asset-reg-generation-step{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:12px;padding:14px;border:1px solid #e2e9f3;background:#fff}
+.asset-reg-generation-step>span{display:grid;width:28px;height:28px;place-items:center;border:1px solid #d1dbea;background:#f8fafc;color:#7a8799;font-size:12px;font-weight:900}
+.asset-reg-generation-step.active{border-color:#89a8d7;background:#f5f9ff}
+.asset-reg-generation-step.active>span{border-color:var(--navy);background:var(--navy);color:#fff}
+.asset-reg-generation-step.done>span{border-color:#8ed0aa;background:#eaf8f0;color:#18864f}
+.asset-reg-generation-step b{color:#172033;font-size:13.5px}
+.asset-reg-generation-step p{margin:3px 0 0;color:#6b7687;font-size:12px}
+.asset-reg-skill-error{display:grid;gap:10px;margin:22px 26px 26px;padding:18px;border:1px solid #f0c8c1;background:#fff7f5}
+.asset-reg-skill-error b{color:#9f2f20;font-size:14px;font-weight:900}
+.asset-reg-skill-error p{margin:0;color:#68423c;font-size:13px;line-height:1.6}
+.asset-reg-skill-error button{justify-self:end;min-width:92px;height:40px}
+
+.registry-page .asset-reg-skill-result{display:grid;gap:16px;margin-top:16px}
+.registry-page .asset-reg-skill-section{display:grid;gap:12px;padding:16px;border:1px solid #e3eaf4;background:#f9fbfe}
+.registry-page .asset-reg-skill-result-head{display:flex;align-items:center;gap:8px;color:var(--navy)}
+.registry-page .asset-reg-skill-result-head b{color:#172033;font-size:14px;font-weight:900}
+.registry-page .asset-reg-skill-explorer{display:grid;height:440px;min-height:440px;grid-template-columns:minmax(230px,300px) minmax(0,1fr);overflow:hidden;border:1px solid #d7e1ef;background:#fff}
+.registry-page .asset-reg-skill-tree-pane{display:grid;min-width:0;min-height:0;grid-template-rows:38px minmax(0,1fr);overflow:hidden;border-right:1px solid #d7e1ef;background:#f5f7fb}
+.registry-page .asset-reg-skill-tree-head{display:flex;min-height:38px;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;border-bottom:1px solid #e2e8f2;background:#eef3fb;color:#405069;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.registry-page .asset-reg-skill-tree-head em{color:#7a8799;font-size:10.5px;font-style:normal}
+.registry-page .asset-reg-skill-tree-pane>.skill-tree{overflow:auto;min-height:0;border:0;border-radius:0;background:#f5f7fb;scrollbar-gutter:stable}
+.registry-page .asset-reg-skill-tree-pane>.skill-tree>ul{padding:8px 0 12px}
+.registry-page .asset-reg-skill-tree-pane .skill-tree ul ul{padding-left:16px}
+.registry-page .asset-reg-skill-tree-pane .skill-tree button{display:flex;width:100%;min-height:31px;align-items:center;gap:7px;padding:5px 12px;border:0;border-radius:0;background:transparent;color:#26364d;font-size:12px;font-weight:700;text-align:left}
+.registry-page .asset-reg-skill-tree-pane .skill-tree button:hover,.registry-page .asset-reg-skill-tree-pane .skill-tree button.selected{background:#eaf1ff;color:var(--navy)}
+.registry-page .asset-reg-skill-tree-pane .skill-tree button .lucide-folder{color:#d5a33e}
+.registry-page .asset-reg-skill-viewer{display:grid;min-width:0;min-height:0;grid-template-rows:40px minmax(0,1fr);overflow:hidden;background:#fbfcfe;color:#1f2937}
+.registry-page .asset-reg-skill-viewer>div{display:flex;align-items:center;padding:0 14px;border-bottom:1px solid #e0e7f1;background:#f4f7fb;color:#31435d;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:900}
+.registry-page .asset-reg-skill-viewer pre{overflow:auto;min-width:0;min-height:0;max-height:100%;margin:0;padding:14px 18px;background:#fff;color:#243047;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.65;overscroll-behavior:contain;scrollbar-gutter:stable;white-space:pre-wrap}
+.registry-page .asset-reg-skill-viewer>p{display:grid;grid-row:1/3;margin:0;place-items:center;color:#9aa8bd;font-size:12px}
+@media(max-width:760px){.registry-page .asset-reg-skill-trigger{align-items:stretch;flex-direction:column}.registry-page .asset-reg-skill-generate{width:100%}.asset-reg-skill-progress-backdrop{padding:10px}.asset-reg-skill-progress-head{padding:20px}.asset-reg-skill-plan-summary,.asset-reg-skill-candidate-list,.asset-reg-generation-steps,.asset-reg-skill-error{margin-right:18px;margin-left:18px}.asset-reg-skill-progress-actions{padding-right:18px;padding-left:18px}.registry-page .asset-reg-skill-explorer{height:auto;min-height:0;grid-template-columns:1fr}.registry-page .asset-reg-skill-tree-pane{max-height:240px;border-right:0;border-bottom:1px solid #d7e1ef}.registry-page .asset-reg-skill-viewer{height:340px}}
+
+/* Final submission and approval mirrors the original review layout. */
+.registry-page .asset-reg-submit-body{padding:24px}
+.registry-page .asset-reg-submit-notice{display:flex;align-items:flex-start;justify-content:flex-start;gap:14px;padding:16px;border:1px solid #d9e7ff;background:linear-gradient(135deg,#eef4ff 0%,#fff 82%)}
+.registry-page .asset-reg-submit-notice>svg{flex:none;margin-top:1px;color:var(--navy)}
+.registry-page .asset-reg-submit-notice>div{display:grid;min-width:0;flex:1;gap:4px;text-align:left}
+.registry-page .asset-reg-submit-notice b{color:#0f2b6f;font-size:14px;font-weight:900}
+.registry-page .asset-reg-submit-notice span{color:#657082;font-size:12px;line-height:1.65}
+.registry-page .asset-reg-agree-list{display:grid;gap:10px;margin-top:14px}
+.registry-page .asset-reg-agree-list label{display:flex;align-items:flex-start;gap:10px;padding:13px 14px;border:1px solid #e3eaf4;background:#f9fbfe;color:#354154;font-size:13px;line-height:1.55;cursor:pointer;transition:.16s}
+.registry-page .asset-reg-agree-list label:hover{border-color:#c6d5ea;background:#f5f8fd}
+.registry-page .asset-reg-agree-list label:has(input:checked){border-color:#aac0e1;background:#f2f7ff;color:#203b66}
+.registry-page .asset-reg-agree-list input{width:16px;height:16px;margin-top:2px;flex:none;accent-color:var(--navy)}
+.registry-page .asset-reg-agree-list span{min-width:0}
+.registry-page .asset-reg-submit-error{margin:12px 0 0;padding:10px 12px;border:1px solid #f0b9b9;background:#fff5f5;color:#c24141;font-size:12.5px;font-weight:800;line-height:1.55}
+@media(max-width:620px){.registry-page .asset-reg-submit-notice{gap:10px}.registry-page .asset-reg-agree-list label{font-size:12.5px}}

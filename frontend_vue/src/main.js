@@ -6,7 +6,11 @@ import "./styles.css";
 import "./styles/community.css";
 import "./styles/forms.css";
 import "./styles/studio.css";
+import "./styles/dx-discovery.css";
+import "./styles/asset-recommendation.css";
+import "./styles/asset-catalog.css";
 import "./styles/asset-qa.css";
+import "./styles/asset-detail.css";
 import "./styles/registry.css";
 
 createApp(App).use(createPinia()).use(router).mount("#app");
