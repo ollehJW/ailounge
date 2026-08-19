@@ -1,10 +1,8 @@
 @font-face {font-family:"NotoSans";src:url("./assets/fonts/NotoSans-Regular.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap;}
 @font-face {font-family:"NotoSans";src:url("./assets/fonts/NotoSans-Medium.woff2") format("woff2");font-weight:500 600;font-style:normal;font-display:swap;}
 @font-face {font-family:"NotoSans";src:url("./assets/fonts/NotoSans-Bold.woff2") format("woff2");font-weight:700 900;font-style:normal;font-display:swap;}
-:root {font-family:"NotoSans","Pretendard","Malgun Gothic",sans-serif;color:#151721;background:#f0f2f7;font-synthesis:none;--navy:#0a2469;--navy-dark:#071b50;--blue:#0b7bff;--red:#ec1c24;--line:#e0e2e9;--muted:#6f7381;}
+.ai-lounge-scope.ai-lounge-app {min-width:320px;min-height:100vh;background:#f0f2f7;color:#151721;line-height:1.5;}
 * {box-sizing:border-box;margin:0;padding:0;letter-spacing:0;}
-html,body,#app {min-width:320px;min-height:100%;}
-body {min-height:100vh;background:#f0f2f7;color:#151721;line-height:1.5;}
 button,input,select,textarea {font:inherit;letter-spacing:0;}
 button,a {color:inherit;} button {cursor:pointer;} a {text-decoration:none;} ul,ol {list-style:none;} img {display:block;max-width:100%;}
 body.modal-open {overflow:hidden;}

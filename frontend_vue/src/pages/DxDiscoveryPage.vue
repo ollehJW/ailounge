@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="studio-page dx-page">
+  <div class="studio-page dx-page">
       <div class="dx-workspace">
         <aside class="dx-sessions">
           <button class="dx-new" :disabled="loading" @click="createSession"><Plus :size="16" />새 채팅</button>
@@ -49,14 +48,12 @@
         </article>
         <div class="dx-recommendations"><section><header><Database :size="18" /><strong>추천 Data</strong></header><p v-if="!detail.recommended_data_ids?.length">추천 로직 연동 후 표시됩니다.</p><span v-for="id in detail.recommended_data_ids" :key="id">{{ id }}</span></section><section><header><Bot :size="18" /><strong>추천 AI 자산</strong></header><p v-if="!detail.recommended_asset_ids?.length">추천 로직 연동 후 표시됩니다.</p><span v-for="id in detail.recommended_asset_ids" :key="id">{{ id }}</span></section></div>
       </section>
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from "vue";
 import { Bot, Clock3, Database, Download, Plus, Send, Trash2, UserRound } from "lucide-vue-next";
-import AppLayout from "../layouts/AppLayout.vue";
 import { apiFetch, readApiError } from "../api/client";
 
 const initial={role:"agent",text:"어떤 업무가 가장 힘드신가요? 편하게 이야기해주시면, 대화를 통해 과제를 구체화하고 과제 정의서와 참고할 Data·AI 자산까지 정리해드릴게요."};

@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="community-page usage-page">
+  <div class="community-page usage-page">
       <p v-if="error" class="form-error page-error">{{ error }}</p>
       <section v-if="hotPosts.length" class="hot-feature">
         <div class="hot-feature-label"><span>WEEKLY TOP</span><strong>이번 주 가장 핫한 활용법</strong></div>
@@ -39,14 +38,13 @@
           </div><p v-if="composerError" class="form-error">{{ composerError }}</p><div class="form-buttons equal"><button type="button" class="secondary-button" @click="closeComposer">취소</button><button class="primary-button" :disabled="saving">{{ saving ? "저장 중..." : editingId ? "수정" : "게시" }}</button></div>
         </form>
       </BaseModal>
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { Bold, Eye, Heart, LoaderCircle, MessageSquareText, Palette, Pencil, Plus, Search, Underline, UserRound } from "lucide-vue-next";
-import AppLayout from "../layouts/AppLayout.vue"; import BaseModal from "../components/BaseModal.vue";
+import BaseModal from "../components/BaseModal.vue";
 import { apiFetch, readApiError } from "../api/client"; import { useAuthStore } from "../stores/auth";
 const auth = useAuthStore(); const posts = ref([]); const loading = ref(true); const error = ref(""); const query = ref(""); const categoryFilter = ref("전체"); const sortOrder = ref("latest"); const hotIndex = ref(0);
 const categories = ["전체", "확산 사례", "실패·교훈", "Tip 공유"]; const selectedPostId = ref(""); const selectedPost = ref(null); const detailLoading = ref(false);

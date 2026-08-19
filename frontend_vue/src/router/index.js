@@ -12,7 +12,7 @@ import AssetRegistryPage from "../pages/AssetRegistryPage.vue";
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/login", name: "login", component: LoginPage, meta: { public: true } },
+    { path: "/login", name: "login", component: LoginPage, meta: { public: true, layout: false } },
     { path: "/", redirect: "/studio" },
     { path: "/studio", name: "studio-intro", component: StudioIntroPage, meta: { section: "studio", sectionLabel: "AI STUDIO", title: "AI STUDIO 소개", description: "업무 과제 발굴부터 검증된 AI 자산의 등록·탐색·확산까지 하나의 흐름으로 연결합니다." } },
     { path: "/studio/dx-discovery", name: "dx-discovery", component: DxDiscoveryPage, meta: { section: "studio", sectionLabel: "AI STUDIO", title: "DX 과제 발굴", description: "AI Agent와 대화하여 업무 문제를 실행 가능한 DX 과제로 구체화합니다." } },

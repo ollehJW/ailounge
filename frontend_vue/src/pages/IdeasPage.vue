@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="community-page ideas-page">
+  <div class="community-page ideas-page">
       <section class="idea-process">
         <div class="idea-process-intro"><span>PROCESS GUIDE</span><h2>아이디어를 보내면 이렇게 진행됩니다</h2><p>작성한 제안은 DX추진랩에 전달되며, 업무 영향도와 AI 적용 가능성 검토 후 심사평과 함께 결과가 업데이트됩니다.</p></div>
         <div class="idea-process-steps">
@@ -55,14 +54,13 @@
       </BaseModal>
       <BaseModal v-if="successOpen" title="아이디어 접수 완료" size="small" @close="successOpen = false"><div class="confirm-content"><span class="confirm-icon success"><CheckCircle2 :size="25" /></span><h2>접수 완료</h2><p>DX추진랩에 아이디어가 접수되었습니다.</p><button type="button" class="primary-button" @click="successOpen = false">확인</button></div></BaseModal>
       <BaseModal v-if="deleteTarget" title="아이디어 삭제 확인" size="small" @close="deleteTarget = null"><div class="confirm-content"><span class="confirm-icon delete"><Trash2 :size="24" /></span><h2>아이디어를 삭제할까요?</h2><p><strong>{{ deleteTarget.title }}</strong> 제안은 삭제 후 되돌릴 수 없습니다.</p><div class="form-buttons equal"><button type="button" class="secondary-button" @click="deleteTarget = null">아니오</button><button type="button" class="danger-button" :disabled="deleting" @click="deleteIdea">예</button></div></div></BaseModal>
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { CheckCircle2, FileText, Lightbulb, LoaderCircle, Paperclip, Send, Trash2, X } from "lucide-vue-next";
-import AppLayout from "../layouts/AppLayout.vue"; import BaseModal from "../components/BaseModal.vue"; import { apiFetch, readApiError } from "../api/client";
+import BaseModal from "../components/BaseModal.vue"; import { apiFetch, readApiError } from "../api/client";
 const ideas=ref([]);const loading=ref(true);const error=ref("");const submitting=ref(false);const deleting=ref(false);const selectedIdea=ref(null);const deleteTarget=ref(null);const successOpen=ref(false);const fileInput=ref(null);
 const form=reactive({title:"",problem_definition:"",proposal:"",effect:"",attachments:[]});const completedFields=computed(()=>[form.title,form.problem_definition,form.proposal,form.effect].filter((value)=>value.trim()).length);
 const formatDate=(value)=>String(value||"").slice(0,10);const fileSize=(value)=>`${(Number(value||0)/1024/1024).toFixed(2)} MB`;const statusClass=(status)=>({접수완료:"received",선정:"selected",미선정:"rejected"}[status]||"received");

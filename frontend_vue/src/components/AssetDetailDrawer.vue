@@ -1,7 +1,8 @@
 <template>
   <Teleport to="body">
-    <button class="asset-detail-backdrop" type="button" aria-label="상세 닫기" @click="$emit('close')"></button>
-    <aside class="asset-detail-drawer" aria-label="AI 자산 상세">
+    <div class="ai-lounge-scope ai-lounge-overlay">
+      <button class="asset-detail-backdrop" type="button" aria-label="상세 닫기" @click="$emit('close')"></button>
+      <aside class="asset-detail-drawer" aria-label="AI 자산 상세">
       <div v-if="loading" class="asset-catalog-detail-loading"><LoaderCircle class="spin" :size="20" />자산 정보를 불러오고 있습니다.</div>
       <template v-else-if="asset">
         <header class="asset-detail-head">
@@ -118,14 +119,15 @@
         </div>
       </template>
       <div v-else class="asset-catalog-detail-error">{{ error || '자산 정보를 불러오지 못했습니다.' }}</div>
-    </aside>
+      </aside>
 
-    <div v-if="lightbox && currentSlide" class="asset-image-lightbox" role="dialog" aria-modal="true" aria-label="자산 활용 원본 이미지" @mousedown="lightbox = false">
-      <section class="asset-image-lightbox-panel" @mousedown.stop>
-        <header><div><span>ORIGINAL IMAGE</span><b>{{ currentSlide.caption || '자산 활용 화면' }}</b></div><button type="button" aria-label="원본 이미지 닫기" @click="lightbox = false"><X :size="19" /></button></header>
-        <div class="asset-image-lightbox-canvas"><img :src="apiUrl(currentSlide.url)" :alt="currentSlide.caption || asset.asset_name" /></div>
-        <p v-if="currentSlide.description">{{ currentSlide.description }}</p>
-      </section>
+      <div v-if="lightbox && currentSlide" class="asset-image-lightbox" role="dialog" aria-modal="true" aria-label="자산 활용 원본 이미지" @mousedown="lightbox = false">
+        <section class="asset-image-lightbox-panel" @mousedown.stop>
+          <header><div><span>ORIGINAL IMAGE</span><b>{{ currentSlide.caption || '자산 활용 화면' }}</b></div><button type="button" aria-label="원본 이미지 닫기" @click="lightbox = false"><X :size="19" /></button></header>
+          <div class="asset-image-lightbox-canvas"><img :src="apiUrl(currentSlide.url)" :alt="currentSlide.caption || asset.asset_name" /></div>
+          <p v-if="currentSlide.description">{{ currentSlide.description }}</p>
+        </section>
+      </div>
     </div>
   </Teleport>
 </template>

@@ -1,19 +1,27 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { apiFetch, readApiError } from "../api/client";
+import { AUTH_STORAGE_KEYS } from "../config/runtime";
+import { getLocalStorage } from "../utils/browser";
 
 const readStoredUser = () => {
   try {
-    return JSON.parse(window.localStorage.getItem("ailounge_user") || "null");
+    return JSON.parse(getLocalStorage()?.getItem(AUTH_STORAGE_KEYS.user) || "null");
   } catch {
     return null;
   }
 };
 
 export const useAuthStore = defineStore("auth", () => {
-  const token = ref(window.localStorage.getItem("ailounge_token") || "");
+  const token = ref(getLocalStorage()?.getItem(AUTH_STORAGE_KEYS.token) || "");
   const user = ref(readStoredUser());
   const isAuthenticated = computed(() => Boolean(token.value && user.value));
+
+  const hydrateFromStorage = () => {
+    const storage = getLocalStorage();
+    token.value = storage?.getItem(AUTH_STORAGE_KEYS.token) || "";
+    user.value = readStoredUser();
+  };
 
   const login = async (loginId, password) => {
     const response = await apiFetch("/api/auth/login", {
@@ -25,16 +33,18 @@ export const useAuthStore = defineStore("auth", () => {
     const data = await response.json();
     token.value = data.access_token;
     user.value = data.user;
-    window.localStorage.setItem("ailounge_token", data.access_token);
-    window.localStorage.setItem("ailounge_user", JSON.stringify(data.user));
+    const storage = getLocalStorage();
+    storage?.setItem(AUTH_STORAGE_KEYS.token, data.access_token);
+    storage?.setItem(AUTH_STORAGE_KEYS.user, JSON.stringify(data.user));
   };
 
   const logout = () => {
     token.value = "";
     user.value = null;
-    window.localStorage.removeItem("ailounge_token");
-    window.localStorage.removeItem("ailounge_user");
+    const storage = getLocalStorage();
+    storage?.removeItem(AUTH_STORAGE_KEYS.token);
+    storage?.removeItem(AUTH_STORAGE_KEYS.user);
   };
 
-  return { token, user, isAuthenticated, login, logout };
+  return { token, user, isAuthenticated, hydrateFromStorage, login, logout };
 });

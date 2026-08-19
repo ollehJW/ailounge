@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="studio-page catalog-page">
+  <div class="studio-page catalog-page">
       <section class="asset-recommendation-panel" :class="{ 'has-results': recommended.length }">
         <div class="asset-recommendation-intro">
           <div class="asset-recommendation-icon"><Sparkles :size="20" /></div>
@@ -133,12 +132,11 @@
         </div>
       </div>
       <AssetDetailDrawer v-if="drawerOpen" :asset="selected" :loading="detailLoading" :error="detailError" @close="closeDrawer" @count-change="updateDiffusionCount" />
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
-import { computed,onMounted,ref,watch } from "vue";import { useRoute,useRouter } from "vue-router";import { ArrowRight,LoaderCircle,Search,Sparkles,Star,Wand2 } from "lucide-vue-next";import AppLayout from "../layouts/AppLayout.vue";import AssetCard from "../components/AssetCard.vue";import AssetDetailDrawer from "../components/AssetDetailDrawer.vue";import { apiFetch,readApiError } from "../api/client";
+import { computed,onMounted,ref,watch } from "vue";import { useRoute,useRouter } from "vue-router";import { ArrowRight,LoaderCircle,Search,Sparkles,Star,Wand2 } from "lucide-vue-next";import AssetCard from "../components/AssetCard.vue";import AssetDetailDrawer from "../components/AssetDetailDrawer.vue";import { apiFetch,readApiError } from "../api/client";
 const business=["생산·제조","품질","R&D·설계","SCM·구매·물류","영업·마케팅","경영지원","안전·환경·보건","IT·DX","공통"],tasks=["예측","탐지","분류","검색","질의응답","요약","생성","추출","추천","분석","최적화","자동화"],implementations=["ML","DL","Computer Vision","LLM","RAG","Agent","Rule-Based","Hybrid"],dataTypes=["테이블·정형데이터","시계열 데이터","센서·IoT 데이터","문서·텍스트","이미지","영상","음성","로그","CAD·도면","코드","웹·외부 데이터","복합 데이터"],maturity=["아이디어","PoC","Pilot","운영"];
 const filterGroups=[{key:"business_area",label:"업무 영역",options:business},{key:"task_types",label:"Task 유형",options:tasks},{key:"implementation_types",label:"구현 방식",options:implementations},{key:"data_type",label:"Data 유형",options:dataTypes},{key:"maturity_level",label:"자산 성숙도",options:maturity}];
 const route=useRoute(),router=useRouter(),assets=ref([]),loading=ref(true),error=ref(""),query=ref(""),sort=ref("popular"),filters=ref({}),recommendQuery=ref(""),recommending=ref(false),recommendError=ref(""),recommendations=ref([]),recommendationAttempted=ref(false),drawerOpen=ref(false),selected=ref(null),detailLoading=ref(false),detailError=ref("");

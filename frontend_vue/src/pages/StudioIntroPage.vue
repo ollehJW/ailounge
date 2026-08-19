@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="studio-page intro-page">
+  <div class="studio-page intro-page">
       <section class="studio-hero">
         <img src="../assets/ai-studio-intro-hero.png" alt="AI 자산을 연결하는 디지털 업무 환경" />
         <div class="studio-hero-shade"></div>
@@ -34,15 +33,13 @@
           </div>
         </template>
       </section>
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { AlertCircle, ArrowRight, Bot, CheckCircle2, Download, Eye, GitBranch, Layers3, LoaderCircle, Plus, Search, ShieldCheck, Sparkles } from "lucide-vue-next";
-import AppLayout from "../layouts/AppLayout.vue";
 import { apiFetch, readApiError } from "../api/client";
 
 const router=useRouter(),summary=ref(null),loading=ref(true),error=ref("");

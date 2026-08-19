@@ -1,0 +1,11 @@
+.ai-lounge-scope {
+  font-family: "NotoSans", "Pretendard", "Malgun Gothic", sans-serif;
+  color: #151721;
+  font-synthesis: none;
+  --navy: #0a2469;
+  --navy-dark: #071b50;
+  --blue: #0b7bff;
+  --red: #ec1c24;
+  --line: #e0e2e9;
+  --muted: #6f7381;
+}

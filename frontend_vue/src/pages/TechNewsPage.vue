@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="community-page news-page">
+  <div class="community-page news-page">
       <div class="section-toolbar">
         <div class="filter-tabs" role="tablist" aria-label="뉴스 유형">
           <button v-for="tab in tabs" :key="tab.value" type="button" :class="{ active: category === tab.value }" @click="category = tab.value">
@@ -46,8 +45,7 @@
           <div class="news-popup-markdown" v-html="renderedMarkdown"></div>
         </article>
       </BaseModal>
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
@@ -55,7 +53,6 @@ import { computed, onMounted, ref } from "vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { Building2, ExternalLink, Eye, LoaderCircle, Newspaper, Search } from "lucide-vue-next";
-import AppLayout from "../layouts/AppLayout.vue";
 import BaseModal from "../components/BaseModal.vue";
 import { apiFetch, readApiError, resolveApiUrl } from "../api/client";
 

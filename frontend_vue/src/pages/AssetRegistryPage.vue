@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="studio-page registry-page">
+  <div class="studio-page registry-page">
       <section class="registry-guide asset-reg-guide" aria-label="자산 등록 절차"><div class="asset-reg-guide-label">자산 등록 절차</div><div class="asset-reg-guide-steps"><template v-for="(item,index) in steps" :key="item.title"><div class="asset-reg-guide-step"><div class="asset-reg-guide-num">{{ index+1 }}</div><div><b>{{ item.title }}</b><span>{{ item.description }}</span></div></div><div v-if="index<steps.length-1" class="asset-reg-guide-arrow" aria-hidden="true">→</div></template></div></section>
 
       <section class="registry-history"><header><div><span>MY ASSETS</span><h2>나의 AI 자산 등록 기록</h2><p>제출한 자산의 심사 상태를 확인할 수 있습니다.</p></div><b>{{ myAssets.length }}건</b></header><div v-if="historyLoading" class="content-state"><LoaderCircle class="spin" />등록 기록을 불러오는 중입니다.</div><div v-else-if="myAssets.length" class="registry-history-list"><article v-for="asset in myAssets" :key="asset.asset_id"><span><Bot :size="18" /></span><div><strong>{{ asset.asset_name }}</strong><small>{{ asset.business_area }} · {{ asset.maturity_level }}</small></div><time>{{ date(asset.created_at) }}</time><nav><button @click="viewDocument(asset)"><Eye :size="13" />View</button><button v-if="['approved','rejected'].includes(asset.approval_status)" @click="feedback=asset"><MessageSquareText :size="13" />심사평</button></nav><em :class="asset.approval_status">{{ statusLabel(asset.approval_status) }}</em></article></div><div v-else class="content-state empty"><ShieldCheck :size="28" /><strong>아직 제출한 AI 자산이 없습니다.</strong><span>등록을 완료하면 심사 상태가 여기에 표시됩니다.</span></div></section>
@@ -89,8 +88,9 @@
       </section>
 
       <Teleport to="body">
-        <div v-if="skillModalOpen" class="modal-backdrop asset-reg-skill-progress-backdrop" role="presentation">
-          <article class="asset-reg-skill-progress-modal" role="dialog" aria-modal="true" aria-label="Skill 자동 생성 진행">
+        <div v-if="skillModalOpen" class="ai-lounge-scope ai-lounge-overlay">
+          <div class="modal-backdrop asset-reg-skill-progress-backdrop" role="presentation">
+            <article class="asset-reg-skill-progress-modal" role="dialog" aria-modal="true" aria-label="Skill 자동 생성 진행">
             <header class="asset-reg-skill-progress-head">
               <span><Sparkles :size="16" />확산 패키지 생성</span>
               <h2>{{ skillModalTitle }}</h2>
@@ -126,18 +126,18 @@
             </div>
 
             <div v-else-if="skillPhase===`error`" class="asset-reg-skill-error"><b>생성 작업을 완료하지 못했습니다</b><p>{{ skillError }}</p><button class="primary-button" type="button" @click="closeSkillError">확인</button></div>
-          </article>
+            </article>
+          </div>
         </div>
       </Teleport>
 
       <BaseModal v-if="documentHtml" title="AI 자산 등록서" size="large" @close="documentHtml='' "><iframe class="asset-document-frame" :srcdoc="documentHtml" title="AI 자산 등록서"></iframe></BaseModal>
       <BaseModal v-if="feedback" title="자산 심사평" size="small" @close="feedback=null"><div class="feedback-modal"><span :class="feedback.approval_status"><MessageSquareText :size="22" /></span><h2>심사평</h2><dl><div><dt>심사일</dt><dd>{{ date(feedback.reviewed_at) }}</dd></div><div><dt>심사평</dt><dd>{{ feedback.review_comment||'등록된 심사평이 없습니다.' }}</dd></div></dl><button class="primary-button" @click="feedback=null">확인</button></div></BaseModal>
-    </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
-import { computed,onBeforeUnmount,onMounted,reactive,ref } from "vue";import { AlertCircle,ArrowRight,Bot,Check,CheckCircle2,Clock3,Eye,FolderGit2,GitBranch,ImagePlus,LoaderCircle,MessageSquareText,Plus,Send,ShieldCheck,Sparkles,Wand2,X } from "lucide-vue-next";import AppLayout from "../layouts/AppLayout.vue";import BaseModal from "../components/BaseModal.vue";import RegistrySection from "../components/RegistrySection.vue";import ChipField from "../components/ChipField.vue";import GuideField from "../components/GuideField.vue";import FilePicker from "../components/FilePicker.vue";import ItemEditor from "../components/ItemEditor.vue";import MetricEditor from "../components/MetricEditor.vue";import RepoTree from "../components/RepoTree.vue";import SkillTree from "../components/SkillTree.vue";import { useAuthStore } from "../stores/auth";import { apiFetch,readApiError } from "../api/client";
+import { computed,onBeforeUnmount,onMounted,reactive,ref } from "vue";import { AlertCircle,ArrowRight,Bot,Check,CheckCircle2,Clock3,Eye,FolderGit2,GitBranch,ImagePlus,LoaderCircle,MessageSquareText,Plus,Send,ShieldCheck,Sparkles,Wand2,X } from "lucide-vue-next";import BaseModal from "../components/BaseModal.vue";import RegistrySection from "../components/RegistrySection.vue";import ChipField from "../components/ChipField.vue";import GuideField from "../components/GuideField.vue";import FilePicker from "../components/FilePicker.vue";import ItemEditor from "../components/ItemEditor.vue";import MetricEditor from "../components/MetricEditor.vue";import RepoTree from "../components/RepoTree.vue";import SkillTree from "../components/SkillTree.vue";import { useAuthStore } from "../stores/auth";import { apiFetch,readApiError } from "../api/client";
 const auth=useAuthStore();const steps=[{title:"자산 명세서 작성",description:"담당자 정보, 자산 개요, 과제 정의, 데이터, 기술·성능 지표를 작성합니다."},{title:"자산 연동",description:"GitHub/GitLab 저장소를 연결해 실제 코드·데이터 구조를 확인합니다."},{title:"확산 패키지 생성",description:"LLM이 저장소를 분석해 Claude Skill 파일을 자동 생성합니다."},{title:"최종 제출 및 승인",description:"필독 사항 동의 후 제출하면 거버넌스 검토를 거쳐 카탈로그에 공개됩니다."}];const businessAreas=["생산·제조","품질","R&D·설계","SCM·구매·물류","영업·마케팅","경영지원","안전·환경·보건","IT·DX","공통"],maturityLevels=["아이디어","PoC","Pilot","운영"],taskTypes=["예측","탐지","분류","검색","질의응답","요약","생성","추출","추천","분석","최적화","자동화"],implementationTypes=["ML","DL","Computer Vision","LLM","RAG","Agent","Rule-Based","Hybrid"],dataTypes=["테이블·정형데이터","시계열 데이터","센서·IoT 데이터","문서·텍스트","이미지","영상","음성","로그","CAD·도면","코드","웹·외부 데이터","복합 데이터"];
 const createUuid=()=>{if(globalThis.crypto?.randomUUID)return globalThis.crypto.randomUUID();const bytes=new Uint8Array(16);if(globalThis.crypto?.getRandomValues)globalThis.crypto.getRandomValues(bytes);else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=Array.from(bytes,value=>value.toString(16).padStart(2,"0")).join("");return hex.substring(0,8)+"-"+hex.substring(8,12)+"-"+hex.substring(12,16)+"-"+hex.substring(16,20)+"-"+hex.substring(20);};
 const newTech=()=>({model_name:"",stack_name:"",description:"",reference_url:""}),newComparison=()=>({metric_name:"",before_value:"",after_value:"",improvement_rate:""}),newKpi=()=>({metric_name:"",value:"",description:""}),newSlide=()=>({id:createUuid(),file:null,preview:"",caption:"",description:""});const initialForm=()=>({asset_id:createUuid(),owner_name:auth.user?.displayed_name||"",owner_job_title:auth.user?.job_title||"",owner_org:auth.user?.org_name||"",owner_email:auth.user?.email||"",asset_name:"",description:"",business_area:"",maturity_level:"",task_types:[],implementation_types:[],tags:[],problem_definition:"",as_is_workflow:"",to_be_workflow:"",ai_effect:"",has_data:true,has_train_validation_split:false,data_type:"",data_description:"",models:[newTech()],tech_stacks:[newTech()],before_after_metrics:[newComparison()],performance_metrics:[newKpi()],repo_url:"",repo_branch:"main"});
