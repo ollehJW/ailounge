@@ -1,0 +1,47 @@
+.ai-lounge-scope {
+  font-family: "AILoungeNotoSans", "Pretendard", "Malgun Gothic", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #151721;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-align: left;
+}
+
+.ai-lounge-scope *,
+.ai-lounge-scope *::before,
+.ai-lounge-scope *::after {
+  box-sizing: border-box;
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+.ai-lounge-scope * {
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  word-break: inherit;
+}
+
+.ai-lounge-scope button,
+.ai-lounge-scope input,
+.ai-lounge-scope select,
+.ai-lounge-scope textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: 0;
+}
+
+.ai-lounge-scope select,
+.ai-lounge-scope input[type="checkbox"],
+.ai-lounge-scope input[type="radio"] {
+  appearance: auto;
+  -webkit-appearance: auto;
+}
+
+.ai-lounge-scope img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}

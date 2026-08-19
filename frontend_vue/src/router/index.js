@@ -8,9 +8,11 @@ import StudioIntroPage from "../pages/StudioIntroPage.vue";
 import DxDiscoveryPage from "../pages/DxDiscoveryPage.vue";
 import AssetCatalogPage from "../pages/AssetCatalogPage.vue";
 import AssetRegistryPage from "../pages/AssetRegistryPage.vue";
+import { ROUTER_BASE } from "../config/runtime";
 
 const router = createRouter({
-  history: createWebHistory(),
+  // TODO(portal-integration): Portal 라우팅으로 이관한 뒤 독립 Vue Router를 제거한다.
+  history: createWebHistory(ROUTER_BASE),
   routes: [
     { path: "/login", name: "login", component: LoginPage, meta: { public: true, layout: false } },
     { path: "/", redirect: "/studio" },

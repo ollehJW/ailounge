@@ -14,10 +14,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted } from "vue";
 import { X } from "lucide-vue-next";
+import { lockBodyScroll, unlockBodyScroll } from "../utils/bodyScrollLock";
 
 const props = defineProps({ title: { type: String, default: "팝업" }, size: { type: String, default: "medium" } });
 defineEmits(["close"]);
 const sizeClass = computed(() => `modal-${props.size}`);
-onMounted(() => document.body.classList.add("modal-open"));
-onBeforeUnmount(() => document.body.classList.remove("modal-open"));
+onMounted(lockBodyScroll);
+onBeforeUnmount(unlockBodyScroll);
 </script>

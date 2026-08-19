@@ -1,6 +1,6 @@
 .asset-detail-backdrop{position:fixed;inset:0;z-index:800;border:0;background:rgba(9,18,34,.48)}
-.asset-detail-drawer{position:fixed;top:0;right:0;bottom:0;z-index:801;width:min(790px,100vw);display:flex;flex-direction:column;background:#fbfcfe;box-shadow:-25px 0 70px rgba(5,16,38,.25);animation:assetDrawerIn 220ms ease}
-@keyframes assetDrawerIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.asset-detail-drawer{position:fixed;top:0;right:0;bottom:0;z-index:801;width:min(790px,100vw);display:flex;flex-direction:column;background:#fbfcfe;box-shadow:-25px 0 70px rgba(5,16,38,.25);animation:ai-lounge-asset-drawer-in 220ms ease}
+@keyframes ai-lounge-asset-drawer-in{from{transform:translateX(100%)}to{transform:translateX(0)}}
 .asset-detail-head{position:relative;padding:25px 28px 20px;overflow:hidden;background:#0a245f;color:#fff}
 .asset-detail-head:after{content:"";position:absolute;right:-80px;bottom:-150px;width:300px;height:300px;border:38px solid rgba(68,183,222,.13);border-radius:50%}
 .asset-detail-head>button{position:absolute;top:17px;right:18px;z-index:2;width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.25);border-radius:50%;background:rgba(255,255,255,.08);color:#fff}

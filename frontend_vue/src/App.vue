@@ -1,23 +1,30 @@
 <template>
-  <div class="ai-lounge-scope ai-lounge-app">
+  <div :class="['ai-lounge-scope', 'ai-lounge-app', { 'ai-lounge-app-embedded': isEmbeddedPage }]">
     <RouterView v-slot="{ Component, route: currentRoute }">
-      <AppLayout v-if="currentRoute.meta.layout !== false">
+      <AppLayout v-if="currentRoute.meta.layout !== false && !isEmbeddedLayout">
         <component :is="Component" />
       </AppLayout>
+      <EmbeddedLayout v-else-if="currentRoute.meta.layout !== false">
+        <component :is="Component" />
+      </EmbeddedLayout>
       <component :is="Component" v-else />
     </RouterView>
   </div>
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onBeforeUnmount, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import AppLayout from "./layouts/AppLayout.vue";
+import EmbeddedLayout from "./layouts/EmbeddedLayout.vue";
 import { useAuthStore } from "./stores/auth";
-import { AUTH_EXPIRED_EVENT } from "./config/runtime";
+import { AUTH_EXPIRED_EVENT, IS_EMBEDDED_LAYOUT } from "./config/runtime";
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
+const isEmbeddedLayout = IS_EMBEDDED_LAYOUT;
+const isEmbeddedPage = computed(() => isEmbeddedLayout && route.meta.layout !== false);
 
 const handleAuthExpired = () => {
   auth.logout();
