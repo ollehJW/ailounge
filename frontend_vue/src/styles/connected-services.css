@@ -1,0 +1,11 @@
+.connected-services-page{width:min(1400px,calc(100% - 40px));margin:0 auto}
+.calendar-frame-panel{overflow:hidden;border:1px solid #dce1e9;border-radius:8px;background:#fff;box-shadow:0 10px 28px rgba(24,42,74,.06)}
+.calendar-frame-panel>header{display:flex;min-height:92px;align-items:center;justify-content:space-between;gap:24px;padding:18px 24px;border-bottom:1px solid #e2e6ec;background:#f8f9fb}
+.calendar-frame-panel>header>div>span{color:#75839a;font-size:10px;font-weight:800}
+.calendar-frame-panel>header h2{margin-top:3px;color:#1d2a40;font-size:20px}
+.calendar-frame-panel>header p{margin-top:4px;color:#727f91;font-size:12px}
+.calendar-live-status{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid #d8e5dc;border-radius:5px;background:#f4faf6;color:#397052;font-size:10px;font-weight:700}
+.calendar-live-status i{width:7px;height:7px;border-radius:50%;background:#35a66a;box-shadow:0 0 0 3px rgba(53,166,106,.12)}
+.calendar-frame-wrap{height:calc(150vh - 495px);min-height:930px;background:#f4f6f9}
+.calendar-frame-wrap iframe{display:block;width:100%;height:100%;border:0;background:#fff}
+@media(max-width:650px){.calendar-frame-panel>header{align-items:flex-start;flex-direction:column}.calendar-frame-wrap{height:1080px;min-height:0}}

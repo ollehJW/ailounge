@@ -18,5 +18,6 @@ import "./styles/asset-qa.css";
 import "./styles/asset-detail.css";
 import "./styles/registry.css";
 import "./styles/administration.css";
+import "./styles/connected-services.css";
 
 createApp(App).use(createPinia()).use(router).mount("#app");

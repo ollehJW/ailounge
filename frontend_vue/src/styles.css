@@ -28,7 +28,7 @@ body.ai-lounge-modal-open {overflow:hidden;}
 .portal-submenu-summary>span {color:#77849d;font-size:10px;font-weight:700;}.portal-submenu-summary>strong {margin-top:5px;color:#262626;font-size:23px;}.portal-submenu-summary>p {max-width:230px;margin-top:9px;color:#70747f;font-size:12px;line-height:1.65;}
 .portal-submenu-links {display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px;padding:22px;}
 .portal-submenu-links a {display:flex;min-width:0;flex-direction:column;justify-content:center;min-height:160px;padding:24px;border-radius:8px;background:#fff;color:#262626;transition:.16s ease;}
-.portal-submenu-links a:hover,.portal-submenu-links a.router-link-active {background:#f5f6fa;}.portal-submenu-links a>span {color:#8290aa;font-size:9px;font-weight:700;}.portal-submenu-links a>strong {margin-top:6px;font-size:16px;}.portal-submenu-links a>p {margin-top:8px;color:#7d818b;font-size:11px;line-height:1.55;}
+.portal-submenu-links a:hover,.portal-submenu-links a.router-link-active {background:#f5f6fa;}.portal-submenu-links a>span {color:#8290aa;font-size:9px;font-weight:700;}.portal-submenu-links a>strong {display:flex;align-items:center;gap:6px;margin-top:6px;font-size:16px;}.portal-submenu-links a>p {margin-top:8px;color:#7d818b;font-size:11px;line-height:1.55;}
 .portal-account {display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;color:#8c8c8c;white-space:nowrap;}
 .portal-account>strong {font-size:13px;font-weight:400;}
 .portal-user-avatar {width:32px;height:32px;background:url("./assets/img-user.png") center/32px 32px no-repeat;}
@@ -41,6 +41,7 @@ body.ai-lounge-modal-open {overflow:hidden;}
 .page-heading-band {position:relative;overflow:hidden;width:100%;height:160px;margin-bottom:20px;border-radius:20px;background:#00133e url("./assets/bg-contents-top-ax.png") center no-repeat;color:#fff;}
 .page-heading-band.section-studio {background-image:url("./assets/bg-contents-top-ai.png");}
 .page-heading-band.section-administration {background-image:url("./assets/bg-contents-top-ai.png");background-color:#10254d;}
+.page-heading-band.section-connected {background-image:url("./assets/bg-contents-top-ax.png");background-color:#13284b;}
 .page-heading-inner {position:relative;display:flex;height:100%;flex-direction:column;justify-content:center;gap:10px;padding:0 60px;}
 .page-heading-inner h1 {color:#fff;font-size:36px;font-weight:700;line-height:1.2;}.page-heading-inner p {color:#fff;font-size:18px;}
 .portal-content {width:100%;}.community-page,.administration-page {width:min(1400px,calc(100% - 40px));margin:0 auto;padding:0;}

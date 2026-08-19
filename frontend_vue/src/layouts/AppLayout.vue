@@ -7,7 +7,7 @@
         </RouterLink>
         <nav class="portal-nav" aria-label="주 메뉴">
           <div v-for="section in navSections" :key="section.id" class="portal-nav-root">
-            <RouterLink :to="section.home" :class="['portal-nav-trigger', { active: route.meta.section === section.id }]">{{ section.label }}</RouterLink>
+            <RouterLink :to="section.home" v-on:click="releaseMenuFocus" :class="['portal-nav-trigger', { active: route.meta.section === section.id }]">{{ section.label }}</RouterLink>
             <div class="portal-submenu">
               <div class="portal-submenu-inner">
                 <div class="portal-submenu-summary">
@@ -16,7 +16,10 @@
                   <p>{{ section.description }}</p>
                 </div>
                 <div class="portal-submenu-links">
-                  <RouterLink v-for="item in section.items" :key="item.to" :to="item.to"><span>{{ item.eyebrow }}</span><strong>{{ item.label }}</strong><p>{{ item.description }}</p></RouterLink>
+                  <template v-for="item in section.items" :key="item.to || item.href">
+                    <a v-if="item.external" :href="item.href" target="_blank" rel="noopener noreferrer" v-on:click="releaseMenuFocus"><span>{{ item.eyebrow }}</span><strong>{{ item.label }}<ExternalLink :size="14" /></strong><p>{{ item.description }}</p></a>
+                    <RouterLink v-else :to="item.to" v-on:click="releaseMenuFocus"><span>{{ item.eyebrow }}</span><strong>{{ item.label }}</strong><p>{{ item.description }}</p></RouterLink>
+                  </template>
                 </div>
               </div>
             </div>
@@ -61,7 +64,7 @@
 </template>
 
 <script setup>
-import { ChevronRight, House, LogOut } from "lucide-vue-next";
+import { ChevronRight, ExternalLink, House, LogOut } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
 import { NAV_SECTIONS } from "../config/navigation";
 import { useAuthStore } from "../stores/auth";
@@ -71,6 +74,7 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const navSections = NAV_SECTIONS;
+const releaseMenuFocus = (event) => event.currentTarget?.blur();
 
 const handleLogout = () => {
   auth.logout();

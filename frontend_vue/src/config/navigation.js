@@ -25,8 +25,20 @@ export const NAV_SECTIONS = [
     ],
   },
   {
+    id: "connected",
+    label: "연계 서비스",
+    home: "/connected/calendar",
+    heading: "업무 효율 WIA 서비스",
+    description: "AI 일정과 업무 자동화 서비스를 한 곳에서 빠르게 이용합니다.",
+    items: [
+      { to: "/connected/calendar", eyebrow: "CALENDAR", label: "AI Calendar", description: "AI 학회·세미나 및 주요 일정을 한눈에 확인" },
+      { href: "http://10.217.183.72:9602/", eyebrow: "REPORT", label: "WIA Report", description: "업무 보고서를 자동 작성하고 작성 이력을 관리하는 플랫폼", external: true },
+      { href: "https://10.217.183.72:9702/", eyebrow: "MEETING", label: "WIA Meet", description: "AI로 회의록을 자동 작성하고 회의 이력을 관리하는 플랫폼", external: true },
+    ],
+  },
+  {
     id: "administration",
-    label: "Administration",
+    label: "MANAGEMENT",
     home: "/administration/ideas",
     heading: "AI 서비스 운영 관리",
     description: "아이디어와 AI 자산을 심사하고 Tech News 콘텐츠를 관리합니다.",
