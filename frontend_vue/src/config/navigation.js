@@ -24,4 +24,16 @@ export const NAV_SECTIONS = [
       { to: "/community/ideas", eyebrow: "IDEA", label: "AI 아이디어 공모", description: "현장의 문제와 AI 적용 아이디어 제안" },
     ],
   },
+  {
+    id: "administration",
+    label: "Administration",
+    home: "/administration/ideas",
+    heading: "AI 서비스 운영 관리",
+    description: "아이디어와 AI 자산을 심사하고 Tech News 콘텐츠를 관리합니다.",
+    items: [
+      { to: "/administration/ideas", eyebrow: "REVIEW", label: "Idea 심사", description: "접수된 AI 아이디어 검토와 결과 관리" },
+      { to: "/administration/assets", eyebrow: "ASSET", label: "AI 자산 관리", description: "자산 등록 심사와 운영 상태 관리" },
+      { to: "/administration/tech-news", eyebrow: "CONTENT", label: "Tech News 관리", description: "Tech News 작성, 수정과 게시물 관리" },
+    ],
+  },
 ];

@@ -8,6 +8,9 @@ import StudioIntroPage from "../pages/StudioIntroPage.vue";
 import DxDiscoveryPage from "../pages/DxDiscoveryPage.vue";
 import AssetCatalogPage from "../pages/AssetCatalogPage.vue";
 import AssetRegistryPage from "../pages/AssetRegistryPage.vue";
+import IdeaReviewPage from "../pages/IdeaReviewPage.vue";
+import AssetManagementPage from "../pages/AssetManagementPage.vue";
+import TechNewsManagementPage from "../pages/TechNewsManagementPage.vue";
 import { ROUTER_BASE } from "../config/runtime";
 
 const router = createRouter({
@@ -23,6 +26,10 @@ const router = createRouter({
     { path: "/community/tech-news", name: "tech-news", component: TechNewsPage, meta: { section: "community", sectionLabel: "AX COMMUNITY", title: "AI Tech News", description: "위아 소식과 외부 AI 동향, 업무 혁신 BP 사례를 확인합니다." } },
     { path: "/community/ai-usage", name: "ai-usage", component: AiUsagePage, meta: { section: "community", sectionLabel: "AX COMMUNITY", title: "나만의 AI 활용법", description: "업무에서 실제로 써본 AI 활용 경험과 시행착오를 함께 공유합니다." } },
     { path: "/community/ideas", name: "ideas", component: IdeasPage, meta: { section: "community", sectionLabel: "AX COMMUNITY", title: "AI 아이디어 공모", description: "업무 현장의 문제와 AI 적용 아이디어를 DX추진랩에 제안합니다." } },
+    { path: "/administration", redirect: "/administration/ideas" },
+    { path: "/administration/ideas", name: "idea-review", component: IdeaReviewPage, meta: { section: "administration", sectionLabel: "Administration", title: "Idea 심사", description: "접수된 AI 아이디어를 검토하고 심사 결과와 의견을 관리합니다." } },
+    { path: "/administration/assets", name: "asset-management", component: AssetManagementPage, meta: { section: "administration", sectionLabel: "Administration", title: "AI 자산 관리", description: "자산 등록 요청을 심사하고 승인된 운영 자산의 상태를 관리합니다." } },
+    { path: "/administration/tech-news", name: "tech-news-management", component: TechNewsManagementPage, meta: { section: "administration", sectionLabel: "Administration", title: "Tech News 관리", description: "AI Tech News 콘텐츠를 작성하고 발행된 게시물을 관리합니다." } },
     { path: "/:pathMatch(.*)*", redirect: "/studio" }
   ],
   scrollBehavior: () => ({ top: 0 })
