@@ -2718,7 +2718,7 @@ def list_my_ai_assets(
 
 @app.get("/api/admin/assets", response_model=list[AiAssetResponse])
 def list_admin_ai_assets(
-    _: Annotated[UserResponse, Depends(require_admin)],
+    _: Annotated[UserResponse, Depends(get_current_user)],
 ) -> list[AiAssetResponse]:
     with get_connection() as con:
         rows = con.execute(
@@ -2741,7 +2741,7 @@ def update_admin_ai_asset_status(
     asset_id: str,
     payload: AssetStatusUpdateRequest,
     background_tasks: BackgroundTasks,
-    current_user: Annotated[UserResponse, Depends(require_admin)],
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
 ) -> AiAssetResponse:
     asset_id = validate_asset_id(asset_id)
     clean_status = payload.status.strip().lower()
@@ -2788,7 +2788,7 @@ def update_admin_ai_asset_status(
 def update_admin_ai_asset_activation(
     asset_id: str,
     payload: AssetActivationRequest,
-    _: Annotated[UserResponse, Depends(require_admin)],
+    _: Annotated[UserResponse, Depends(get_current_user)],
 ) -> AiAssetResponse:
     asset_id = validate_asset_id(asset_id)
     now = utc_now()
@@ -2825,7 +2825,7 @@ def update_admin_ai_asset_activation(
 @app.delete("/api/admin/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_admin_ai_asset(
     asset_id: str,
-    _: Annotated[UserResponse, Depends(require_admin)],
+    _: Annotated[UserResponse, Depends(get_current_user)],
 ) -> None:
     asset_id = validate_asset_id(asset_id)
     with get_connection() as con:
@@ -2869,8 +2869,6 @@ def get_ai_asset_registration_document(
         ).fetchone()
         if asset_row is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI 자산을 찾을 수 없습니다.")
-        if asset_row["created_by"] != current_user.user_id and not current_user.is_admin:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="이 자산 등록서를 조회할 권한이 없습니다.")
         slide_rows = con.execute(
             """
             SELECT file_name, file_path, caption, description, sort_order
@@ -3212,7 +3210,7 @@ def fetch_idea_attachments(con: sqlite3.Connection, idea_id: str) -> list[IdeaAt
 
 
 @app.get("/api/admin/ideas", response_model=list[IdeaResponse])
-def list_admin_ideas(_: Annotated[UserResponse, Depends(require_admin)]) -> list[IdeaResponse]:
+def list_admin_ideas(_: Annotated[UserResponse, Depends(get_current_user)]) -> list[IdeaResponse]:
     with get_connection() as con:
         rows = con.execute(
             """
@@ -3245,7 +3243,7 @@ def update_admin_idea_status(
     idea_id: str,
     payload: IdeaStatusUpdateRequest,
     background_tasks: BackgroundTasks,
-    _: Annotated[UserResponse, Depends(require_admin)],
+    _: Annotated[UserResponse, Depends(get_current_user)],
 ) -> IdeaResponse:
     clean_status = payload.status.strip()
     clean_comment = payload.review_comment.strip()
@@ -3990,7 +3988,7 @@ def get_news_cover(news_id: str) -> FileResponse:
 
 
 @app.post("/api/admin/news/draft", response_model=NewsDraftResponse)
-def draft_news(payload: NewsDraftRequest, _: Annotated[UserResponse, Depends(require_admin)]) -> NewsDraftResponse:
+def draft_news(payload: NewsDraftRequest, _: Annotated[UserResponse, Depends(get_current_user)]) -> NewsDraftResponse:
     category = normalize_news_category(payload.category)
     if category == "external":
         prompt = (
@@ -4020,7 +4018,7 @@ def draft_news(payload: NewsDraftRequest, _: Annotated[UserResponse, Depends(req
 
 @app.post("/api/admin/news", response_model=NewsResponse, status_code=status.HTTP_201_CREATED)
 def create_news(
-    current_user: Annotated[UserResponse, Depends(require_admin)],
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
     title: Annotated[str, Form()],
     markdown: Annotated[str, Form()],
     category: Annotated[str, Form()],
@@ -4066,7 +4064,7 @@ def create_news(
 @app.put("/api/admin/news/{news_id}", response_model=NewsResponse)
 def update_news(
     news_id: str,
-    _: Annotated[UserResponse, Depends(require_admin)],
+    _: Annotated[UserResponse, Depends(get_current_user)],
     title: Annotated[str, Form()],
     markdown: Annotated[str, Form()],
     category: Annotated[str, Form()],
@@ -4120,7 +4118,7 @@ def update_news(
 
 
 @app.delete("/api/admin/news/{news_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_news(news_id: str, _: Annotated[UserResponse, Depends(require_admin)]) -> None:
+def delete_news(news_id: str, _: Annotated[UserResponse, Depends(get_current_user)]) -> None:
     with get_connection() as con:
         result = con.execute("DELETE FROM news WHERE news_id = ?", (news_id,))
         if result.rowcount == 0:
