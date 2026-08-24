@@ -54,8 +54,8 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from "vue";
 import { Bot, Clock3, Database, Download, Plus, Send, Trash2, UserRound } from "lucide-vue-next";
-import { apiFetch, readApiError } from "../api/client";
-import { useAuthStore } from "../stores/auth";
+import { apiFetch, readApiError } from "@/api/client";
+import { useAuthStore } from "@/stores/auth";
 
 const auth=useAuthStore();
 const initial={role:"agent",text:"어떤 업무가 가장 힘드신가요? 편하게 이야기해주시면, 대화를 통해 과제를 구체화하고 과제 정의서와 참고할 Data·AI 자산까지 정리해드릴게요."};
@@ -75,3 +75,4 @@ const escapeHtml=value=>String(value||"").replace(/[&<>\"]/g,char=>({"&":"&amp;"
 function downloadDefinition(){const f=fields.value;const list=items=>(items||[]).map(item=>`<li>${escapeHtml(typeof item==="string"?item:JSON.stringify(item))}</li>`).join("");const html=`<!doctype html><html lang="ko"><meta charset="utf-8"><title>${escapeHtml(f.project_title)}</title><style>body{font-family:sans-serif;color:#16233a;max-width:900px;margin:40px auto;line-height:1.7}h1{border-bottom:2px solid #16233a;padding-bottom:20px}section{padding:18px 0;border-bottom:1px solid #ddd}h2{font-size:18px}</style><h1>${escapeHtml(f.project_title)}</h1>${Object.entries({"업무 영역":f.business_area,"적용 업무":f.target_work,"현재 업무 방식":f.current_process,"문제 발생 규모":f.problem_scale,"해결 방향":f.solution_direction}).map(([k,v])=>`<section><h2>${k}</h2><p>${escapeHtml(v)}</p></section>`).join("")}<section><h2>Pain Points</h2><ul>${list(f.pain_points)}</ul></section><section><h2>기대 정량 효과</h2><ul>${list(f.quantitative_effect)}</ul></section><section><h2>기대 정성 효과</h2><ul>${list(f.qualitative_effect)}</ul></section></html>`;const url=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));const link=document.createElement("a");link.href=url;link.download=`${f.project_title||"과제정의서"}.html`;link.click();URL.revokeObjectURL(url);}
 onMounted(loadSessions);
 </script>
+

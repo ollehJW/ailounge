@@ -29,7 +29,7 @@
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ArrowRight, BadgeCheck, LockKeyhole } from "lucide-vue-next";
-import { useAuthStore } from "../stores/auth";
+import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore(); const router = useRouter(); const route = useRoute();
 const loginId = ref(""); const password = ref(""); const error = ref(""); const submitting = ref(false);
@@ -40,3 +40,4 @@ const submitLogin = async () => {
   finally { submitting.value = false; }
 };
 </script>
+

@@ -60,8 +60,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { CheckCircle2, FileText, Lightbulb, LoaderCircle, Paperclip, Send, Trash2, X } from "lucide-vue-next";
-import BaseModal from "../components/BaseModal.vue"; import { apiFetch, readApiError } from "../api/client";
-import { useAuthStore } from "../stores/auth";
+import BaseModal from "@/components/BaseModal.vue"; import { apiFetch, readApiError } from "@/api/client";
+import { useAuthStore } from "@/stores/auth";
 const auth=useAuthStore();
 const ideas=ref([]);const loading=ref(true);const error=ref("");const submitting=ref(false);const deleting=ref(false);const selectedIdea=ref(null);const deleteTarget=ref(null);const successOpen=ref(false);const fileInput=ref(null);
 const form=reactive({title:"",problem_definition:"",proposal:"",effect:"",attachments:[]});const completedFields=computed(()=>[form.title,form.problem_definition,form.proposal,form.effect].filter((value)=>value.trim()).length);
@@ -74,3 +74,4 @@ const deleteIdea=async()=>{if(!deleteTarget.value)return;deleting.value=true;err
 const downloadAttachment=async(attachment)=>{try{const response=await apiFetch(attachment.url);if(!response.ok)throw await readApiError(response,"첨부파일을 내려받지 못했습니다.");const blob=await response.blob();const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=attachment.original_name;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}catch(downloadError){error.value=downloadError.message;}};
 onMounted(loadIdeas);
 </script>
+

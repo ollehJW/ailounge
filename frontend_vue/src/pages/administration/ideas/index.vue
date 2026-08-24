@@ -48,9 +48,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { ClipboardCheck, Inbox, LoaderCircle, UserRound } from "lucide-vue-next";
-import BaseModal from "../components/BaseModal.vue";
-import { apiFetch, readApiError } from "../api/client";
-import { useAuthStore } from "../stores/auth";
+import BaseModal from "@/components/BaseModal.vue";
+import { apiFetch, readApiError } from "@/api/client";
+import { useAuthStore } from "@/stores/auth";
 
 const auth=useAuthStore();
 const ideas=ref([]),loading=ref(true),error=ref(""),selectedIdea=ref(null),reviewTarget=ref(null),saving=ref(false);
@@ -68,3 +68,4 @@ async function submitReview(){saving.value=true;error.value="";try{const r=await
 async function download(file){try{const r=await apiFetch(file.url);if(!r.ok)throw await readApiError(r,"첨부파일을 내려받지 못했습니다.");const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=file.original_name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}catch(e){error.value=e.message;}}
 onMounted(load);
 </script>
+

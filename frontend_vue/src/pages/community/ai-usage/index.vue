@@ -44,8 +44,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { Bold, Eye, Heart, LoaderCircle, MessageSquareText, Palette, Pencil, Plus, Search, Underline, UserRound } from "lucide-vue-next";
-import BaseModal from "../components/BaseModal.vue";
-import { apiFetch, readApiError } from "../api/client"; import { useAuthStore } from "../stores/auth";
+import BaseModal from "@/components/BaseModal.vue";
+import { apiFetch, readApiError } from "@/api/client"; import { useAuthStore } from "@/stores/auth";
 const auth = useAuthStore(); const posts = ref([]); const loading = ref(true); const error = ref(""); const query = ref(""); const categoryFilter = ref("전체"); const sortOrder = ref("latest"); const hotIndex = ref(0);
 const categories = ["전체", "확산 사례", "실패·교훈", "Tip 공유"]; const selectedPostId = ref(""); const selectedPost = ref(null); const detailLoading = ref(false);
 const composerOpen = ref(false); const editingId = ref(""); const saving = ref(false); const composerError = ref(""); const editor = ref(null); const colorOpen = ref(false); const selectedColor = ref("#151721"); let savedRange = null;
@@ -65,3 +65,4 @@ const handlePaste=(event)=>{const images=[...(event.clipboardData?.items||[])].f
 const submitPost=async()=>{syncContent();if(!form.title.trim()||!form.content_html.replace(/<[^>]*>/g,"").trim()){composerError.value="제목과 내용을 모두 작성해 주세요.";return;}saving.value=true;composerError.value="";try{const response=await apiFetch(`/api/usage-posts${editingId.value?`/${editingId.value}`:""}`,{method:editingId.value?"PUT":"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${auth.token}`},body:JSON.stringify({title:form.title.trim(),category:form.category,content_html:form.content_html})});if(!response.ok)throw await readApiError(response,editingId.value?"게시글을 수정하지 못했습니다.":"게시글을 등록하지 못했습니다.");await loadPosts();closeComposer();}catch(saveError){composerError.value=saveError.message;}finally{saving.value=false;}};
 let timer;onMounted(()=>{loadPosts();timer=window.setInterval(()=>{if(hotPosts.value.length)hotIndex.value=(hotIndex.value+1)%hotPosts.value.length;},5000);});onBeforeUnmount(()=>window.clearInterval(timer));
 </script>
+

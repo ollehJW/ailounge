@@ -30,9 +30,9 @@
 <script setup>
 import { computed,onMounted,reactive,ref } from "vue";
 import { Bot,Eye,LoaderCircle,Search,ShieldCheck,Trash2 } from "lucide-vue-next";
-import BaseModal from "../components/BaseModal.vue";
-import { apiFetch,readApiError } from "../api/client";
-import { useAuthStore } from "../stores/auth";
+import BaseModal from "@/components/BaseModal.vue";
+import { apiFetch,readApiError } from "@/api/client";
+import { useAuthStore } from "@/stores/auth";
 const auth=useAuthStore();
 const assets=ref([]),loading=ref(true),error=ref(""),tab=ref("requests"),query=ref(""),reviewTarget=ref(null),deleteTarget=ref(null),saving=ref(false),busyId=ref(""),documentHtml=ref(null),documentLoading=ref(false);
 const reviewForm=reactive({status:"",comment:""});
@@ -51,3 +51,4 @@ async function toggleActivation(a){busyId.value=a.asset_id;error.value="";try{co
 async function removeAsset(){saving.value=true;error.value="";try{const r=await apiFetch(`/api/admin/assets/${deleteTarget.value.asset_id}`,{method:"DELETE",headers:{Authorization:`Bearer ${auth.token}`}});if(!r.ok)throw await readApiError(r,"자산을 삭제하지 못했습니다.");assets.value=assets.value.filter(a=>a.asset_id!==deleteTarget.value.asset_id);deleteTarget.value=null;}catch(e){error.value=e.message;}finally{saving.value=false;}}
 onMounted(load);
 </script>
+

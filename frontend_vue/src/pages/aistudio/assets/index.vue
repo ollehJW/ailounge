@@ -136,7 +136,7 @@
 </template>
 
 <script setup>
-import { computed,onMounted,ref,watch } from "vue";import { useRoute,useRouter } from "vue-router";import { ArrowRight,LoaderCircle,Search,Sparkles,Star,Wand2 } from "lucide-vue-next";import AssetCard from "../components/AssetCard.vue";import AssetDetailDrawer from "../components/AssetDetailDrawer.vue";import { apiFetch,readApiError } from "../api/client";import { useAuthStore } from "../stores/auth";
+import { computed,onMounted,ref,watch } from "vue";import { useRoute,useRouter } from "vue-router";import { ArrowRight,LoaderCircle,Search,Sparkles,Star,Wand2 } from "lucide-vue-next";import AssetCard from "@/components/AssetCard.vue";import AssetDetailDrawer from "@/components/AssetDetailDrawer.vue";import { apiFetch,readApiError } from "@/api/client";import { useAuthStore } from "@/stores/auth";
 const auth=useAuthStore();
 const business=["생산·제조","품질","R&D·설계","SCM·구매·물류","영업·마케팅","경영지원","안전·환경·보건","IT·DX","공통"],tasks=["예측","탐지","분류","검색","질의응답","요약","생성","추출","추천","분석","최적화","자동화"],implementations=["ML","DL","Computer Vision","LLM","RAG","Agent","Rule-Based","Hybrid"],dataTypes=["테이블·정형데이터","시계열 데이터","센서·IoT 데이터","문서·텍스트","이미지","영상","음성","로그","CAD·도면","코드","웹·외부 데이터","복합 데이터"],maturity=["아이디어","PoC","Pilot","운영"];
 const filterGroups=[{key:"business_area",label:"업무 영역",options:business},{key:"task_types",label:"Task 유형",options:tasks},{key:"implementation_types",label:"구현 방식",options:implementations},{key:"data_type",label:"Data 유형",options:dataTypes},{key:"maturity_level",label:"자산 성숙도",options:maturity}];
@@ -151,3 +151,4 @@ async function openAsset(asset){drawerOpen.value=true;detailLoading.value=true;d
 const closeDrawer=()=>{drawerOpen.value=false;selected.value=null;const next={...route.query};delete next.asset;router.replace({query:next});};async function openQueryAsset(){const id=String(route.query.asset||"");if(id){const asset=assets.value.find(item=>item.asset_id===id);if(asset)await openAsset(asset);}}function updateDiffusionCount(count){if(selected.value)selected.value.diffusion_completed_count=count;const item=assets.value.find(a=>a.asset_id===selected.value?.asset_id);if(item)item.diffusion_completed_count=count;}
 watch(()=>route.query.asset,id=>{if(id&&!drawerOpen.value&&assets.value.length)openQueryAsset();});onMounted(load);
 </script>
+

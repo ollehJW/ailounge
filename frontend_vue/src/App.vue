@@ -28,7 +28,7 @@ const isEmbeddedPage = computed(() => isEmbeddedLayout && route.meta.layout !== 
 
 const handleAuthExpired = () => {
   auth.logout();
-  router.replace({ name: "login" });
+  router.replace("/sign-in");
 };
 
 onMounted(() => {

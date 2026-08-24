@@ -53,8 +53,8 @@ import { computed, onMounted, ref } from "vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { Building2, ExternalLink, Eye, LoaderCircle, Newspaper, Search } from "lucide-vue-next";
-import BaseModal from "../components/BaseModal.vue";
-import { apiFetch, readApiError, resolveApiUrl } from "../api/client";
+import BaseModal from "@/components/BaseModal.vue";
+import { apiFetch, readApiError, resolveApiUrl } from "@/api/client";
 
 const tabs = [{ value: "all", label: "전체" }, { value: "wia", label: "위아 뉴스" }, { value: "external", label: "외부 뉴스" }, { value: "bp", label: "BP 사례" }];
 const news = ref([]); const category = ref("all"); const query = ref(""); const loading = ref(true); const error = ref("");
@@ -71,3 +71,4 @@ const openNews = async (item) => { selectedNewsId.value = item.news_id; selected
 const closeNews = () => { selectedNewsId.value = ""; selectedNews.value = null; };
 onMounted(loadNews);
 </script>
+

@@ -30,9 +30,9 @@
 import { computed,onMounted,reactive,ref } from "vue";
 import { marked } from "marked";import DOMPurify from "dompurify";
 import { Eye,Newspaper,Pencil,Send,Trash2,Wand2 } from "lucide-vue-next";
-import BaseModal from "../components/BaseModal.vue";
-import { apiFetch,readApiError,resolveApiUrl } from "../api/client";
-import { useAuthStore } from "../stores/auth";
+import BaseModal from "@/components/BaseModal.vue";
+import { apiFetch,readApiError,resolveApiUrl } from "@/api/client";
+import { useAuthStore } from "@/stores/auth";
 const auth=useAuthStore();
 const categories=[{value:"wia",label:"위아 뉴스"},{value:"external",label:"외부 뉴스"},{value:"bp",label:"BP 사례"}],manageCategories=[{value:"all",label:"전체"},...categories];
 const tab=ref("write"),newsList=ref([]),loading=ref(false),error=ref(""),drafting=ref(false),publishing=ref(false),draftReady=ref(false),editingId=ref(""),manageCategory=ref("all"),preview=ref(null),deleteTarget=ref(null),coverInput=ref(null);
@@ -55,3 +55,4 @@ async function edit(news){error.value="";try{const d=await detail(news.news_id);
 async function remove(){publishing.value=true;try{const r=await apiFetch(`/api/admin/news/${deleteTarget.value.news_id}`,{method:"DELETE",headers:{Authorization:`Bearer ${auth.token}`}});if(!r.ok)throw await readApiError(r,"뉴스를 삭제하지 못했습니다.");newsList.value=newsList.value.filter(n=>n.news_id!==deleteTarget.value.news_id);deleteTarget.value=null;}catch(e){error.value=e.message;}finally{publishing.value=false;}}
 onMounted(load);
 </script>
+

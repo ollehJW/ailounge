@@ -2,7 +2,7 @@
   <div class="portal-shell">
     <header class="portal-header">
       <div class="portal-header-inner">
-        <RouterLink class="portal-brand" to="/studio" aria-label="WIA AI Lounge 홈">
+        <RouterLink class="portal-brand" to="/aistudio" aria-label="WIA AI Lounge 홈">
           <img src="../assets/logo-header.png" alt="WIA" />
         </RouterLink>
         <nav class="portal-nav" aria-label="주 메뉴">
@@ -39,7 +39,7 @@
       <div class="portal-contents-top">
         <nav class="portal-breadcrumbs" aria-label="현재 위치">
           <ol>
-            <li><RouterLink to="/studio" aria-label="홈"><House :size="17" /></RouterLink></li>
+            <li><RouterLink to="/aistudio" aria-label="홈"><House :size="17" /></RouterLink></li>
             <li><ChevronRight :size="14" /><span>{{ route.meta.sectionLabel }}</span></li>
             <li><ChevronRight :size="14" /><strong>{{ route.meta.title }}</strong></li>
           </ol>
@@ -67,7 +67,7 @@
 import { ChevronRight, ExternalLink, House, LogOut } from "lucide-vue-next";
 import { useRoute, useRouter } from "vue-router";
 import { NAV_SECTIONS } from "../config/navigation";
-import { useAuthStore } from "../stores/auth";
+import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
 const router = useRouter();
@@ -78,6 +78,6 @@ const releaseMenuFocus = (event) => event.currentTarget?.blur();
 
 const handleLogout = () => {
   auth.logout();
-  router.replace({ name: "login" });
+  router.replace("/sign-in");
 };
 </script>
