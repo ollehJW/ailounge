@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import subprocess
-import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,13 +24,21 @@ from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 
+from database import (
+    DatabaseConnection,
+    DatabaseRow,
+    IntegrityError,
+    close_database_pool,
+    get_connection,
+    open_database_pool,
+)
 from llm_client import chat_completion
 from mailing import send_review_completed_email_safely
 from harness_generator import iter_generate_skill_package, plan_skill_candidates
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "app.db"
+POSTGRES_MIGRATIONS_DIR = BASE_DIR / "migrations" / "postgresql"
 NEWS_WORKSPACE = BASE_DIR / "workspace" / "tech_news"
 USAGE_POSTS_WORKSPACE = BASE_DIR / "workspace" / "usage_posts"
 IDEAS_WORKSPACE = BASE_DIR / "workspace" / "ideas"
@@ -55,8 +62,12 @@ USAGE_POST_CSS_SANITIZER = CSSSanitizer(allowed_css_properties=["color"])
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_db()
-    yield
+    open_database_pool()
+    try:
+        init_db()
+        yield
+    finally:
+        close_database_pool()
 
 
 app = FastAPI(title="AI Lounge API", lifespan=lifespan)
@@ -512,7 +523,7 @@ def merge_dx_fields(
     return merged
 
 
-def dx_session_from_row(row: sqlite3.Row) -> DxDiscoverySessionResponse:
+def dx_session_from_row(row: DatabaseRow) -> DxDiscoverySessionResponse:
     fields = normalize_dx_fields(load_json_value(row["fields_json"], {}))
     data_ids = load_json_value(row["recommended_data_ids_json"], [])
     asset_ids = load_json_value(row["recommended_asset_ids_json"], [])
@@ -530,7 +541,7 @@ def dx_session_from_row(row: sqlite3.Row) -> DxDiscoverySessionResponse:
     )
 
 
-def dx_message_from_row(row: sqlite3.Row) -> DxDiscoveryMessageResponse:
+def dx_message_from_row(row: DatabaseRow) -> DxDiscoveryMessageResponse:
     return DxDiscoveryMessageResponse(
         message_id=row["message_id"],
         session_id=row["session_id"],
@@ -541,7 +552,7 @@ def dx_message_from_row(row: sqlite3.Row) -> DxDiscoveryMessageResponse:
     )
 
 
-def fetch_dx_session(con: sqlite3.Connection, session_id: str, user_id: str) -> sqlite3.Row:
+def fetch_dx_session(con: DatabaseConnection, session_id: str, user_id: str) -> DatabaseRow:
     row = con.execute(
         """
         SELECT session_id, user_id, title, status, fields_json, recommended_data_ids_json,
@@ -556,7 +567,7 @@ def fetch_dx_session(con: sqlite3.Connection, session_id: str, user_id: str) -> 
     return row
 
 
-def fetch_dx_messages(con: sqlite3.Connection, session_id: str) -> list[DxDiscoveryMessageResponse]:
+def fetch_dx_messages(con: DatabaseConnection, session_id: str) -> list[DxDiscoveryMessageResponse]:
     rows = con.execute(
         """
         SELECT message_id, session_id, role, content, seq, created_at
@@ -569,7 +580,7 @@ def fetch_dx_messages(con: sqlite3.Connection, session_id: str) -> list[DxDiscov
     return [dx_message_from_row(row) for row in rows]
 
 
-def next_dx_message_seq(con: sqlite3.Connection, session_id: str) -> int:
+def next_dx_message_seq(con: DatabaseConnection, session_id: str) -> int:
     value = con.execute("SELECT COALESCE(MAX(seq), 0) + 1 FROM dx_discovery_messages WHERE session_id = ?", (session_id,)).fetchone()[0]
     return int(value)
 
@@ -590,467 +601,17 @@ def run_dx_agent(messages: list[DxChatMessage]) -> DxDiscoveryChatResponse:
     )
 
 
-def get_connection() -> sqlite3.Connection:
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA foreign_keys = ON")
-    return con
-
-
 def init_db() -> None:
     with get_connection() as con:
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS user (
-                user_id TEXT PRIMARY KEY,
-                login_id TEXT NOT NULL UNIQUE,
-                email TEXT NOT NULL DEFAULT '',
-                password TEXT NOT NULL,
-                org_name TEXT NOT NULL,
-                job_title TEXT NOT NULL,
-                displayed_name TEXT NOT NULL,
-                is_admin INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        columns = {row[1] for row in con.execute("PRAGMA table_info(user)")}
-        if "login_id" not in columns:
-            con.execute("ALTER TABLE user ADD COLUMN login_id TEXT")
-            con.execute("UPDATE user SET login_id = user_id WHERE login_id IS NULL OR login_id = ''")
-        if "is_admin" not in columns:
-            con.execute("ALTER TABLE user ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
-        if "email" not in columns:
-            con.execute("ALTER TABLE user ADD COLUMN email TEXT NOT NULL DEFAULT ''")
-        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_login_id ON user(login_id)")
-        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_email ON user(email) WHERE email <> ''")
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS user_sessions (
-                token TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS news (
-                news_id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                category TEXT NOT NULL DEFAULT 'external',
-                source_url TEXT,
-                org_name TEXT,
-                writer TEXT NOT NULL,
-                cover_image TEXT,
-                view_count INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (writer) REFERENCES user(user_id) ON DELETE RESTRICT
-            )
-            """
-        )
-        news_columns = {row[1] for row in con.execute("PRAGMA table_info(news)")}
-        if "cover_image" not in news_columns:
-            con.execute("ALTER TABLE news ADD COLUMN cover_image TEXT")
-        if "view_count" not in news_columns:
-            con.execute("ALTER TABLE news ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0")
-        if "category" not in news_columns:
-            con.execute("ALTER TABLE news ADD COLUMN category TEXT NOT NULL DEFAULT 'external'")
-        if "source_url" not in news_columns:
-            con.execute("ALTER TABLE news ADD COLUMN source_url TEXT")
-        if "org_name" not in news_columns:
-            con.execute("ALTER TABLE news ADD COLUMN org_name TEXT")
-        con.execute("UPDATE news SET category = 'external' WHERE category IS NULL OR category NOT IN ('wia', 'external', 'bp')")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_news_created_at ON news(created_at)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_news_category_created_at ON news(category, created_at)")
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_usage_posts (
-                usage_post_id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                category TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                content_text TEXT NOT NULL DEFAULT '',
-                view_count INTEGER NOT NULL DEFAULT 0,
-                like_count INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT
-            )
-            """
-        )
-        usage_columns = {row[1] for row in con.execute("PRAGMA table_info(ai_usage_posts)")}
-        if "content_text" not in usage_columns:
-            con.execute("ALTER TABLE ai_usage_posts ADD COLUMN content_text TEXT NOT NULL DEFAULT ''")
-        if "view_count" not in usage_columns:
-            con.execute("ALTER TABLE ai_usage_posts ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0")
-        if "like_count" not in usage_columns:
-            con.execute("ALTER TABLE ai_usage_posts ADD COLUMN like_count INTEGER NOT NULL DEFAULT 0")
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_usage_post_likes (
-                usage_post_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                PRIMARY KEY (usage_post_id, user_id),
-                FOREIGN KEY (usage_post_id) REFERENCES ai_usage_posts(usage_post_id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_usage_posts_created_at ON ai_usage_posts(created_at)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_usage_posts_like_count ON ai_usage_posts(like_count)")
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS dx_discovery_sessions (
-                session_id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                title TEXT NOT NULL DEFAULT '과제 발굴 중...',
-                status TEXT NOT NULL DEFAULT '과제 발굴 중',
-                fields_json TEXT NOT NULL DEFAULT '{}',
-                recommended_data_ids_json TEXT NOT NULL DEFAULT '[]',
-                recommended_asset_ids_json TEXT NOT NULL DEFAULT '[]',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                completed_at TEXT,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS dx_discovery_messages (
-                message_id TEXT PRIMARY KEY,
-                session_id TEXT NOT NULL,
-                role TEXT NOT NULL,
-                content TEXT NOT NULL,
-                seq INTEGER NOT NULL,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (session_id) REFERENCES dx_discovery_sessions(session_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute("CREATE INDEX IF NOT EXISTS idx_dx_discovery_sessions_user_updated_at ON dx_discovery_sessions(user_id, updated_at)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_dx_discovery_messages_session_seq ON dx_discovery_messages(session_id, seq)")
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ideas (
-                idea_id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                problem_definition TEXT NOT NULL,
-                proposal TEXT NOT NULL,
-                effect TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT '접수완료',
-                attachment_count INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                reviewed_at TEXT,
-                review_comment TEXT,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT
-            )
-            """
-        )
-        idea_columns = {row[1] for row in con.execute("PRAGMA table_info(ideas)")}
-        if "effect" not in idea_columns and "expected_effect" in idea_columns:
-            con.execute("ALTER TABLE ideas RENAME COLUMN expected_effect TO effect")
-        if "attachment_count" not in idea_columns:
-            con.execute("ALTER TABLE ideas ADD COLUMN attachment_count INTEGER NOT NULL DEFAULT 0")
-        if "updated_at" not in idea_columns:
-            con.execute("ALTER TABLE ideas ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''")
-            con.execute("UPDATE ideas SET updated_at = created_at WHERE updated_at = ''")
-        if "review_comment" not in idea_columns:
-            con.execute("ALTER TABLE ideas ADD COLUMN review_comment TEXT")
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS idea_attachments (
-                attachment_id TEXT PRIMARY KEY,
-                idea_id TEXT NOT NULL,
-                original_name TEXT NOT NULL,
-                stored_name TEXT NOT NULL,
-                size INTEGER NOT NULL,
-                content_type TEXT,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (idea_id) REFERENCES ideas(idea_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ideas_user_created_at ON ideas(user_id, created_at)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ideas_status ON ideas(status)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_idea_attachments_idea_id ON idea_attachments(idea_id)")
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_assets (
-                asset_id TEXT PRIMARY KEY,
-                asset_name TEXT NOT NULL,
-                description TEXT NOT NULL,
-                business_area TEXT NOT NULL,
-                maturity_level TEXT NOT NULL,
-                task_types_json TEXT NOT NULL DEFAULT '[]',
-                implementation_types_json TEXT NOT NULL DEFAULT '[]',
-                tags_json TEXT NOT NULL DEFAULT '[]',
-                problem_definition TEXT NOT NULL,
-                as_is_workflow TEXT NOT NULL,
-                to_be_workflow TEXT NOT NULL,
-                ai_effect TEXT NOT NULL,
-                has_data INTEGER NOT NULL DEFAULT 1,
-                has_train_validation_split INTEGER NOT NULL DEFAULT 0,
-                data_type TEXT,
-                data_description TEXT,
-                models_json TEXT NOT NULL DEFAULT '[]',
-                tech_stacks_json TEXT NOT NULL DEFAULT '[]',
-                before_after_metrics_json TEXT NOT NULL DEFAULT '[]',
-                performance_metrics_json TEXT NOT NULL DEFAULT '[]',
-                repo_url TEXT,
-                repo_branch TEXT,
-                skill_status TEXT NOT NULL DEFAULT 'not_created',
-                skill_zip_path TEXT,
-                diffusion_prompt TEXT,
-                skill_generated_at TEXT,
-                approval_status TEXT NOT NULL DEFAULT 'submitted',
-                is_active INTEGER NOT NULL DEFAULT 1,
-                view_count INTEGER NOT NULL DEFAULT 0,
-                diffusion_attempt_count INTEGER NOT NULL DEFAULT 0,
-                diffusion_completed_count INTEGER NOT NULL DEFAULT 0,
-                created_by TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                submitted_at TEXT,
-                reviewed_at TEXT,
-                reviewed_by TEXT,
-                review_comment TEXT,
-                FOREIGN KEY (created_by) REFERENCES user(user_id) ON DELETE RESTRICT
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_slides (
-                slide_id TEXT PRIMARY KEY,
-                asset_id TEXT NOT NULL,
-                file_name TEXT NOT NULL,
-                file_path TEXT NOT NULL,
-                caption TEXT,
-                description TEXT,
-                sort_order INTEGER NOT NULL,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_data_files (
-                data_file_id TEXT PRIMARY KEY,
-                asset_id TEXT NOT NULL,
-                data_role TEXT NOT NULL,
-                file_name TEXT NOT NULL,
-                file_path TEXT NOT NULL,
-                file_size INTEGER,
-                content_type TEXT,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_skill_files (
-                skill_file_id TEXT PRIMARY KEY,
-                asset_id TEXT NOT NULL,
-                file_path TEXT NOT NULL,
-                content TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_bookmarks (
-                user_id TEXT NOT NULL,
-                asset_id TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                PRIMARY KEY (user_id, asset_id),
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE,
-                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE
-            )
-            """
-        )
-        diffusion_attempts_table_exists = con.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ai_asset_diffusion_attempts'"
-        ).fetchone() is not None
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_diffusion_attempts (
-                asset_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                first_attempted_at TEXT NOT NULL,
-                PRIMARY KEY (asset_id, user_id),
-                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_attempt_insert
-            AFTER INSERT ON ai_asset_diffusion_attempts
-            BEGIN
-                UPDATE ai_assets
-                SET diffusion_attempt_count = diffusion_attempt_count + 1
-                WHERE asset_id = NEW.asset_id;
-            END
-            """
-        )
-        con.execute(
-            """
-            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_attempt_delete
-            AFTER DELETE ON ai_asset_diffusion_attempts
-            BEGIN
-                UPDATE ai_assets
-                SET diffusion_attempt_count = MAX(diffusion_attempt_count - 1, 0)
-                WHERE asset_id = OLD.asset_id;
-            END
-            """
-        )
-        diffusion_cases_table_exists = con.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ai_asset_diffusion_cases'"
-        ).fetchone() is not None
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_diffusion_cases (
-                diffusion_case_id TEXT PRIMARY KEY,
-                asset_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                title TEXT NOT NULL,
-                stage TEXT NOT NULL CHECK (stage IN ('poc', 'pilot', 'production')),
-                applied_work TEXT NOT NULL,
-                customization TEXT NOT NULL,
-                effect TEXT NOT NULL,
-                git_url TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_case_insert
-            AFTER INSERT ON ai_asset_diffusion_cases
-            BEGIN
-                UPDATE ai_assets
-                SET diffusion_completed_count = diffusion_completed_count + 1
-                WHERE asset_id = NEW.asset_id;
-            END
-            """
-        )
-        con.execute(
-            """
-            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_diffusion_case_delete
-            AFTER DELETE ON ai_asset_diffusion_cases
-            BEGIN
-                UPDATE ai_assets
-                SET diffusion_completed_count = MAX(diffusion_completed_count - 1, 0)
-                WHERE asset_id = OLD.asset_id;
-            END
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_qa_posts (
-                qa_post_id TEXT PRIMARY KEY,
-                asset_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                parent_post_id TEXT,
-                topic TEXT NOT NULL DEFAULT '적용 문의',
-                content TEXT NOT NULL,
-                helpful_count INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (asset_id) REFERENCES ai_assets(asset_id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE RESTRICT,
-                FOREIGN KEY (parent_post_id) REFERENCES ai_asset_qa_posts(qa_post_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ai_asset_qa_helpful (
-                qa_post_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                PRIMARY KEY (qa_post_id, user_id),
-                FOREIGN KEY (qa_post_id) REFERENCES ai_asset_qa_posts(qa_post_id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
-            )
-            """
-        )
-        con.execute(
-            """
-            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_qa_helpful_insert
-            AFTER INSERT ON ai_asset_qa_helpful
-            BEGIN
-                UPDATE ai_asset_qa_posts
-                SET helpful_count = helpful_count + 1
-                WHERE qa_post_id = NEW.qa_post_id;
-            END
-            """
-        )
-        con.execute(
-            """
-            CREATE TRIGGER IF NOT EXISTS trg_ai_asset_qa_helpful_delete
-            AFTER DELETE ON ai_asset_qa_helpful
-            BEGIN
-                UPDATE ai_asset_qa_posts
-                SET helpful_count = MAX(helpful_count - 1, 0)
-                WHERE qa_post_id = OLD.qa_post_id;
-            END
-            """
-        )
-        asset_columns = {row[1] for row in con.execute("PRAGMA table_info(ai_assets)")}
-        asset_column_migrations = {
-            "approval_status": "TEXT NOT NULL DEFAULT " + chr(39) + "submitted" + chr(39),
-            "submitted_at": "TEXT",
-            "reviewed_at": "TEXT",
-            "reviewed_by": "TEXT",
-            "review_comment": "TEXT",
-            "is_active": "INTEGER NOT NULL DEFAULT 1",
-        }
-        for column_name, column_type in asset_column_migrations.items():
-            if column_name not in asset_columns:
-                con.execute(f"ALTER TABLE ai_assets ADD COLUMN {column_name} {column_type}")
-        if "has_train_validation_split" not in asset_columns:
-            con.execute("ALTER TABLE ai_assets ADD COLUMN has_train_validation_split INTEGER NOT NULL DEFAULT 0")
-        for metric_column in ("view_count", "diffusion_attempt_count", "diffusion_completed_count"):
-            if metric_column not in asset_columns:
-                con.execute(f"ALTER TABLE ai_assets ADD COLUMN {metric_column} INTEGER NOT NULL DEFAULT 0")
-        if not diffusion_attempts_table_exists:
-            con.execute("UPDATE ai_assets SET diffusion_attempt_count = 0")
-        if not diffusion_cases_table_exists:
-            con.execute("UPDATE ai_assets SET diffusion_completed_count = 0")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_created_at ON ai_assets(created_at)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_assets_approval_status ON ai_assets(approval_status)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_slides_asset_order ON ai_asset_slides(asset_id, sort_order)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_data_files_asset_role ON ai_asset_data_files(asset_id, data_role)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_skill_files_asset_path ON ai_asset_skill_files(asset_id, file_path)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_bookmarks_user_created ON ai_asset_bookmarks(user_id, created_at DESC)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_diffusion_attempts_user ON ai_asset_diffusion_attempts(user_id, first_attempted_at DESC)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_diffusion_cases_asset_created ON ai_asset_diffusion_cases(asset_id, created_at DESC)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_diffusion_cases_user_created ON ai_asset_diffusion_cases(user_id, created_at DESC)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_qa_posts_asset_created ON ai_asset_qa_posts(asset_id, created_at DESC)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_qa_posts_parent_created ON ai_asset_qa_posts(parent_post_id, created_at)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_ai_asset_qa_posts_user_created ON ai_asset_qa_posts(user_id, created_at DESC)")
+        for migration_path in sorted(POSTGRES_MIGRATIONS_DIR.glob("[0-9][0-9][0-9]_*.sql")):
+            con.execute(migration_path.read_text(encoding="utf-8"))
+
         NEWS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         USAGE_POSTS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         IDEAS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         ASSETS_WORKSPACE.mkdir(parents=True, exist_ok=True)
         STAGING_WORKSPACE.mkdir(parents=True, exist_ok=True)
+
         for asset_row in con.execute("SELECT asset_id FROM ai_assets").fetchall():
             asset_id = str(asset_row["asset_id"])
             if finalize_submitted_asset_storage(asset_id):
@@ -1086,7 +647,7 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def user_from_row(row: sqlite3.Row) -> UserResponse:
+def user_from_row(row: DatabaseRow) -> UserResponse:
     return UserResponse(
         user_id=row["user_id"],
         login_id=row["login_id"],
@@ -1139,7 +700,7 @@ def news_cover_url(news_id: str, cover_image: str | None) -> str | None:
     return f"/api/news/{news_id}/cover"
 
 
-def news_from_row(row: sqlite3.Row) -> NewsResponse:
+def news_from_row(row: DatabaseRow) -> NewsResponse:
     return NewsResponse(
         news_id=row["news_id"],
         title=row["title"],
@@ -1330,7 +891,7 @@ def load_json_list(value: str | None) -> list[Any]:
     return parsed if isinstance(parsed, list) else []
 
 
-def ai_asset_catalog_payload(con: sqlite3.Connection, row: sqlite3.Row, include_detail: bool = False) -> dict[str, Any]:
+def ai_asset_catalog_payload(con: DatabaseConnection, row: DatabaseRow, include_detail: bool = False) -> dict[str, Any]:
     payload = dict(row)
     for field in ("task_types", "implementation_types", "tags", "models", "tech_stacks", "before_after_metrics", "performance_metrics"):
         payload[field] = load_json_list(payload.pop(f"{field}_json", None))
@@ -1460,7 +1021,7 @@ def sanitize_usage_post_content(usage_post_id: str, content_html: str) -> str:
     )
 
 
-def ai_usage_post_from_row(row: sqlite3.Row) -> AiUsagePostResponse:
+def ai_usage_post_from_row(row: DatabaseRow) -> AiUsagePostResponse:
     return AiUsagePostResponse(
         usage_post_id=row["usage_post_id"],
         title=row["title"],
@@ -1482,7 +1043,7 @@ def idea_attachment_url(idea_id: str, attachment_id: str) -> str:
     return f"/api/ideas/{idea_id}/attachments/{attachment_id}"
 
 
-def idea_attachment_from_row(row: sqlite3.Row) -> IdeaAttachmentResponse:
+def idea_attachment_from_row(row: DatabaseRow) -> IdeaAttachmentResponse:
     return IdeaAttachmentResponse(
         attachment_id=row["attachment_id"],
         original_name=row["original_name"],
@@ -1493,7 +1054,7 @@ def idea_attachment_from_row(row: sqlite3.Row) -> IdeaAttachmentResponse:
     )
 
 
-def idea_from_row(row: sqlite3.Row, attachments: list[IdeaAttachmentResponse] | None = None) -> IdeaResponse:
+def idea_from_row(row: DatabaseRow, attachments: list[IdeaAttachmentResponse] | None = None) -> IdeaResponse:
     return IdeaResponse(
         idea_id=row["idea_id"],
         title=row["title"],
@@ -1610,7 +1171,7 @@ def list_users(_: Annotated[UserResponse, Depends(require_admin)]) -> list[UserR
             FROM user
             WHERE is_admin = 0
             ORDER BY
-                org_name COLLATE NOCASE ASC,
+                LOWER(org_name) ASC,
                 CASE job_title
                     WHEN '전무' THEN 1
                     WHEN '상무' THEN 2
@@ -1620,7 +1181,7 @@ def list_users(_: Annotated[UserResponse, Depends(require_admin)]) -> list[UserR
                     WHEN '매니저' THEN 6
                     ELSE 99
                 END ASC,
-                displayed_name COLLATE NOCASE ASC
+                LOWER(displayed_name) ASC
             """
         ).fetchall()
     return [user_from_row(row) for row in rows]
@@ -1657,7 +1218,7 @@ def create_user(payload: UserCreateRequest, _: Annotated[UserResponse, Depends(r
                 """,
                 (user_id,),
             ).fetchone()
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번 또는 이메일입니다.")
 
     return user_from_row(row)
@@ -1695,7 +1256,7 @@ def update_user(user_id: str, payload: UserUpdateRequest, _: Annotated[UserRespo
                 """,
                 (user_id,),
             ).fetchone()
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번 또는 이메일입니다.")
 
     return user_from_row(row)
@@ -2199,14 +1760,14 @@ def diffusion_case_values(payload: AssetDiffusionCaseRequest) -> dict[str, str |
     return values
 
 
-def diffusion_case_response(row: sqlite3.Row, current_user_id: str) -> AssetDiffusionCaseResponse:
+def diffusion_case_response(row: DatabaseRow, current_user_id: str) -> AssetDiffusionCaseResponse:
     value = dict(row)
     value["stage_label"] = DIFFUSION_CASE_STAGE_LABELS.get(value["stage"], value["stage"])
     value["can_edit"] = value["user_id"] == current_user_id
     return AssetDiffusionCaseResponse(**value)
 
 
-def ensure_catalog_asset(con: sqlite3.Connection, asset_id: str) -> sqlite3.Row:
+def ensure_catalog_asset(con: DatabaseConnection, asset_id: str) -> DatabaseRow:
     row = con.execute(
         """
         SELECT asset_id, diffusion_completed_count
@@ -2220,7 +1781,7 @@ def ensure_catalog_asset(con: sqlite3.Connection, asset_id: str) -> sqlite3.Row:
     return row
 
 
-def get_diffusion_case_row(con: sqlite3.Connection, asset_id: str, diffusion_case_id: str) -> sqlite3.Row:
+def get_diffusion_case_row(con: DatabaseConnection, asset_id: str, diffusion_case_id: str) -> DatabaseRow:
     row = con.execute(
         """
         SELECT c.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
@@ -2362,11 +1923,11 @@ def qa_text(value: str, label: str) -> str:
 
 
 def get_qa_post_row(
-    con: sqlite3.Connection,
+    con: DatabaseConnection,
     asset_id: str,
     qa_post_id: str,
     current_user_id: str,
-) -> sqlite3.Row:
+) -> DatabaseRow:
     row = con.execute(
         """
         SELECT p.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
@@ -2389,7 +1950,7 @@ def get_qa_post_row(
     return row
 
 
-def qa_reply_response(row: sqlite3.Row) -> AssetQaReplyResponse:
+def qa_reply_response(row: DatabaseRow) -> AssetQaReplyResponse:
     value = dict(row)
     value["is_owner"] = bool(value.get("is_owner"))
     value["can_edit"] = bool(value.get("can_edit"))
@@ -2397,8 +1958,8 @@ def qa_reply_response(row: sqlite3.Row) -> AssetQaReplyResponse:
 
 
 def qa_question_response(
-    con: sqlite3.Connection,
-    row: sqlite3.Row,
+    con: DatabaseConnection,
+    row: DatabaseRow,
     current_user_id: str,
 ) -> AssetQaQuestionResponse:
     value = dict(row)
@@ -2627,7 +2188,7 @@ def get_ai_asset_catalog_detail(
         return ai_asset_catalog_payload(con, row, include_detail=True)
 
 
-def catalog_asset_file(con: sqlite3.Connection, asset_id: str, table: str, id_column: str, file_id: str) -> sqlite3.Row:
+def catalog_asset_file(con: DatabaseConnection, asset_id: str, table: str, id_column: str, file_id: str) -> DatabaseRow:
     row = con.execute(
         f"""
         SELECT f.file_path, f.file_name
@@ -3207,7 +2768,7 @@ def create_ai_asset(
         shutil.rmtree(folder, ignore_errors=True)
         raise
 
-def fetch_idea_attachments(con: sqlite3.Connection, idea_id: str) -> list[IdeaAttachmentResponse]:
+def fetch_idea_attachments(con: DatabaseConnection, idea_id: str) -> list[IdeaAttachmentResponse]:
     rows = con.execute(
         """
         SELECT attachment_id, idea_id, original_name, stored_name, size, content_type, created_at
@@ -3871,7 +3432,7 @@ def toggle_ai_usage_post_like(
         ).fetchone()
         if existing_like:
             con.execute("DELETE FROM ai_usage_post_likes WHERE usage_post_id = ? AND user_id = ?", (usage_post_id, current_user.user_id))
-            con.execute("UPDATE ai_usage_posts SET like_count = MAX(0, like_count - 1) WHERE usage_post_id = ?", (usage_post_id,))
+            con.execute("UPDATE ai_usage_posts SET like_count = GREATEST(0, like_count - 1) WHERE usage_post_id = ?", (usage_post_id,))
         else:
             con.execute(
                 "INSERT INTO ai_usage_post_likes (usage_post_id, user_id, created_at) VALUES (?, ?, ?)",

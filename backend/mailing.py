@@ -11,10 +11,10 @@ from email.utils import formataddr
 from pathlib import Path
 
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
+BACKEND_DIR = Path(__file__).resolve().parent
 
 
-def load_env_file(path: Path = ROOT_DIR / ".env") -> None:
+def load_env_file(path: Path = BACKEND_DIR / ".env") -> None:
     if not path.is_file():
         return
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -54,7 +54,7 @@ def require_mail_settings(recipient_email: str) -> None:
     if not recipient_email.strip() or "@" not in recipient_email or "\r" in recipient_email or "\n" in recipient_email:
         missing.append("recipient_email")
     if missing:
-        raise ValueError(f".env의 메일 설정값을 확인하세요: {', '.join(missing)}")
+        raise ValueError(f"backend/.env의 메일 설정값을 확인하세요: {', '.join(missing)}")
 
 
 def build_review_completed_message(recipient_email: str, item_name: str, review_type: str = "asset") -> EmailMessage:

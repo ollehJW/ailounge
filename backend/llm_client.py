@@ -3,8 +3,8 @@ from pathlib import Path
 
 from openai import AzureOpenAI
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-ENV_PATH = ROOT_DIR / ".env"
+BACKEND_DIR = Path(__file__).resolve().parent
+ENV_PATH = BACKEND_DIR / ".env"
 
 
 def load_env_file(path=ENV_PATH):
@@ -31,9 +31,9 @@ _client = None
 
 def create_llm_client():
     if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY is required. Set it in .env.")
+        raise RuntimeError("OPENAI_API_KEY is required. Set it in backend/.env.")
     if not OPENAI_BASE_URL:
-        raise RuntimeError("OPENAI_BASE_URL is required. Set it in .env.")
+        raise RuntimeError("OPENAI_BASE_URL is required. Set it in backend/.env.")
 
     return AzureOpenAI(
         azure_endpoint=OPENAI_BASE_URL,
