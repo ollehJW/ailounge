@@ -23,11 +23,19 @@ export const useAuthStore = defineStore("auth", () => {
     user.value = readStoredUser();
   };
 
+  const encodeBasicCredentials = (loginId, password) => {
+    const bytes = new TextEncoder().encode(`${loginId}:${password}`);
+    const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+    return btoa(binary);
+  };
+
   const login = async (loginId, password) => {
     const response = await apiFetch("/api/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ login_id: loginId.trim(), password })
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${encodeBasicCredentials(loginId.trim(), password)}`
+      }
     });
     if (!response.ok) throw await readApiError(response, "로그인에 실패했습니다.");
     const data = await response.json();

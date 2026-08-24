@@ -22,6 +22,7 @@ from bleach.css_sanitizer import CSSSanitizer
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 
 from llm_client import chat_completion
@@ -59,6 +60,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="AI Lounge API", lifespan=lifespan)
+login_basic = HTTPBasic()
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,11 +73,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Diffusion-Attempt-Count"],
 )
-
-
-class LoginRequest(BaseModel):
-    login_id: str
-    password: str
 
 
 class UserResponse(BaseModel):
@@ -101,7 +98,7 @@ class UserCreateRequest(BaseModel):
     org_name: str = Field(min_length=1)
     displayed_name: str = Field(min_length=1)
     job_title: str = Field(min_length=1)
-    password: str = Field(min_length=1)
+    password: str = Field(min_length=12)
     is_admin: bool = False
 
 
@@ -111,8 +108,11 @@ class UserUpdateRequest(BaseModel):
     org_name: str = Field(min_length=1)
     displayed_name: str = Field(min_length=1)
     job_title: str = Field(min_length=1)
-    password: str | None = None
     is_admin: bool = False
+
+
+class UserPasswordUpdateRequest(BaseModel):
+    new_password: str = Field(min_length=12)
 
 
 class NewsResponse(BaseModel):
@@ -1579,7 +1579,7 @@ def health() -> dict[str, str]:
 
 
 @app.post("/api/auth/login", response_model=LoginResponse)
-def login(payload: LoginRequest) -> LoginResponse:
+def login(credentials: Annotated[HTTPBasicCredentials, Depends(login_basic)]) -> LoginResponse:
     with get_connection() as con:
         row = con.execute(
             """
@@ -1587,10 +1587,10 @@ def login(payload: LoginRequest) -> LoginResponse:
             FROM user
             WHERE login_id = ?
             """,
-            (payload.login_id,),
+            (credentials.username,),
         ).fetchone()
 
-    if row is None or not verify_password(payload.password, row["password"]):
+    if row is None or not verify_password(credentials.password, row["password"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="사번 또는 비밀번호가 올바르지 않습니다.")
 
     return LoginResponse(access_token=create_session(row["user_id"]), user=user_from_row(row))
@@ -1673,18 +1673,14 @@ def update_user(user_id: str, payload: UserUpdateRequest, _: Annotated[UserRespo
         payload.job_title.strip(),
         1 if payload.is_admin else 0,
     ]
-    password_sql = ""
-    if payload.password:
-        password_sql = ", password = ?"
-        values.append(hash_password(payload.password))
     values.append(user_id)
 
     try:
         with get_connection() as con:
             result = con.execute(
-                f"""
+                """
                 UPDATE user
-                SET login_id = ?, email = ?, org_name = ?, displayed_name = ?, job_title = ?, is_admin = ?{password_sql}
+                SET login_id = ?, email = ?, org_name = ?, displayed_name = ?, job_title = ?, is_admin = ?
                 WHERE user_id = ?
                 """,
                 values,
@@ -1703,6 +1699,21 @@ def update_user(user_id: str, payload: UserUpdateRequest, _: Annotated[UserRespo
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번 또는 이메일입니다.")
 
     return user_from_row(row)
+
+
+@app.put("/api/admin/users/{user_id}/password", status_code=status.HTTP_204_NO_CONTENT)
+def update_user_password(
+    user_id: str,
+    payload: UserPasswordUpdateRequest,
+    _: Annotated[UserResponse, Depends(require_admin)],
+) -> None:
+    with get_connection() as con:
+        result = con.execute(
+            "UPDATE user SET password = ? WHERE user_id = ?",
+            (hash_password(payload.new_password), user_id),
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없습니다.")
 
 
 @app.delete("/api/admin/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
