@@ -16,6 +16,7 @@ from typing import Annotated, Any
 from urllib.parse import urlparse
 
 import bleach
+import markdown as markdown_renderer
 from bleach.css_sanitizer import CSSSanitizer
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile, status
@@ -52,6 +53,12 @@ MAX_ASSET_DATA_FILE_SIZE = 10 * 1024 * 1024
 MAX_USAGE_POST_HTML_LENGTH = 30 * 1024 * 1024
 MAX_USAGE_POST_IMAGE_BYTES = 20 * 1024 * 1024
 NEWS_CATEGORIES = {"wia", "external", "bp"}
+
+NEWS_MARKDOWN_ALLOWED_TAGS = {
+    "a", "blockquote", "br", "code", "del", "em", "h1", "h2", "h3",
+    "h4", "h5", "h6", "hr", "li", "ol", "p", "pre", "strong", "table",
+    "tbody", "td", "th", "thead", "tr", "ul",
+}
 
 USAGE_POST_ALLOWED_TAGS = {
     "p", "br", "strong", "b", "u", "em", "i", "span", "img",
@@ -143,6 +150,7 @@ class NewsResponse(BaseModel):
 
 class NewsDetailResponse(NewsResponse):
     markdown: str
+    content_html: str
 
 
 class NewsDraftRequest(BaseModel):
@@ -957,6 +965,22 @@ def git_clone_error_message(stderr: str) -> str:
 def text_from_html(content_html: str) -> str:
     text_only = re.sub(r"<[^>]+>", " ", content_html)
     return re.sub(r"\s+", " ", text_only).strip()
+
+
+def render_news_markdown(markdown_text: str) -> str:
+    rendered = markdown_renderer.markdown(
+        markdown_text,
+        extensions=["extra", "sane_lists"],
+        output_format="html5",
+    )
+    return bleach.clean(
+        rendered,
+        tags=NEWS_MARKDOWN_ALLOWED_TAGS,
+        attributes={"a": ["href", "title"], "code": ["class"]},
+        protocols={"http", "https", "mailto"},
+        strip=True,
+        strip_comments=True,
+    )
 
 
 def normalize_usage_post_content(usage_post_id: str, content_html: str) -> str:
@@ -3543,6 +3567,7 @@ def get_news(news_id: str, count_view: Annotated[bool, Query()] = True) -> NewsD
         created_at=news.created_at,
         updated_at=news.updated_at,
         markdown=markdown,
+        content_html=render_news_markdown(markdown),
     )
 
 

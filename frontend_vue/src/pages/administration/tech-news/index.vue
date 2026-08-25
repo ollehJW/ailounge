@@ -21,14 +21,14 @@
       <div class="admin-table-wrap"><table><thead><tr><th>커버</th><th>유형</th><th>제목</th><th>작성일</th><th>수정일</th><th>조회수</th><th>관리</th></tr></thead><tbody><tr v-if="loading"><td colspan="7">뉴스 목록을 불러오는 중입니다.</td></tr><tr v-else-if="!managed.length"><td colspan="7">선택한 유형에 작성된 뉴스가 없습니다.</td></tr><tr v-for="news in managed" v-else :key="news.news_id"><td><span class="admin-news-thumb"><img v-if="news.cover_image_url" :src="resolveApiUrl(news.cover_image_url)" alt="" /><Newspaper v-else :size="18" /></span></td><td><em :class="['news-type',news.category]">{{ label(news.category) }}</em></td><td><strong>{{ news.title }}</strong><small v-if="news.org_name">{{ news.org_name }}</small></td><td>{{ date(news.created_at) }}</td><td>{{ date(news.updated_at) }}</td><td><span class="view-cell"><Eye :size="14" />{{ news.view_count||0 }}</span></td><td><div class="row-actions"><button type="button" @click="viewNews(news)"><Eye :size="14" />View</button><button type="button" title="수정" @click="edit(news)"><Pencil :size="14" /></button><button type="button" class="danger" title="삭제" @click="deleteTarget=news"><Trash2 :size="14" /></button></div></td></tr></tbody></table></div>
     </section>
 
-    <BaseModal v-if="preview" title="Tech News 상세" size="news" @close="preview=null"><article class="news-popup"><header class="news-popup-head"><div class="news-popup-meta"><span :class="['news-popup-category',preview.category]">{{ label(preview.category) }}</span><time>{{ date(preview.created_at) }}</time><span class="news-popup-views"><Eye :size="14" />{{ preview.view_count||0 }}</span></div><h2>{{ preview.title }}</h2></header><div v-if="preview.cover_image_url" class="news-popup-cover"><img :src="resolveApiUrl(preview.cover_image_url)" alt="" /></div><div class="news-popup-markdown" v-html="renderedMarkdown"></div></article></BaseModal>
+    <BaseModal v-if="preview" title="Tech News 상세" size="news" @close="preview=null"><article class="news-popup"><header class="news-popup-head"><div class="news-popup-meta"><span :class="['news-popup-category',preview.category]">{{ label(preview.category) }}</span><time>{{ date(preview.created_at) }}</time><span class="news-popup-views"><Eye :size="14" />{{ preview.view_count||0 }}</span></div><h2>{{ preview.title }}</h2></header><div v-if="preview.cover_image_url" class="news-popup-cover"><img :src="resolveApiUrl(preview.cover_image_url)" alt="" /></div><div class="news-popup-markdown" v-html="preview.content_html"></div></article></BaseModal>
     <BaseModal v-if="deleteTarget" title="Tech News 삭제" size="small" @close="deleteTarget=null"><div class="admin-confirm"><span><Trash2 :size="22" /></span><h2>게시글을 삭제할까요?</h2><strong>{{ deleteTarget.title }}</strong><p>삭제한 Tech News는 복구할 수 없습니다.</p><div class="form-buttons equal"><button type="button" class="secondary-button" @click="deleteTarget=null">취소</button><button type="button" class="danger-button" :disabled="publishing" @click="remove">{{ publishing?"삭제 중...":"삭제" }}</button></div></div></BaseModal>
   </div>
 </template>
 
 <script setup>
 import { computed,onMounted,reactive,ref } from "vue";
-import { marked } from "marked";import DOMPurify from "dompurify";
+
 import { Eye,Newspaper,Pencil,Send,Trash2,Wand2 } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue";
 import { apiFetch,readApiError,resolveApiUrl } from "@/api/client";
@@ -41,7 +41,6 @@ const label=v=>categories.find(x=>x.value===v)?.label||"AI Tech News",date=v=>St
 const sourcePlaceholder=computed(()=>form.category==="bp"?"기존 문제, 적용 방식, 적용 단계, 적용 기간, 성과와 참고할 내용을 입력하세요.":"뉴스로 작성할 원문 또는 소스 자료를 붙여 넣으세요.");
 const canDraft=computed(()=>form.source.trim()&&(form.category!=="bp"||form.org_name.trim()));
 const managed=computed(()=>manageCategory.value==="all"?newsList.value:newsList.value.filter(n=>n.category===manageCategory.value));
-const renderedMarkdown=computed(()=>DOMPurify.sanitize(marked.parse(preview.value?.markdown||"")));
 const count=v=>v==="all"?newsList.value.length:newsList.value.filter(n=>n.category===v).length;
 function changeCategory(value){form.category=value;if(!editingId.value)draftReady.value=false;}
 async function load(){loading.value=true;try{const r=await apiFetch("/api/news");if(!r.ok)throw await readApiError(r,"뉴스 목록을 불러오지 못했습니다.");newsList.value=await r.json();}catch(e){error.value=e.message;}finally{loading.value=false;}}

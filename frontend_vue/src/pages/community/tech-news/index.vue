@@ -42,7 +42,7 @@
           <div v-if="selectedNews.category === 'external' && selectedNews.source_url" class="news-popup-source-row">
             <a class="news-popup-source" :href="selectedNews.source_url" target="_blank" rel="noreferrer"><span class="news-popup-source-icon"><ExternalLink :size="17" /></span><span class="news-popup-source-copy"><small>ORIGINAL SOURCE</small><b>외부 원문 기사 보기</b><em>{{ selectedNews.source_url }}</em></span></a>
           </div>
-          <div class="news-popup-markdown" v-html="renderedMarkdown"></div>
+          <div class="news-popup-markdown" v-html="selectedNews.content_html"></div>
         </article>
       </BaseModal>
   </div>
@@ -50,8 +50,6 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
 import { Building2, ExternalLink, Eye, LoaderCircle, Newspaper, Search } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue";
 import { apiFetch, readApiError, resolveApiUrl } from "@/api/client";
@@ -65,7 +63,6 @@ const formatDate = (value) => String(value || "").slice(0, 10);
 const formatCount = (value) => Number(value || 0).toLocaleString();
 const apiUrl = (path) => resolveApiUrl(path);
 const filteredNews = computed(() => { const keyword = query.value.trim().toLowerCase(); return news.value.filter((item) => (category.value === "all" || item.category === category.value) && (!keyword || item.title.toLowerCase().includes(keyword))); });
-const renderedMarkdown = computed(() => DOMPurify.sanitize(marked.parse(selectedNews.value?.markdown || "")));
 const loadNews = async () => { loading.value = true; error.value = ""; try { const response = await apiFetch("/api/news"); if (!response.ok) throw await readApiError(response, "뉴스 목록을 불러오지 못했습니다."); news.value = await response.json(); } catch (loadError) { error.value = loadError.message; } finally { loading.value = false; } };
 const openNews = async (item) => { selectedNewsId.value = item.news_id; selectedNews.value = null; detailLoading.value = true; try { const response = await apiFetch(`/api/news/${item.news_id}?count_view=true`); if (!response.ok) throw await readApiError(response, "뉴스를 불러오지 못했습니다."); selectedNews.value = await response.json(); const index = news.value.findIndex((entry) => entry.news_id === item.news_id); if (index >= 0) news.value[index].view_count = selectedNews.value.view_count; } catch (loadError) { error.value = loadError.message; selectedNewsId.value = ""; } finally { detailLoading.value = false; } };
 const closeNews = () => { selectedNewsId.value = ""; selectedNews.value = null; };

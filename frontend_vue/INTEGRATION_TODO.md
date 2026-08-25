@@ -692,21 +692,14 @@ Portal `layouts/user.vue`에 이미 `wrapper-ai-lounge` 분기가 있으므로 �
 }
 ```
 
-AI Lounge가 추가로 사용하는 패키지:
-
-```json
-{
-  "dompurify": "^3.4.13",
-  "marked": "^15.0.6"
-}
-```
+AI Lounge 기능을 위해 Portal에 추가할 런타임 패키지는 없다.
 
 아이콘은 `lucide-vue-next` 패키지를 설치하지 않고 `src/icons/lucide/`에 포함된 사용 아이콘 49종과 로컬 Vue 렌더러를 사용한다. 동봉된 `src/icons/lucide/LICENSE`를 유지한다.
 
 통합 규칙:
 
 1. AI Lounge `package.json`을 Portal에 복사하지 않는다.
-2. Portal `package.json`에는 `dompurify`, `marked`만 추가한다.
+2. AI Lounge 기능 때문에 Portal `package.json`에 별도 런타임 패키지를 추가하지 않는다.
 3. Portal의 다른 패키지 버전을 AI Lounge 기준으로 일괄 변경하지 않는다.
 4. Portal 프로젝트 디렉터리에서 정상적인 package manager 명령으로 lockfile을 갱신한다.
 5. lockfile을 AI Lounge lockfile로 교체하지 않는다.
@@ -717,11 +710,11 @@ AI Lounge가 추가로 사용하는 패키지:
 
 ## 13. HTML, Markdown 및 XSS
 
-- Tech News Markdown은 `marked.parse()` 결과를 반드시 `DOMPurify.sanitize()`한 후 `v-html`로 렌더링한다.
+- Tech News Markdown은 백엔드에서 HTML로 변환하고 `bleach`로 정화한 `content_html`만 `v-html`로 렌더링한다.
 - AI 활용 게시글 `content_html`은 백엔드 정화 결과만 렌더링한다.
 - Portal의 기존 `v-html` 정책을 약화하지 않는다.
-- DOMPurify 허용 태그·속성을 Portal 전체 기준으로 넓히지 않는다.
-- AI Lounge 전용 sanitizer 설정이 필요하면 별도 함수로 둔다.
+- Tech News HTML 허용 태그·속성 정책은 백엔드의 전용 sanitizer에서 관리한다.
+- 프론트에서 Markdown 변환이나 별도 HTML sanitizer를 중복 적용하지 않는다.
 - 외부 URL은 `http:`, `https:` 등 허용 scheme을 검증한다.
 - 새 창 링크에는 필요한 `rel="noopener noreferrer"`를 적용한다.
 
@@ -741,9 +734,9 @@ AI Lounge가 추가로 사용하는 패키지:
 
 - 통합 전부터 Portal build나 핵심 기능이 실패하면 먼저 기준선을 복구한다.
 
-### 단계 1: 패키지만 추가
+### 단계 1: 패키지 및 로컬 아이콘 확인
 
-- `dompurify`, `marked`만 추가하고 로컬 아이콘 모듈은 소스와 함께 복사한다.
+- AI Lounge 전용 런타임 패키지는 추가하지 않고 로컬 아이콘 모듈을 소스와 함께 복사한다.
 - Portal build와 기존 화면 회귀 테스트를 수행한다.
 
 중단 조건:
