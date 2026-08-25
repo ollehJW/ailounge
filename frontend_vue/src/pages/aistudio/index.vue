@@ -39,7 +39,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { AlertCircle, ArrowRight, Bot, CheckCircle2, Download, Eye, GitBranch, Layers3, LoaderCircle, Plus, Search, ShieldCheck, Sparkles } from "lucide-vue-next";
+import { AlertCircle, ArrowRight, Bot, CheckCircle2, Download, Eye, GitBranch, Layers3, LoaderCircle, Plus, Search, ShieldCheck, Sparkles } from "@/icons/lucide";
 import { apiFetch, readApiError } from "@/api/client";
 
 const router=useRouter(),summary=ref(null),loading=ref(true),error=ref("");

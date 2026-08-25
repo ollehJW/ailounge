@@ -47,7 +47,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { ClipboardCheck, Inbox, LoaderCircle, UserRound } from "lucide-vue-next";
+import { ClipboardCheck, Inbox, LoaderCircle, UserRound } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue";
 import { apiFetch, readApiError } from "@/api/client";
 import { useAuthStore } from "@/stores/auth";

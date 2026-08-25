@@ -29,7 +29,7 @@
 <script setup>
 import { computed,onMounted,reactive,ref } from "vue";
 import { marked } from "marked";import DOMPurify from "dompurify";
-import { Eye,Newspaper,Pencil,Send,Trash2,Wand2 } from "lucide-vue-next";
+import { Eye,Newspaper,Pencil,Send,Trash2,Wand2 } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue";
 import { apiFetch,readApiError,resolveApiUrl } from "@/api/client";
 import { useAuthStore } from "@/stores/auth";

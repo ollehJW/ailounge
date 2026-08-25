@@ -52,7 +52,7 @@
 import { computed, onMounted, ref } from "vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { Building2, ExternalLink, Eye, LoaderCircle, Newspaper, Search } from "lucide-vue-next";
+import { Building2, ExternalLink, Eye, LoaderCircle, Newspaper, Search } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue";
 import { apiFetch, readApiError, resolveApiUrl } from "@/api/client";
 

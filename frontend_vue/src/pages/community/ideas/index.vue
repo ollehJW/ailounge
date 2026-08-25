@@ -59,7 +59,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { CheckCircle2, FileText, Lightbulb, LoaderCircle, Paperclip, Send, Trash2, X } from "lucide-vue-next";
+import { CheckCircle2, FileText, Lightbulb, LoaderCircle, Paperclip, Send, Trash2, X } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue"; import { apiFetch, readApiError } from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
 const auth=useAuthStore();

@@ -28,7 +28,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { ArrowRight, BadgeCheck, LockKeyhole } from "lucide-vue-next";
+import { ArrowRight, BadgeCheck, LockKeyhole } from "@/icons/lucide";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore(); const router = useRouter(); const route = useRoute();

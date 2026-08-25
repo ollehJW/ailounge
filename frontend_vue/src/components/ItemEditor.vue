@@ -12,7 +12,7 @@
 </template>
 <script setup>
 import { computed } from "vue";
-import { Plus } from "lucide-vue-next";
+import { Plus } from "@/icons/lucide";
 const props=defineProps({title:String,items:Array,nameKey:String,namePlaceholder:String});
 defineEmits(["add","remove"]);
 const noteLabel=computed(()=>props.nameKey==="model_name"?"Model":"Stack");

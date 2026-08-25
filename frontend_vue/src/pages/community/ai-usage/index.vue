@@ -43,7 +43,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { Bold, Eye, Heart, LoaderCircle, MessageSquareText, Palette, Pencil, Plus, Search, Underline, UserRound } from "lucide-vue-next";
+import { Bold, Eye, Heart, LoaderCircle, MessageSquareText, Palette, Pencil, Plus, Search, Underline, UserRound } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue";
 import { apiFetch, normalizeApiHtml, readApiError, resolveApiHtml } from "@/api/client"; import { useAuthStore } from "@/stores/auth";
 const auth = useAuthStore(); const posts = ref([]); const loading = ref(true); const error = ref(""); const query = ref(""); const categoryFilter = ref("전체"); const sortOrder = ref("latest"); const hotIndex = ref(0);

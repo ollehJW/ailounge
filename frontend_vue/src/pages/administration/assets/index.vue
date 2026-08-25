@@ -29,7 +29,7 @@
 
 <script setup>
 import { computed,onMounted,reactive,ref } from "vue";
-import { Bot,Eye,LoaderCircle,Search,ShieldCheck,Trash2 } from "lucide-vue-next";
+import { Bot,Eye,LoaderCircle,Search,ShieldCheck,Trash2 } from "@/icons/lucide";
 import BaseModal from "@/components/BaseModal.vue";
 import { apiFetch,readApiError } from "@/api/client";
 import { useAuthStore } from "@/stores/auth";

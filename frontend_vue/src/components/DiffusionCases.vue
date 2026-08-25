@@ -20,7 +20,7 @@
   </section>
 </template>
 <script setup>
-import { onMounted, reactive, ref } from "vue";import { GitBranch,LoaderCircle,Pencil,Plus,Trash2 } from "lucide-vue-next";import BaseModal from "./BaseModal.vue";import { apiFetch,readApiError } from "../api/client";import { useAuthStore } from "../stores/auth";
+import { onMounted, reactive, ref } from "vue";import { GitBranch,LoaderCircle,Pencil,Plus,Trash2 } from "@/icons/lucide";import BaseModal from "./BaseModal.vue";import { apiFetch,readApiError } from "../api/client";import { useAuthStore } from "../stores/auth";
 const auth=useAuthStore();const props=defineProps({asset:{type:Object,required:true}}),emit=defineEmits(["count-change"]);const cases=ref([]),loading=ref(true),formOpen=ref(false),editingId=ref(""),saving=ref(false),error=ref("");const form=reactive({title:"",stage:"",applied_work:"",customization:"",effect:"",git_url:""});
 async function call(path,options={},fallback){const response=await apiFetch(path,options);if(!response.ok)throw await readApiError(response,fallback);return response.status===204?null:response.json();}async function load(){loading.value=true;try{cases.value=await call(`/api/assets/catalog/${props.asset.asset_id}/diffusion-cases`,{},"사례를 불러오지 못했습니다.");}finally{loading.value=false;}}
 function openForm(item){editingId.value=item?.diffusion_case_id||"";Object.assign(form,{title:item?.title||"",stage:item?.stage||"",applied_work:item?.applied_work||"",customization:item?.customization||"",effect:item?.effect||"",git_url:item?.git_url||""});error.value="";formOpen.value=true;}

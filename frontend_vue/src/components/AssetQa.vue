@@ -38,7 +38,7 @@
   </section>
 </template>
 <script setup>
-import { onMounted,ref } from "vue";import { LoaderCircle, MessageCircle, Pencil, ThumbsUp, Trash2, UserRound } from "lucide-vue-next";import { apiFetch,readApiError } from "../api/client";import { useAuthStore } from "../stores/auth";
+import { onMounted,ref } from "vue";import { LoaderCircle, MessageCircle, Pencil, ThumbsUp, Trash2, UserRound } from "@/icons/lucide";import { apiFetch,readApiError } from "../api/client";import { useAuthStore } from "../stores/auth";
 const props=defineProps({assetId:{type:String,required:true}});const auth=useAuthStore();const threads=ref([]),loading=ref(true),error=ref(""),topic=ref("적용 문의"),question=ref(""),replyTarget=ref(""),replyText=ref(""),editingId=ref(""),editText=ref("");const date=value=>String(value||"").slice(0,10);
 async function call(path,options={},fallback){const response=await apiFetch(path,options);if(!response.ok)throw await readApiError(response,fallback);return response.status===204?null:response.json();}async function load(){loading.value=true;error.value="";try{threads.value=await call(`/api/assets/catalog/${props.assetId}/qa`,{},"Q&A를 불러오지 못했습니다.");}catch(e){error.value=e.message;}finally{loading.value=false;}}
 async function createQuestion(){try{await call(`/api/assets/catalog/${props.assetId}/qa/questions`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${auth.token}`},body:JSON.stringify({topic:topic.value,content:question.value.trim()})},"질문을 등록하지 못했습니다.");question.value="";await load();}catch(e){error.value=e.message;}}

@@ -53,7 +53,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from "vue";
-import { Bot, Clock3, Database, Download, Plus, Send, Trash2, UserRound } from "lucide-vue-next";
+import { Bot, Clock3, Database, Download, Plus, Send, Trash2, UserRound } from "@/icons/lucide";
 import { apiFetch, readApiError } from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
 

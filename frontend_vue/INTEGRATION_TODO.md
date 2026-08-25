@@ -697,15 +697,16 @@ AI Lounge가 추가로 사용하는 패키지:
 ```json
 {
   "dompurify": "^3.4.13",
-  "lucide-vue-next": "^0.468.0",
   "marked": "^15.0.6"
 }
 ```
 
+아이콘은 `lucide-vue-next` 패키지를 설치하지 않고 `src/icons/lucide/`에 포함된 사용 아이콘 49종과 로컬 Vue 렌더러를 사용한다. 동봉된 `src/icons/lucide/LICENSE`를 유지한다.
+
 통합 규칙:
 
 1. AI Lounge `package.json`을 Portal에 복사하지 않는다.
-2. Portal `package.json`에 위 세 패키지만 추가한다.
+2. Portal `package.json`에는 `dompurify`, `marked`만 추가한다.
 3. Portal의 다른 패키지 버전을 AI Lounge 기준으로 일괄 변경하지 않는다.
 4. Portal 프로젝트 디렉터리에서 정상적인 package manager 명령으로 lockfile을 갱신한다.
 5. lockfile을 AI Lounge lockfile로 교체하지 않는다.
@@ -742,7 +743,7 @@ AI Lounge가 추가로 사용하는 패키지:
 
 ### 단계 1: 패키지만 추가
 
-- `dompurify`, `lucide-vue-next`, `marked`만 추가한다.
+- `dompurify`, `marked`만 추가하고 로컬 아이콘 모듈은 소스와 함께 복사한다.
 - Portal build와 기존 화면 회귀 테스트를 수행한다.
 
 중단 조건:

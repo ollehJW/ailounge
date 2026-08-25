@@ -5,6 +5,6 @@
   </section>
 </template>
 <script setup>
-import { Check, X } from "lucide-vue-next";
+import { Check, X } from "@/icons/lucide";
 defineProps({ title: String, complete: Boolean });
 </script>

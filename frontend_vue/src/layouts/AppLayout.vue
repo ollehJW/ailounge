@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { ChevronRight, ExternalLink, House, LogOut } from "lucide-vue-next";
+import { ChevronRight, ExternalLink, House, LogOut } from "@/icons/lucide";
 import { useRoute, useRouter } from "vue-router";
 import { NAV_SECTIONS } from "../config/navigation";
 import { useAuthStore } from "@/stores/auth";

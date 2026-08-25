@@ -11,7 +11,7 @@
 </template>
 <script setup>
 import { computed } from "vue";
-import { Plus } from "lucide-vue-next";
+import { Plus } from "@/icons/lucide";
 const props=defineProps({title:String,items:Array,type:String});
 defineEmits(["add","remove"]);
 const hint=computed(()=>props.type==="comparison"?"(예: 처리시간, 수작업 시간, 오류 건수)":"(예: 정확도, F1-score, 응답시간)");

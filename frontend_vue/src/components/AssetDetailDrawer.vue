@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";import { ArrowRight,CheckCircle2,Database,Download,ExternalLink,GitBranch,Layers3,LoaderCircle,Mail,Maximize2,UserRound,X } from "lucide-vue-next";
+import { computed, ref } from "vue";import { ArrowRight,CheckCircle2,Database,Download,ExternalLink,GitBranch,Layers3,LoaderCircle,Mail,Maximize2,UserRound,X } from "@/icons/lucide";
 import { apiFetch, readApiError, resolveApiUrl } from "../api/client";import DiffusionCases from "./DiffusionCases.vue";import AssetQa from "./AssetQa.vue";
 const props=defineProps({asset:Object,loading:Boolean,error:String});defineEmits(["close","count-change"]);const tab=ref("overview"),slideIndex=ref(0),lightbox=ref(false),copied=ref(false);
 const tabs=[{key:"overview",label:"과제 설명"},{key:"tech",label:"적용 기술"},{key:"data",label:"데이터"},{key:"performance",label:"성능 지표"},{key:"demo",label:"자산 활용"},{key:"diffusion",label:"확산 가이드"},{key:"cases",label:"확산 사례"},{key:"qa",label:"Q&A"}];

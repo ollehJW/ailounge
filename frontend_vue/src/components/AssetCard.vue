@@ -8,7 +8,7 @@
   </article>
 </template>
 <script setup>
-import { ArrowRight,Eye,Star } from "lucide-vue-next";
+import { ArrowRight,Eye,Star } from "@/icons/lucide";
 defineProps({asset:{type:Object,required:true}});defineEmits(["open","bookmark"]);
 const joined=items=>(items||[]).join(" · ")||"미분류";const number=value=>Number(value||0).toLocaleString();
 </script>

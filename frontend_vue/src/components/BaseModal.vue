@@ -13,7 +13,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted } from "vue";
-import { X } from "lucide-vue-next";
+import { X } from "@/icons/lucide";
 import { lockBodyScroll, unlockBodyScroll } from "../utils/bodyScrollLock";
 
 const props = defineProps({ title: { type: String, default: "팝업" }, size: { type: String, default: "medium" } });
