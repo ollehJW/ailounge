@@ -20,20 +20,9 @@ export const NAV_SECTIONS = [
     description: "AI 소식과 업무 활용 경험, 새로운 아이디어를 공유합니다.",
     items: [
       { to: "/community/tech-news", eyebrow: "NEWS", label: "AI Tech News", description: "위아 소식과 외부 AI 동향, BP 사례" },
+      { to: "/community/calendar", eyebrow: "CALENDAR", label: "AI Calendar", description: "AI 학회·세미나 및 주요 일정을 한눈에 확인" },
       { to: "/community/ai-usage", eyebrow: "PRACTICE", label: "나만의 AI 활용법", description: "업무에서 직접 시도한 경험과 교훈" },
       { to: "/community/ideas", eyebrow: "IDEA", label: "AI 아이디어 공모", description: "현장의 문제와 AI 적용 아이디어 제안" },
-    ],
-  },
-  {
-    id: "connected",
-    label: "연계 서비스",
-    home: "/connected/calendar",
-    heading: "업무 효율 WIA 서비스",
-    description: "AI 일정과 업무 자동화 서비스를 한 곳에서 빠르게 이용합니다.",
-    items: [
-      { to: "/connected/calendar", eyebrow: "CALENDAR", label: "AI Calendar", description: "AI 학회·세미나 및 주요 일정을 한눈에 확인" },
-      { href: "http://10.217.183.72:9602/", eyebrow: "REPORT", label: "WIA Report", description: "업무 보고서를 자동 작성하고 작성 이력을 관리하는 플랫폼", external: true },
-      { href: "https://10.217.183.72:9702/", eyebrow: "MEETING", label: "WIA Meet", description: "AI로 회의록을 자동 작성하고 회의 이력을 관리하는 플랫폼", external: true },
     ],
   },
   {

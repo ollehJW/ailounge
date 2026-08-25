@@ -16,10 +16,7 @@
                   <p>{{ section.description }}</p>
                 </div>
                 <div class="portal-submenu-links">
-                  <template v-for="item in section.items" :key="item.to || item.href">
-                    <a v-if="item.external" :href="item.href" target="_blank" rel="noopener noreferrer" v-on:click="releaseMenuFocus"><span>{{ item.eyebrow }}</span><strong>{{ item.label }}<ExternalLink :size="14" /></strong><p>{{ item.description }}</p></a>
-                    <RouterLink v-else :to="item.to" v-on:click="releaseMenuFocus"><span>{{ item.eyebrow }}</span><strong>{{ item.label }}</strong><p>{{ item.description }}</p></RouterLink>
-                  </template>
+                  <RouterLink v-for="item in section.items" :key="item.to" :to="item.to" v-on:click="releaseMenuFocus"><span>{{ item.eyebrow }}</span><strong>{{ item.label }}</strong><p>{{ item.description }}</p></RouterLink>
                 </div>
               </div>
             </div>
@@ -64,7 +61,7 @@
 </template>
 
 <script setup>
-import { ChevronRight, ExternalLink, House, LogOut } from "@/icons/lucide";
+import { ChevronRight, House, LogOut } from "@/icons/lucide";
 import { useRoute, useRouter } from "vue-router";
 import { NAV_SECTIONS } from "../config/navigation";
 import { useAuthStore } from "@/stores/auth";

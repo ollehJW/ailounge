@@ -60,7 +60,6 @@
 
 - `frontend_vue/src/pages/aistudio/**`
 - `frontend_vue/src/pages/community/**`
-- `frontend_vue/src/pages/connected/**`
 - `frontend_vue/src/pages/administration/**`
 - `frontend_vue/src/components/**`
 - `frontend_vue/src/assets/**`
@@ -95,7 +94,6 @@ nuxt-project/
 ├── pages/
 │   ├── aistudio/
 │   ├── community/
-│   ├── connected/
 │   └── administration/
 ├── components/
 │   └── ai-lounge/
@@ -132,9 +130,9 @@ nuxt-project/
 | AI STUDIO - AI 자산 라이브러리 | `/aistudio/assets` | `src/pages/aistudio/assets/index.vue` | `pages/aistudio/assets/index.vue` |
 | AI STUDIO - AI 자산 등록 | `/aistudio/assets/register` | `src/pages/aistudio/assets/register.vue` | `pages/aistudio/assets/register.vue` |
 | AX COMMUNITY - AI Tech News | `/community/tech-news` | `src/pages/community/tech-news/index.vue` | `pages/community/tech-news/index.vue` |
+| AX COMMUNITY - AI Calendar | `/community/calendar` | `src/pages/community/calendar/index.vue` | `pages/community/calendar/index.vue` |
 | AX COMMUNITY - 나만의 AI 활용법 | `/community/ai-usage` | `src/pages/community/ai-usage/index.vue` | `pages/community/ai-usage/index.vue` |
 | AX COMMUNITY - AI 아이디어 공모 | `/community/ideas` | `src/pages/community/ideas/index.vue` | `pages/community/ideas/index.vue` |
-| 연계 서비스 - AI Calendar | `/connected/calendar` | `src/pages/connected/calendar/index.vue` | `pages/connected/calendar/index.vue` |
 | MANAGEMENT - Idea 심사 | `/administration/ideas` | `src/pages/administration/ideas/index.vue` | `pages/administration/ideas/index.vue` |
 | MANAGEMENT - AI 자산 관리 | `/administration/assets` | `src/pages/administration/assets/index.vue` | `pages/administration/assets/index.vue` |
 | MANAGEMENT - Tech News 관리 | `/administration/tech-news` | `src/pages/administration/tech-news/index.vue` | `pages/administration/tech-news/index.vue` |
@@ -147,7 +145,7 @@ nuxt-project/
 find pages -type f -name '*.vue' | sort
 ```
 
-현재 확인된 Portal 최상위 경로와 `aistudio`, `community`, `connected`, `administration`은 겹치지 않는다. 이후 Portal 개발 중 새 경로가 추가될 수 있으므로 실제 통합 시점에 다시 검사한다.
+현재 확인된 Portal 최상위 경로와 `aistudio`, `community`, `administration`은 겹치지 않는다. 이후 Portal 개발 중 새 경로가 추가될 수 있으므로 실제 통합 시점에 다시 검사한다.
 
 ### 5.2 Nuxt 페이지 메타
 
@@ -777,7 +775,7 @@ AI Lounge 기능을 위해 Portal에 추가할 런타임 패키지는 없다.
 ### 단계 5: 페이지와 메뉴 추가
 
 - 한 번에 전체 페이지를 넣지 말고 메뉴 그룹 단위로 추가한다.
-- 권장 순서: `aistudio` → `community` → `connected` → `administration`.
+- 권장 순서: `aistudio` → `community` → `administration`.
 - 메뉴 데이터, 권한, Breadcrumb를 함께 추가한다.
 
 중단 조건:
