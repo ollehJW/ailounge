@@ -4,6 +4,12 @@ import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const apiProxy = {
+    "/api": {
+      target: env.VITE_DEV_API_TARGET || "http://127.0.0.1:9002",
+      changeOrigin: true,
+    },
+  };
 
   return {
     base: env.VITE_APP_BASE || env.VITE_ROUTER_BASE || "/",
@@ -15,14 +21,15 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: "0.0.0.0",
-      port: 9001,
-      proxy: {
-        "/ai-lounge-api": {
-          target: "http://127.0.0.1:9002",
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/ai-lounge-api/, "/api")
-        }
-      }
-    }
+      port: 9003,
+      strictPort: true,
+      proxy: apiProxy,
+    },
+    preview: {
+      host: "0.0.0.0",
+      port: 9003,
+      strictPort: true,
+      proxy: apiProxy,
+    },
   };
 });

@@ -1,14 +1,26 @@
-import { API_BASE, API_PATH_PREFIX, AUTH_EXPIRED_EVENT, AUTH_STORAGE_KEYS } from "../config/runtime";
+import { API_BASE, AUTH_EXPIRED_EVENT, AUTH_STORAGE_KEYS } from "../config/runtime";
 import { dispatchBrowserEvent, getLocalStorage } from "../utils/browser";
 
 export { API_BASE };
 
 export const resolveApiUrl = (path) => {
   if (!path || /^https?:\/\//.test(path)) return path;
-  const apiPath = path === "/api" || path.startsWith("/api/")
-    ? `${API_PATH_PREFIX}${path.slice(4)}`
-    : path;
-  return `${API_BASE}${apiPath}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE}${normalizedPath}`;
+};
+
+export const resolveApiHtml = (html) => String(html || "").replace(
+  /\b(src|href)=(["'])(\/api(?:\/[^"']*)?)\2/gi,
+  (_, attribute, quote, path) => `${attribute}=${quote}${resolveApiUrl(path)}${quote}`,
+);
+
+export const normalizeApiHtml = (html) => {
+  if (!API_BASE) return String(html || "");
+  const escapedBase = API_BASE.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&");
+  return String(html || "").replace(
+    new RegExp(`\\b(src|href)=(["'])${escapedBase}(/api(?:/[^"']*)?)\\2`, "gi"),
+    (_, attribute, quote, path) => `${attribute}=${quote}${path}${quote}`,
+  );
 };
 
 export const readApiError = async (response, fallback) => {
