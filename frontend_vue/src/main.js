@@ -3,6 +3,7 @@ import { createPinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import { useAuthStore } from "./stores/auth";
+import { useMenuStore } from "./stores/menu";
 import { ROUTER_BASE } from "./config/runtime";
 import "./styles/tokens.css";
 import "./styles/isolation.css";
@@ -21,6 +22,7 @@ import "./styles/asset-detail.css";
 import "./styles/registry.css";
 import "./styles/administration.css";
 import "./styles/calendar.css";
+import "./styles/portal-gnb.css";
 
 const PAGE_META = {
   "/sign-in": { public: true, layout: false },
@@ -58,12 +60,18 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore();
+  const menu = useMenuStore();
   if (!to.meta.public && !auth.isAuthenticated) {
     return { path: "/sign-in", query: { redirect: to.fullPath } };
   }
   if (to.path === "/sign-in" && auth.isAuthenticated) return "/aistudio";
+  if (!to.meta.public && auth.isAuthenticated) {
+    await menu.load();
+    if (menu.loadError) return { path: "/sign-in", query: { menuError: "1" } };
+    if (!menu.canAccess(to.path)) return "/aistudio";
+  }
 });
 
 createApp(App).use(createPinia()).use(router).mount("#app");

@@ -15,7 +15,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import AppLayout from "./layouts/AppLayout.vue";
+import AppLayout from "./layouts/PortalAppLayout.vue";
 import EmbeddedLayout from "./layouts/EmbeddedLayout.vue";
 import { useAuthStore } from "./stores/auth";
 import { AUTH_EXPIRED_EVENT, IS_EMBEDDED_LAYOUT } from "./config/runtime";

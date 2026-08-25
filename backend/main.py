@@ -1158,6 +1158,9 @@ def require_admin(current_user: Annotated[UserResponse, Depends(get_current_user
 
 
 
+from portal_menu import register_portal_menu
+register_portal_menu(app, get_current_user, get_connection)
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}

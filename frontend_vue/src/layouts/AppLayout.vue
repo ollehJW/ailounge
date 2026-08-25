@@ -6,7 +6,7 @@
           <img src="../assets/logo-header.png" alt="WIA" />
         </RouterLink>
         <nav class="portal-nav" aria-label="주 메뉴">
-          <div v-for="section in navSections" :key="section.id" class="portal-nav-root">
+          <div v-for="section in menu.sections" :key="section.id" class="portal-nav-root">
             <RouterLink :to="section.home" v-on:click="releaseMenuFocus" :class="['portal-nav-trigger', { active: route.meta.section === section.id }]">{{ section.label }}</RouterLink>
             <div class="portal-submenu">
               <div class="portal-submenu-inner">
@@ -63,17 +63,17 @@
 <script setup>
 import { ChevronRight, House, LogOut } from "@/icons/lucide";
 import { useRoute, useRouter } from "vue-router";
-import { NAV_SECTIONS } from "../config/navigation";
 import { useAuthStore } from "@/stores/auth";
+import { useMenuStore } from "@/stores/menu";
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
-
-const navSections = NAV_SECTIONS;
+const menu = useMenuStore();
 const releaseMenuFocus = (event) => event.currentTarget?.blur();
 
 const handleLogout = () => {
+  menu.clear();
   auth.logout();
   router.replace("/sign-in");
 };
