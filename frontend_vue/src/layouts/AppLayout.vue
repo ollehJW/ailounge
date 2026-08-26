@@ -2,7 +2,7 @@
   <div class="portal-shell">
     <header class="portal-header">
       <div class="portal-header-inner">
-        <RouterLink class="portal-brand" to="/aistudio" aria-label="WIA AI Lounge 홈">
+        <RouterLink class="portal-brand" to="/aistudio/intro" aria-label="WIA AI Lounge 홈">
           <img src="../assets/logo-header.png" alt="WIA" />
         </RouterLink>
         <nav class="portal-nav" aria-label="주 메뉴">
@@ -36,7 +36,7 @@
       <div class="portal-contents-top">
         <nav class="portal-breadcrumbs" aria-label="현재 위치">
           <ol>
-            <li><RouterLink to="/aistudio" aria-label="홈"><House :size="17" /></RouterLink></li>
+            <li><RouterLink to="/aistudio/intro" aria-label="홈"><House :size="17" /></RouterLink></li>
             <li><ChevronRight :size="14" /><span>{{ route.meta.sectionLabel }}</span></li>
             <li><ChevronRight :size="14" /><strong>{{ route.meta.title }}</strong></li>
           </ol>

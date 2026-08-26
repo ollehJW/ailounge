@@ -125,10 +125,10 @@ nuxt-project/
 
 | Portal 메뉴 | URL | AI Lounge 원본 | Portal 대상 |
 |---|---|---|---|
-| AI STUDIO - 소개 | `/aistudio` | `src/pages/aistudio/index.vue` | `pages/aistudio/index.vue` |
+| AI STUDIO - 소개 | `/aistudio/intro` | `src/pages/aistudio/intro/index.vue` | `pages/aistudio/intro/index.vue` |
 | AI STUDIO - DX 과제 발굴 | `/aistudio/dx-discovery` | `src/pages/aistudio/dx-discovery/index.vue` | `pages/aistudio/dx-discovery/index.vue` |
-| AI STUDIO - AI 자산 라이브러리 | `/aistudio/assets` | `src/pages/aistudio/assets/index.vue` | `pages/aistudio/assets/index.vue` |
-| AI STUDIO - AI 자산 등록 | `/aistudio/assets/register` | `src/pages/aistudio/assets/register.vue` | `pages/aistudio/assets/register.vue` |
+| AI STUDIO - AI 자산 탐색 | `/aistudio/assets/explore` | `src/pages/aistudio/assets/explore/index.vue` | `pages/aistudio/assets/explore/index.vue` |
+| AI STUDIO - AI 자산 등록 | `/aistudio/assets/register` | `src/pages/aistudio/assets/register/index.vue` | `pages/aistudio/assets/register/index.vue` |
 | AX COMMUNITY - AI Tech News | `/community/tech-news` | `src/pages/community/tech-news/index.vue` | `pages/community/tech-news/index.vue` |
 | AX COMMUNITY - AI Calendar | `/community/calendar` | `src/pages/community/calendar/index.vue` | `pages/community/calendar/index.vue` |
 | AX COMMUNITY - 나만의 AI 활용법 | `/community/ai-usage` | `src/pages/community/ai-usage/index.vue` | `pages/community/ai-usage/index.vue` |
@@ -163,7 +163,7 @@ definePageMeta({
 주의사항:
 
 - Portal `layouts/user.vue`는 이미 `route.meta.aiLounge`를 확인할 수 있으므로 경로 문자열을 계속 늘리기보다 메타를 사용한다.
-- 기존 코드에 남아 있는 `/studio` 검사는 신규 `/aistudio`와 다르다. 메타 기반 동작을 우선 사용한다.
+- 기존 코드에 남아 있는 `/studio` 검사는 신규 `/aistudio/intro`와 다르다. 메타 기반 동작을 우선 사용한다.
 - MANAGEMENT 페이지가 `user` 레이아웃인지 `admin` 레이아웃인지 운영 정책을 먼저 확정한다.
 - 레이아웃 정책이 확정되기 전 Portal 공통 레이아웃 구조를 임의로 변경하지 않는다.
 - AI Lounge 페이지 때문에 Portal 전체 `min-width`, header, footer 크기를 변경하지 않는다.
@@ -171,12 +171,14 @@ definePageMeta({
 
 ### 5.3 정적 HTML 별칭
 
-Portal의 `pages:extend` 훅은 라우트에 `/index.html` 별칭을 추가한다. 중첩 깊이가 깊은 `/aistudio/assets/register`까지 별칭이 생성되는지 확인한다.
+Portal의 `pages:extend` 훅은 라우트에 `/index.html` 별칭을 추가한다. 중첩 깊이가 깊은 `/aistudio/assets/explore`, `/aistudio/assets/register`까지 별칭이 생성되는지 확인한다.
 
 다음 URL을 모두 직접 새로고침해서 확인한다.
 
-- `/aistudio`
-- `/aistudio/index.html`
+- `/aistudio/intro`
+- `/aistudio/intro/index.html`
+- `/aistudio/assets/explore`
+- `/aistudio/assets/explore/index.html`
 - `/aistudio/assets/register`
 - `/aistudio/assets/register/index.html`
 

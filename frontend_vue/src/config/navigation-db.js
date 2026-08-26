@@ -7,9 +7,9 @@ const SECTION_PRESENTATION = {
 };
 
 const ITEM_EYEBROWS = {
-  "/aistudio": "OVERVIEW",
+  "/aistudio/intro": "OVERVIEW",
   "/aistudio/dx-discovery": "DEFINE",
-  "/aistudio/assets": "REUSE",
+  "/aistudio/assets/explore": "REUSE",
   "/aistudio/assets/register": "SHARE",
   "/community/tech-news": "NEWS",
   "/community/calendar": "CALENDAR",
@@ -40,7 +40,7 @@ export const buildNavigationSections = (roleMenuList) => (roleMenuList || [])
     return {
       id: presentation.id || menu.menu_id.toLowerCase(),
       label: menu.menu_name,
-      home: menu.menu_path || items[0]?.to || "/aistudio",
+      home: menu.menu_path || items[0]?.to || "/aistudio/intro",
       heading: presentation.heading || menu.menu_name,
       description: menu.menu_desc,
       items,

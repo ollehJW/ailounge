@@ -26,9 +26,9 @@ import "./styles/portal-gnb.css";
 
 const PAGE_META = {
   "/sign-in": { public: true, layout: false },
-  "/aistudio": { section: "studio", sectionLabel: "AI STUDIO", title: "AI STUDIO 소개", description: "업무 과제 발굴부터 검증된 AI 자산의 등록·탐색·확산까지 하나의 흐름으로 연결합니다." },
+  "/aistudio/intro": { section: "studio", sectionLabel: "AI STUDIO", title: "AI STUDIO 소개", description: "업무 과제 발굴부터 검증된 AI 자산의 등록·탐색·확산까지 하나의 흐름으로 연결합니다." },
   "/aistudio/dx-discovery": { section: "studio", sectionLabel: "AI STUDIO", title: "DX 과제 발굴", description: "AI Agent와 대화하여 업무 문제를 실행 가능한 DX 과제로 구체화합니다." },
-  "/aistudio/assets": { section: "studio", sectionLabel: "AI STUDIO", title: "AI 자산 라이브러리", description: "검증된 AI 모델, Agent와 업무 자동화 자산을 탐색하고 업무에 맞게 확산합니다." },
+  "/aistudio/assets/explore": { section: "studio", sectionLabel: "AI STUDIO", title: "AI 자산 탐색", description: "검증된 AI 모델, Agent와 업무 자동화 자산을 탐색하고 업무에 맞게 확산합니다." },
   "/aistudio/assets/register": { section: "studio", sectionLabel: "AI STUDIO", title: "AI 자산 등록", description: "개발 완료한 AI 자산을 전사에서 재사용할 수 있는 형태로 등록합니다." },
   "/community/tech-news": { section: "community", sectionLabel: "AX COMMUNITY", title: "AI Tech News", description: "위아 소식과 외부 AI 동향, 업무 혁신 BP 사례를 확인합니다." },
   "/community/calendar": { section: "community", sectionLabel: "AX COMMUNITY", title: "AI Calendar", description: "AI 학회·세미나 및 주요 일정을 한눈에 확인합니다." },
@@ -52,10 +52,12 @@ const fileRoutes = Object.entries(pageModules).map(([file, component]) => {
 const router = createRouter({
   history: createWebHistory(ROUTER_BASE),
   routes: [
-    { path: "/", redirect: "/aistudio" },
+    { path: "/", redirect: "/aistudio/intro" },
+    { path: "/aistudio", redirect: "/aistudio/intro" },
+    { path: "/aistudio/assets", redirect: "/aistudio/assets/explore" },
     { path: "/administration", redirect: "/administration/ideas" },
     ...fileRoutes,
-    { path: "/:pathMatch(.*)*", redirect: "/aistudio" },
+    { path: "/:pathMatch(.*)*", redirect: "/aistudio/intro" },
   ],
   scrollBehavior: () => ({ top: 0 }),
 });
@@ -66,11 +68,11 @@ router.beforeEach(async (to) => {
   if (!to.meta.public && !auth.isAuthenticated) {
     return { path: "/sign-in", query: { redirect: to.fullPath } };
   }
-  if (to.path === "/sign-in" && auth.isAuthenticated) return "/aistudio";
+  if (to.path === "/sign-in" && auth.isAuthenticated) return "/aistudio/intro";
   if (!to.meta.public && auth.isAuthenticated) {
     await menu.load();
     if (menu.loadError) return { path: "/sign-in", query: { menuError: "1" } };
-    if (!menu.canAccess(to.path)) return "/aistudio";
+    if (!menu.canAccess(to.path)) return "/aistudio/intro";
   }
 });
 

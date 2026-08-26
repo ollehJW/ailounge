@@ -2,7 +2,7 @@
   <div class="portal-shell portal-shell-gnb">
     <header class="portal-header portal-header-gnb">
       <div class="portal-header-inner">
-        <RouterLink class="portal-brand" to="/aistudio" aria-label="WIA AI Lounge 홈">
+        <RouterLink class="portal-brand" to="/aistudio/intro" aria-label="WIA AI Lounge 홈">
           <img src="../assets/logo-header.png" alt="WIA" />
         </RouterLink>
         <nav class="portal-nav portal-gnb" aria-label="주 메뉴">
@@ -82,7 +82,7 @@
       <div class="portal-contents-top">
         <nav class="portal-breadcrumbs" aria-label="현재 위치">
           <ol>
-            <li><RouterLink to="/aistudio" aria-label="홈"><House :size="17" /></RouterLink></li>
+            <li><RouterLink to="/aistudio/intro" aria-label="홈"><House :size="17" /></RouterLink></li>
             <li><ChevronRight :size="14" /><span>{{ route.meta.sectionLabel }}</span></li>
             <li><ChevronRight :size="14" /><strong>{{ route.meta.title }}</strong></li>
           </ol>
@@ -120,7 +120,7 @@ const menu = useMenuStore();
 const isSitemapOpen = ref(false);
 
 const visibleChildren = (item) => (item?.child || []).filter((child) => child.menu_visible !== false);
-const firstMenuPath = (item) => item?.menu_path || visibleChildren(item).map(firstMenuPath).find(Boolean) || "/aistudio";
+const firstMenuPath = (item) => item?.menu_path || visibleChildren(item).map(firstMenuPath).find(Boolean) || "/aistudio/intro";
 const isMenuActive = (item) => item?.menu_path === route.path || visibleChildren(item).some(isMenuActive);
 const releaseMenuFocus = (event) => event.currentTarget?.blur();
 
