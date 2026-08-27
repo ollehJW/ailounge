@@ -1,60 +1,50 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
-import { apiFetch, readApiError } from "../api/client";
-import { buildNavigationSections, fallbackNavigationSections } from "../config/navigation-db";
+import { NAV_SECTIONS } from "../config/navigation";
 import { useAuthStore } from "./auth";
 
-const collectPaths = (items, paths = new Set()) => {
-  for (const item of items || []) {
-    if (item.menu_path) paths.add(item.menu_path.replace(/\/$/, "") || "/");
-    collectPaths(item.child, paths);
-  }
-  return paths;
-};
+const toPortalMenu = (sections) => sections.map((section) => ({
+  menu_id: section.id,
+  menu_name: section.label,
+  menu_desc: section.description,
+  menu_path: section.home,
+  menu_visible: true,
+  child: [{
+    menu_id: `${section.id}_group`,
+    menu_name: section.heading,
+    menu_desc: section.description,
+    menu_visible: true,
+    child: section.items.map((item) => ({
+      menu_id: `${section.id}_${item.to}`,
+      menu_name: item.label,
+      menu_desc: item.description,
+      menu_path: item.to,
+      menu_visible: true,
+      child: [],
+    })),
+  }],
+}));
 
 export const useMenuStore = defineStore("menu", () => {
-  const roleMenu = ref([]);
   const loaded = ref(false);
-  const loadedUserId = ref("");
   const loadError = ref("");
+  const auth = useAuthStore();
+  const sections = computed(() => (
+    auth.user?.is_admin
+      ? NAV_SECTIONS
+      : NAV_SECTIONS.filter((section) => section.id !== "administration")
+  ));
+  const roleMenu = computed(() => toPortalMenu(sections.value));
+  const allowedPaths = computed(() => new Set(
+    sections.value.flatMap((section) => section.items.map((item) => item.to)),
+  ));
 
-  const sections = computed(() => {
-    if (roleMenu.value.length) return buildNavigationSections(roleMenu.value);
-    const auth = useAuthStore();
-    return fallbackNavigationSections(Boolean(auth.user?.is_admin));
-  });
-  const allowedPaths = computed(() => collectPaths(roleMenu.value));
-
-  const load = async (force = false) => {
-    const auth = useAuthStore();
-    if (loaded.value && loadedUserId.value === auth.user?.user_id && !force) return;
-    try {
-      const response = await apiFetch("/api/menu");
-      if (!response.ok) throw await readApiError(response, "메뉴를 불러오지 못했습니다.");
-      const payload = await response.json();
-      roleMenu.value = payload?.data?.[0]?.roleMenuList || [];
-      loadedUserId.value = auth.user?.user_id || "";
-      loadError.value = "";
-    } catch (error) {
-      roleMenu.value = [];
-      loadedUserId.value = "";
-      loadError.value = error instanceof Error ? error.message : "메뉴를 불러오지 못했습니다.";
-    } finally {
-      loaded.value = true;
-    }
-  };
-
-  const canAccess = (path) => {
-    if (!roleMenu.value.length) return false;
-    return allowedPaths.value.has(path.replace(/\/$/, "") || "/");
-  };
-
-  const clear = () => {
-    roleMenu.value = [];
-    loaded.value = false;
-    loadedUserId.value = "";
+  const load = async () => {
+    loaded.value = true;
     loadError.value = "";
   };
+  const canAccess = (path) => allowedPaths.value.has(path.replace(/\/$/, "") || "/");
+  const clear = () => {};
 
   return { roleMenu, loaded, loadError, sections, load, canAccess, clear };
 });

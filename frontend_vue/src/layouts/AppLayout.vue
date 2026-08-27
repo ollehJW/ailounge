@@ -25,9 +25,6 @@
         <div class="portal-account">
           <span class="portal-user-avatar" aria-hidden="true"></span>
           <strong>{{ auth.user?.displayed_name }} {{ auth.user?.job_title }} 님</strong>
-          <button type="button" class="icon-button" title="로그아웃" aria-label="로그아웃" @click="handleLogout">
-            <LogOut :size="18" />
-          </button>
         </div>
       </div>
     </header>
@@ -61,20 +58,14 @@
 </template>
 
 <script setup>
-import { ChevronRight, House, LogOut } from "@/icons/lucide";
-import { useRoute, useRouter } from "vue-router";
+import { ChevronRight, House } from "@/icons/lucide";
+import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useMenuStore } from "@/stores/menu";
 
 const route = useRoute();
-const router = useRouter();
 const auth = useAuthStore();
 const menu = useMenuStore();
 const releaseMenuFocus = (event) => event.currentTarget?.blur();
 
-const handleLogout = () => {
-  menu.clear();
-  auth.logout();
-  router.replace("/sign-in");
-};
 </script>

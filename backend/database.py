@@ -24,7 +24,7 @@ DB_NAME = os.getenv("DB_NAME", "data_catalog")
 DB_USER = os.getenv("DB_USER", "data_catalog")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_CRYPT_KEY = os.getenv("DB_CRYPT_KEY")
-DB_SCHEMA = os.getenv("DB_SCHEMA", "ai_lounge")
+DB_SCHEMA = os.getenv("DB_SCHEMA", "ai_studio")
 DB_POOL_MIN_SIZE = int(os.getenv("DB_POOL_MIN_SIZE", "1"))
 DB_POOL_MAX_SIZE = int(os.getenv("DB_POOL_MAX_SIZE", "3"))
 DB_POOL_TIMEOUT_SECONDS = float(os.getenv("DB_POOL_TIMEOUT_SECONDS", "10"))
@@ -114,7 +114,7 @@ def _build_pool() -> ConnectionPool[DatabaseRow]:
             "dbname": DB_NAME,
             "user": DB_USER,
             "password": resolved_password,
-            "options": f"-c search_path={DB_SCHEMA},public",
+            "options": f"-c search_path={DB_SCHEMA},data_catalog,public",
             "row_factory": database_row_factory,
         },
         min_size=DB_POOL_MIN_SIZE,

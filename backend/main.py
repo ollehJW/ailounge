@@ -1,8 +1,5 @@
 from __future__ import annotations
-import base64
 from contextlib import asynccontextmanager
-import hashlib
-import hmac
 import json
 import mimetypes
 import os
@@ -22,13 +19,11 @@ from bleach.css_sanitizer import CSSSanitizer
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 
 from database import (
     DatabaseConnection,
     DatabaseRow,
-    IntegrityError,
     close_database_pool,
     get_connection,
     open_database_pool,
@@ -36,10 +31,11 @@ from database import (
 from llm_client import chat_completion
 from mailing import send_review_completed_email_safely
 from harness_generator import iter_generate_skill_package, plan_skill_candidates
+from portal_auth import PortalTokenError, verify_portal_access_token
 
 
 BASE_DIR = Path(__file__).resolve().parent
-POSTGRES_MIGRATIONS_DIR = BASE_DIR / "migrations" / "postgresql"
+POSTGRES_MIGRATIONS_DIR = BASE_DIR / "migrations" / "ai_studio"
 NEWS_WORKSPACE = BASE_DIR / "workspace" / "tech_news"
 USAGE_POSTS_WORKSPACE = BASE_DIR / "workspace" / "usage_posts"
 IDEAS_WORKSPACE = BASE_DIR / "workspace" / "ideas"
@@ -48,7 +44,6 @@ STAGING_WORKSPACE = BASE_DIR / "staging" / "assets"
 TEMPLATES_DIR = BASE_DIR / "templates"
 ASSET_REGISTRATION_TEMPLATE = TEMPLATES_DIR / "asset_registration.html"
 PROMPTS_DIR = BASE_DIR / "prompts"
-PBKDF2_ITERATIONS = 210_000
 MAX_ASSET_DATA_FILE_SIZE = 10 * 1024 * 1024
 MAX_USAGE_POST_HTML_LENGTH = 30 * 1024 * 1024
 MAX_USAGE_POST_IMAGE_BYTES = 20 * 1024 * 1024
@@ -78,14 +73,13 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="AI Lounge API", lifespan=lifespan)
-login_basic = HTTPBasic()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:9001",
-        "http://127.0.0.1:9001",
-    ],
+    allow_origins=[origin.strip() for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:9001,http://127.0.0.1:9001",
+    ).split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -102,35 +96,6 @@ class UserResponse(BaseModel):
     job_title: str
     is_admin: bool
     created_at: str
-
-
-class LoginResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: UserResponse
-
-
-class UserCreateRequest(BaseModel):
-    login_id: str = Field(min_length=1)
-    email: str = Field(min_length=3, max_length=254)
-    org_name: str = Field(min_length=1)
-    displayed_name: str = Field(min_length=1)
-    job_title: str = Field(min_length=1)
-    password: str = Field(min_length=12)
-    is_admin: bool = False
-
-
-class UserUpdateRequest(BaseModel):
-    login_id: str = Field(min_length=1)
-    email: str = Field(min_length=3, max_length=254)
-    org_name: str = Field(min_length=1)
-    displayed_name: str = Field(min_length=1)
-    job_title: str = Field(min_length=1)
-    is_admin: bool = False
-
-
-class UserPasswordUpdateRequest(BaseModel):
-    new_password: str = Field(min_length=12)
 
 
 class NewsResponse(BaseModel):
@@ -629,31 +594,6 @@ def init_db() -> None:
                 )
 
 
-def hash_password(password: str) -> str:
-    salt = os.urandom(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
-    return "pbkdf2_sha256${}${}${}".format(
-        PBKDF2_ITERATIONS,
-        base64.b64encode(salt).decode("ascii"),
-        base64.b64encode(digest).decode("ascii"),
-    )
-
-
-def verify_password(password: str, password_hash: str) -> bool:
-    try:
-        algorithm, iterations, salt, digest = password_hash.split("$", 3)
-        if algorithm != "pbkdf2_sha256":
-            return False
-        expected = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            base64.b64decode(salt),
-            int(iterations),
-        )
-        return hmac.compare_digest(expected, base64.b64decode(digest))
-    except (ValueError, TypeError):
-        return False
-
 
 def user_from_row(row: DatabaseRow) -> UserResponse:
     return UserResponse(
@@ -666,14 +606,6 @@ def user_from_row(row: DatabaseRow) -> UserResponse:
         is_admin=bool(row["is_admin"]),
         created_at=row["created_at"],
     )
-
-
-def normalize_email(value: str) -> str:
-    email = value.strip().lower()
-    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="올바른 이메일 주소를 입력하세요.")
-    return email
-
 
 
 
@@ -1120,34 +1052,32 @@ def save_cover_image(news_id: str, cover_image: UploadFile | None) -> str | None
     return filename
 
 
-def create_session(user_id: str) -> str:
-    token = uuid.uuid4().hex + uuid.uuid4().hex
-    with get_connection() as con:
-        con.execute(
-            "INSERT INTO user_sessions (token, user_id, created_at) VALUES (?, ?, ?)",
-            (token, user_id, utc_now()),
-        )
-    return token
-
-
 def get_current_user(authorization: Annotated[str | None, Header()] = None) -> UserResponse:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증이 필요합니다.")
 
     token = authorization.split(" ", 1)[1].strip()
+    try:
+        payload = verify_portal_access_token(token)
+    except PortalTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
     with get_connection() as con:
         row = con.execute(
             """
-            SELECT u.user_id, u.login_id, u.email, u.org_name, u.displayed_name, u.job_title, u.is_admin, u.created_at
-            FROM user_sessions s
-            JOIN user u ON u.user_id = s.user_id
-            WHERE s.token = ?
+            SELECT user_id, login_id, email, org_name, displayed_name, job_title, is_admin, created_at
+            FROM portal_users
+            WHERE user_id = ?
             """,
-            (token,),
+            (str(payload["user_id"]),),
         ).fetchone()
 
     if row is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="유효하지 않은 세션입니다.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Portal 계정 정보를 찾을 수 없습니다.")
     return user_from_row(row)
 
 
@@ -1158,30 +1088,18 @@ def require_admin(current_user: Annotated[UserResponse, Depends(get_current_user
 
 
 
-from portal_menu import register_portal_menu
-register_portal_menu(app, get_current_user, get_connection)
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/api/auth/login", response_model=LoginResponse)
-def login(credentials: Annotated[HTTPBasicCredentials, Depends(login_basic)]) -> LoginResponse:
-    with get_connection() as con:
-        row = con.execute(
-            """
-            SELECT user_id, login_id, email, org_name, displayed_name, job_title, password, is_admin, created_at
-            FROM user
-            WHERE login_id = ?
-            """,
-            (credentials.username,),
-        ).fetchone()
-
-    if row is None or not verify_password(credentials.password, row["password"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="사번 또는 비밀번호가 올바르지 않습니다.")
-
-    return LoginResponse(access_token=create_session(row["user_id"]), user=user_from_row(row))
+@app.post("/api/auth/login", include_in_schema=False)
+def login() -> None:
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="AI Lounge 자체 로그인은 종료되었습니다. Portal에서 로그인하세요.",
+    )
 
 
 @app.get("/api/auth/me", response_model=UserResponse)
@@ -1195,125 +1113,12 @@ def list_users(_: Annotated[UserResponse, Depends(require_admin)]) -> list[UserR
         rows = con.execute(
             """
             SELECT user_id, login_id, email, org_name, displayed_name, job_title, is_admin, created_at
-            FROM user
+            FROM portal_users
             WHERE is_admin = 0
-            ORDER BY
-                LOWER(org_name) ASC,
-                CASE job_title
-                    WHEN '전무' THEN 1
-                    WHEN '상무' THEN 2
-                    WHEN '실장' THEN 3
-                    WHEN '팀장' THEN 4
-                    WHEN '책임매니저' THEN 5
-                    WHEN '매니저' THEN 6
-                    ELSE 99
-                END ASC,
-                LOWER(displayed_name) ASC
+            ORDER BY LOWER(org_name), LOWER(displayed_name)
             """
         ).fetchall()
     return [user_from_row(row) for row in rows]
-
-
-@app.post("/api/admin/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(payload: UserCreateRequest, _: Annotated[UserResponse, Depends(require_admin)]) -> UserResponse:
-    user_id = str(uuid.uuid4())
-    email = normalize_email(payload.email)
-    try:
-        with get_connection() as con:
-            con.execute(
-                """
-                INSERT INTO user (user_id, login_id, email, org_name, displayed_name, job_title, password, is_admin, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    user_id,
-                    payload.login_id.strip(),
-                    email,
-                    payload.org_name.strip(),
-                    payload.displayed_name.strip(),
-                    payload.job_title.strip(),
-                    hash_password(payload.password),
-                    1 if payload.is_admin else 0,
-                    utc_now(),
-                ),
-            )
-            row = con.execute(
-                """
-                SELECT user_id, login_id, email, org_name, displayed_name, job_title, is_admin, created_at
-                FROM user
-                WHERE user_id = ?
-                """,
-                (user_id,),
-            ).fetchone()
-    except IntegrityError:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번 또는 이메일입니다.")
-
-    return user_from_row(row)
-
-
-@app.put("/api/admin/users/{user_id}", response_model=UserResponse)
-def update_user(user_id: str, payload: UserUpdateRequest, _: Annotated[UserResponse, Depends(require_admin)]) -> UserResponse:
-    values: list[object] = [
-        payload.login_id.strip(),
-        normalize_email(payload.email),
-        payload.org_name.strip(),
-        payload.displayed_name.strip(),
-        payload.job_title.strip(),
-        1 if payload.is_admin else 0,
-    ]
-    values.append(user_id)
-
-    try:
-        with get_connection() as con:
-            result = con.execute(
-                """
-                UPDATE user
-                SET login_id = ?, email = ?, org_name = ?, displayed_name = ?, job_title = ?, is_admin = ?
-                WHERE user_id = ?
-                """,
-                values,
-            )
-            if result.rowcount == 0:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없습니다.")
-            row = con.execute(
-                """
-                SELECT user_id, login_id, email, org_name, displayed_name, job_title, is_admin, created_at
-                FROM user
-                WHERE user_id = ?
-                """,
-                (user_id,),
-            ).fetchone()
-    except IntegrityError:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 사용 중인 사번 또는 이메일입니다.")
-
-    return user_from_row(row)
-
-
-@app.put("/api/admin/users/{user_id}/password", status_code=status.HTTP_204_NO_CONTENT)
-def update_user_password(
-    user_id: str,
-    payload: UserPasswordUpdateRequest,
-    _: Annotated[UserResponse, Depends(require_admin)],
-) -> None:
-    with get_connection() as con:
-        result = con.execute(
-            "UPDATE user SET password = ? WHERE user_id = ?",
-            (hash_password(payload.new_password), user_id),
-        )
-        if result.rowcount == 0:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없습니다.")
-
-
-@app.delete("/api/admin/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: str, current_user: Annotated[UserResponse, Depends(require_admin)]) -> None:
-    if user_id == current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="현재 로그인한 관리자 계정은 삭제할 수 없습니다.")
-
-    with get_connection() as con:
-        result = con.execute("DELETE FROM user WHERE user_id = ?", (user_id,))
-        if result.rowcount == 0:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계정을 찾을 수 없습니다.")
-
 
 
 @app.post("/api/assets/repository/clone", response_model=AssetRepositoryCloneResponse)
@@ -1654,7 +1459,7 @@ def list_ai_asset_catalog(
                    u.job_title AS owner_job_title,
                    EXISTS(SELECT 1 FROM ai_asset_bookmarks b WHERE b.user_id = ? AND b.asset_id = a.asset_id) AS is_bookmarked
             FROM ai_assets a
-            JOIN user u ON u.user_id = a.created_by
+            JOIN portal_users u ON u.user_id = a.created_by
             WHERE a.approval_status = 'approved' AND a.is_active = 1
             ORDER BY a.diffusion_attempt_count DESC, a.updated_at DESC
             """,
@@ -1814,7 +1619,7 @@ def get_diffusion_case_row(con: DatabaseConnection, asset_id: str, diffusion_cas
         SELECT c.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
                u.job_title AS writer_job_title
         FROM ai_asset_diffusion_cases c
-        JOIN user u ON u.user_id = c.user_id
+        JOIN portal_users u ON u.user_id = c.user_id
         WHERE c.asset_id = ? AND c.diffusion_case_id = ?
         """,
         (asset_id, diffusion_case_id),
@@ -1837,7 +1642,7 @@ def list_ai_asset_diffusion_cases(
             SELECT c.*, u.displayed_name AS writer_name, u.org_name AS writer_org,
                    u.job_title AS writer_job_title
             FROM ai_asset_diffusion_cases c
-            JOIN user u ON u.user_id = c.user_id
+            JOIN portal_users u ON u.user_id = c.user_id
             WHERE c.asset_id = ?
             ORDER BY c.created_at DESC
             """,
@@ -1967,7 +1772,7 @@ def get_qa_post_row(
                ) AS helpful_by_me
         FROM ai_asset_qa_posts p
         JOIN ai_assets a ON a.asset_id = p.asset_id
-        JOIN user u ON u.user_id = p.user_id
+        JOIN portal_users u ON u.user_id = p.user_id
         WHERE p.asset_id = ? AND p.qa_post_id = ?
         """,
         (current_user_id, current_user_id, asset_id, qa_post_id),
@@ -2001,7 +1806,7 @@ def qa_question_response(
                CASE WHEN p.user_id = ? THEN 1 ELSE 0 END AS can_edit
         FROM ai_asset_qa_posts p
         JOIN ai_assets a ON a.asset_id = p.asset_id
-        JOIN user u ON u.user_id = p.user_id
+        JOIN portal_users u ON u.user_id = p.user_id
         WHERE p.parent_post_id = ?
         ORDER BY p.created_at
         """,
@@ -2031,7 +1836,7 @@ def list_ai_asset_qa(
                    ) AS helpful_by_me
             FROM ai_asset_qa_posts p
             JOIN ai_assets a ON a.asset_id = p.asset_id
-            JOIN user u ON u.user_id = p.user_id
+            JOIN portal_users u ON u.user_id = p.user_id
             WHERE p.asset_id = ? AND p.parent_post_id IS NULL
             ORDER BY p.created_at DESC
             """,
@@ -2207,7 +2012,7 @@ def get_ai_asset_catalog_detail(
                    u.job_title AS owner_job_title,
                    EXISTS(SELECT 1 FROM ai_asset_bookmarks b WHERE b.user_id = ? AND b.asset_id = a.asset_id) AS is_bookmarked
             FROM ai_assets a
-            JOIN user u ON u.user_id = a.created_by
+            JOIN portal_users u ON u.user_id = a.created_by
             WHERE a.asset_id = ?
             """,
             (current_user.user_id, asset_id),
@@ -2317,7 +2122,7 @@ def list_my_ai_assets(
 
 @app.get("/api/admin/assets", response_model=list[AiAssetResponse])
 def list_admin_ai_assets(
-    _: Annotated[UserResponse, Depends(get_current_user)],
+    _: Annotated[UserResponse, Depends(require_admin)],
 ) -> list[AiAssetResponse]:
     with get_connection() as con:
         rows = con.execute(
@@ -2328,7 +2133,7 @@ def list_admin_ai_assets(
                    u.job_title AS owner_job_title, a.created_at, a.updated_at, a.submitted_at,
                    a.reviewed_at, a.reviewed_by, a.review_comment
             FROM ai_assets a
-            JOIN user u ON u.user_id = a.created_by
+            JOIN portal_users u ON u.user_id = a.created_by
             ORDER BY COALESCE(a.submitted_at, a.created_at) DESC
             """
         ).fetchall()
@@ -2340,7 +2145,7 @@ def update_admin_ai_asset_status(
     asset_id: str,
     payload: AssetStatusUpdateRequest,
     background_tasks: BackgroundTasks,
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    current_user: Annotated[UserResponse, Depends(require_admin)],
 ) -> AiAssetResponse:
     asset_id = validate_asset_id(asset_id)
     clean_status = payload.status.strip().lower()
@@ -2373,12 +2178,12 @@ def update_admin_ai_asset_status(
                    u.job_title AS owner_job_title, a.created_at, a.updated_at, a.submitted_at,
                    a.reviewed_at, a.reviewed_by, a.review_comment
             FROM ai_assets a
-            JOIN user u ON u.user_id = a.created_by
+            JOIN portal_users u ON u.user_id = a.created_by
             WHERE a.asset_id = ?
             """,
             (asset_id,),
         ).fetchone()
-        recipient_email = con.execute("SELECT email FROM user WHERE user_id = ?", (row["created_by"],)).fetchone()["email"]
+        recipient_email = con.execute("SELECT email FROM portal_users WHERE user_id = ?", (row["created_by"],)).fetchone()["email"]
     background_tasks.add_task(send_review_completed_email_safely, recipient_email, row["asset_name"], "asset")
     return AiAssetResponse(**dict(row))
 
@@ -2387,7 +2192,7 @@ def update_admin_ai_asset_status(
 def update_admin_ai_asset_activation(
     asset_id: str,
     payload: AssetActivationRequest,
-    _: Annotated[UserResponse, Depends(get_current_user)],
+    _: Annotated[UserResponse, Depends(require_admin)],
 ) -> AiAssetResponse:
     asset_id = validate_asset_id(asset_id)
     now = utc_now()
@@ -2413,7 +2218,7 @@ def update_admin_ai_asset_activation(
                    u.job_title AS owner_job_title, a.created_at, a.updated_at, a.submitted_at,
                    a.reviewed_at, a.reviewed_by, a.review_comment
             FROM ai_assets a
-            JOIN user u ON u.user_id = a.created_by
+            JOIN portal_users u ON u.user_id = a.created_by
             WHERE a.asset_id = ?
             """,
             (asset_id,),
@@ -2424,7 +2229,7 @@ def update_admin_ai_asset_activation(
 @app.delete("/api/admin/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_admin_ai_asset(
     asset_id: str,
-    _: Annotated[UserResponse, Depends(get_current_user)],
+    _: Annotated[UserResponse, Depends(require_admin)],
 ) -> None:
     asset_id = validate_asset_id(asset_id)
     with get_connection() as con:
@@ -2461,7 +2266,7 @@ def get_ai_asset_registration_document(
             SELECT a.*, u.displayed_name AS owner_name, u.org_name AS owner_org,
                    u.job_title AS owner_job_title
             FROM ai_assets a
-            JOIN user u ON u.user_id = a.created_by
+            JOIN portal_users u ON u.user_id = a.created_by
             WHERE a.asset_id = ?
             """,
             (asset_id,),
@@ -2809,7 +2614,7 @@ def fetch_idea_attachments(con: DatabaseConnection, idea_id: str) -> list[IdeaAt
 
 
 @app.get("/api/admin/ideas", response_model=list[IdeaResponse])
-def list_admin_ideas(_: Annotated[UserResponse, Depends(get_current_user)]) -> list[IdeaResponse]:
+def list_admin_ideas(_: Annotated[UserResponse, Depends(require_admin)]) -> list[IdeaResponse]:
     with get_connection() as con:
         rows = con.execute(
             """
@@ -2830,7 +2635,7 @@ def list_admin_ideas(_: Annotated[UserResponse, Depends(get_current_user)]) -> l
                 i.reviewed_at,
                 i.review_comment
             FROM ideas i
-            LEFT JOIN user u ON u.user_id = i.user_id
+            LEFT JOIN portal_users u ON u.user_id = i.user_id
             ORDER BY i.created_at DESC
             """
         ).fetchall()
@@ -2842,7 +2647,7 @@ def update_admin_idea_status(
     idea_id: str,
     payload: IdeaStatusUpdateRequest,
     background_tasks: BackgroundTasks,
-    _: Annotated[UserResponse, Depends(get_current_user)],
+    _: Annotated[UserResponse, Depends(require_admin)],
 ) -> IdeaResponse:
     clean_status = payload.status.strip()
     clean_comment = payload.review_comment.strip()
@@ -2885,12 +2690,12 @@ def update_admin_idea_status(
                 i.reviewed_at,
                 i.review_comment
             FROM ideas i
-            LEFT JOIN user u ON u.user_id = i.user_id
+            LEFT JOIN portal_users u ON u.user_id = i.user_id
             WHERE i.idea_id = ?
             """,
             (idea_id,),
         ).fetchone()
-        recipient_email = con.execute("SELECT email FROM user WHERE user_id = ?", (row["user_id"],)).fetchone()["email"]
+        recipient_email = con.execute("SELECT email FROM portal_users WHERE user_id = ?", (row["user_id"],)).fetchone()["email"]
         response = idea_from_row(row, fetch_idea_attachments(con, idea_id))
     background_tasks.add_task(send_review_completed_email_safely, recipient_email, row["title"], "idea")
     return response
@@ -3057,7 +2862,7 @@ def list_ideas(current_user: Annotated[UserResponse, Depends(get_current_user)])
                 i.reviewed_at,
                 i.review_comment
             FROM ideas i
-            LEFT JOIN user u ON u.user_id = i.user_id
+            LEFT JOIN portal_users u ON u.user_id = i.user_id
             WHERE i.user_id = ?
             ORDER BY i.created_at DESC
             """,
@@ -3150,7 +2955,7 @@ def create_idea(
                     i.reviewed_at,
                 i.review_comment
                 FROM ideas i
-                LEFT JOIN user u ON u.user_id = i.user_id
+                LEFT JOIN portal_users u ON u.user_id = i.user_id
                 WHERE i.idea_id = ?
                 """,
                 (idea_id,),
@@ -3183,7 +2988,7 @@ def get_idea(idea_id: str, current_user: Annotated[UserResponse, Depends(get_cur
                 i.reviewed_at,
                 i.review_comment
             FROM ideas i
-            LEFT JOIN user u ON u.user_id = i.user_id
+            LEFT JOIN portal_users u ON u.user_id = i.user_id
             WHERE i.idea_id = ? AND i.user_id = ?
             """,
             (idea_id, current_user.user_id),
@@ -3252,7 +3057,7 @@ def list_ai_usage_posts(current_user: Annotated[UserResponse, Depends(get_curren
                 p.created_at,
                 p.updated_at
             FROM ai_usage_posts p
-            LEFT JOIN user u ON u.user_id = p.user_id
+            LEFT JOIN portal_users u ON u.user_id = p.user_id
             ORDER BY p.created_at DESC
             """,
             (current_user.user_id,),
@@ -3291,7 +3096,7 @@ def get_ai_usage_post(
                 p.created_at,
                 p.updated_at
             FROM ai_usage_posts p
-            LEFT JOIN user u ON u.user_id = p.user_id
+            LEFT JOIN portal_users u ON u.user_id = p.user_id
             WHERE p.usage_post_id = ?
             """,
             (current_user.user_id, usage_post_id),
@@ -3361,7 +3166,7 @@ def create_ai_usage_post(
                 p.created_at,
                 p.updated_at
             FROM ai_usage_posts p
-            LEFT JOIN user u ON u.user_id = p.user_id
+            LEFT JOIN portal_users u ON u.user_id = p.user_id
             WHERE p.usage_post_id = ?
             """,
             (usage_post_id,),
@@ -3433,7 +3238,7 @@ def update_ai_usage_post(
                 p.created_at,
                 p.updated_at
             FROM ai_usage_posts p
-            LEFT JOIN user u ON u.user_id = p.user_id
+            LEFT JOIN portal_users u ON u.user_id = p.user_id
             WHERE p.usage_post_id = ?
             """,
             (current_user.user_id, usage_post_id),
@@ -3486,7 +3291,7 @@ def toggle_ai_usage_post_like(
                 p.created_at,
                 p.updated_at
             FROM ai_usage_posts p
-            LEFT JOIN user u ON u.user_id = p.user_id
+            LEFT JOIN portal_users u ON u.user_id = p.user_id
             WHERE p.usage_post_id = ?
             """,
             (current_user.user_id, usage_post_id),
@@ -3514,7 +3319,7 @@ def list_news(category: Annotated[str | None, Query()] = None) -> list[NewsRespo
                 SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name,
                        n.cover_image, n.view_count, n.created_at, n.updated_at
                 FROM news n
-                LEFT JOIN user u ON u.user_id = n.writer
+                LEFT JOIN portal_users u ON u.user_id = n.writer
                 WHERE n.category = ?
                 ORDER BY n.created_at DESC
                 """,
@@ -3526,7 +3331,7 @@ def list_news(category: Annotated[str | None, Query()] = None) -> list[NewsRespo
                 SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name,
                        n.cover_image, n.view_count, n.created_at, n.updated_at
                 FROM news n
-                LEFT JOIN user u ON u.user_id = n.writer
+                LEFT JOIN portal_users u ON u.user_id = n.writer
                 ORDER BY n.created_at DESC
                 """
             ).fetchall()
@@ -3544,7 +3349,7 @@ def get_news(news_id: str, count_view: Annotated[bool, Query()] = True) -> NewsD
             """
             SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
             FROM news n
-            LEFT JOIN user u ON u.user_id = n.writer
+            LEFT JOIN portal_users u ON u.user_id = n.writer
             WHERE n.news_id = ?
             """,
             (news_id,),
@@ -3588,7 +3393,7 @@ def get_news_cover(news_id: str) -> FileResponse:
 
 
 @app.post("/api/admin/news/draft", response_model=NewsDraftResponse)
-def draft_news(payload: NewsDraftRequest, _: Annotated[UserResponse, Depends(get_current_user)]) -> NewsDraftResponse:
+def draft_news(payload: NewsDraftRequest, _: Annotated[UserResponse, Depends(require_admin)]) -> NewsDraftResponse:
     category = normalize_news_category(payload.category)
     if category == "external":
         prompt = (
@@ -3618,7 +3423,7 @@ def draft_news(payload: NewsDraftRequest, _: Annotated[UserResponse, Depends(get
 
 @app.post("/api/admin/news", response_model=NewsResponse, status_code=status.HTTP_201_CREATED)
 def create_news(
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    current_user: Annotated[UserResponse, Depends(require_admin)],
     title: Annotated[str, Form()],
     markdown: Annotated[str, Form()],
     category: Annotated[str, Form()],
@@ -3652,7 +3457,7 @@ def create_news(
             """
             SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
             FROM news n
-            LEFT JOIN user u ON u.user_id = n.writer
+            LEFT JOIN portal_users u ON u.user_id = n.writer
             WHERE n.news_id = ?
             """,
             (news_id,),
@@ -3664,7 +3469,7 @@ def create_news(
 @app.put("/api/admin/news/{news_id}", response_model=NewsResponse)
 def update_news(
     news_id: str,
-    _: Annotated[UserResponse, Depends(get_current_user)],
+    _: Annotated[UserResponse, Depends(require_admin)],
     title: Annotated[str, Form()],
     markdown: Annotated[str, Form()],
     category: Annotated[str, Form()],
@@ -3708,7 +3513,7 @@ def update_news(
             """
             SELECT n.news_id, n.title, n.category, n.source_url, n.org_name, n.writer, u.displayed_name AS writer_name, n.cover_image, n.view_count, n.created_at, n.updated_at
             FROM news n
-            LEFT JOIN user u ON u.user_id = n.writer
+            LEFT JOIN portal_users u ON u.user_id = n.writer
             WHERE n.news_id = ?
             """,
             (news_id,),
@@ -3718,7 +3523,7 @@ def update_news(
 
 
 @app.delete("/api/admin/news/{news_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_news(news_id: str, _: Annotated[UserResponse, Depends(get_current_user)]) -> None:
+def delete_news(news_id: str, _: Annotated[UserResponse, Depends(require_admin)]) -> None:
     with get_connection() as con:
         result = con.execute("DELETE FROM news WHERE news_id = ?", (news_id,))
         if result.rowcount == 0:

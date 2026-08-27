@@ -25,7 +25,6 @@ import "./styles/calendar.css";
 import "./styles/portal-gnb.css";
 
 const PAGE_META = {
-  "/sign-in": { public: true, layout: false },
   "/aistudio/intro": { section: "studio", sectionLabel: "AI STUDIO", title: "AI STUDIO 소개", description: "업무 과제 발굴부터 검증된 AI 자산의 등록·탐색·확산까지 하나의 흐름으로 연결합니다." },
   "/aistudio/dx-discovery": { section: "studio", sectionLabel: "AI STUDIO", title: "DX 과제 발굴", description: "AI Agent와 대화하여 업무 문제를 실행 가능한 DX 과제로 구체화합니다." },
   "/aistudio/assets/explore": { section: "studio", sectionLabel: "AI STUDIO", title: "AI 자산 탐색", description: "검증된 AI 모델, Agent와 업무 자동화 자산을 탐색하고 업무에 맞게 확산합니다." },
@@ -65,15 +64,9 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   const menu = useMenuStore();
-  if (!to.meta.public && !auth.isAuthenticated) {
-    return { path: "/sign-in", query: { redirect: to.fullPath } };
-  }
-  if (to.path === "/sign-in" && auth.isAuthenticated) return "/aistudio/intro";
-  if (!to.meta.public && auth.isAuthenticated) {
-    await menu.load();
-    if (menu.loadError) return { path: "/sign-in", query: { menuError: "1" } };
-    if (!menu.canAccess(to.path)) return "/aistudio/intro";
-  }
+  await auth.initializeDemo();
+  await menu.load();
+  if (!menu.canAccess(to.path)) return "/aistudio/intro";
 });
 
 createApp(App).use(createPinia()).use(router).mount("#app");
