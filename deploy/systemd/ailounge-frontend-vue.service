@@ -1,0 +1,18 @@
+[Unit]
+Description=AI Lounge frontend_vue Vite frontend
+Wants=network-online.target ailounge-backend-vue.service
+After=network-online.target ailounge-backend-vue.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/home/wia/projects/ailounge/frontend_vue
+Environment=NODE_ENV=development
+ExecStart=/home/wia/.nvm/versions/node/v24.19.0/bin/node /home/wia/projects/ailounge/frontend_vue/node_modules/vite/bin/vite.js --host 0.0.0.0 --port 9003 --strictPort
+Restart=always
+RestartSec=2
+TimeoutStopSec=20
+KillSignal=SIGINT
+
+[Install]
+WantedBy=default.target

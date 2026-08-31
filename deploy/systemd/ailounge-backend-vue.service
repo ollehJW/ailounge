@@ -1,0 +1,18 @@
+[Unit]
+Description=AI Lounge frontend_vue FastAPI backend
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/home/wia/projects/ailounge/backend_vue
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend_vue/run_server.py
+Restart=always
+RestartSec=2
+TimeoutStopSec=20
+KillSignal=SIGINT
+
+[Install]
+WantedBy=default.target
