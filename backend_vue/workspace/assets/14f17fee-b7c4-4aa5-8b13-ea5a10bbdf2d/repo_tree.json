@@ -1,0 +1,171 @@
+{
+  "tree": [
+    {
+      "name": "backend",
+      "path": "backend",
+      "type": "directory",
+      "children": [
+        {
+          "name": "prompts",
+          "path": "backend/prompts",
+          "type": "directory",
+          "children": [
+            {
+              "name": "report_generation.txt",
+              "path": "backend/prompts/report_generation.txt",
+              "type": "file",
+              "children": []
+            },
+            {
+              "name": "speaker_matching.txt",
+              "path": "backend/prompts/speaker_matching.txt",
+              "type": "file",
+              "children": []
+            },
+            {
+              "name": "stt_correction.txt",
+              "path": "backend/prompts/stt_correction.txt",
+              "type": "file",
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": "__init__.py",
+          "path": "backend/__init__.py",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "llm_client.py",
+          "path": "backend/llm_client.py",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "main.py",
+          "path": "backend/main.py",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "processor.py",
+          "path": "backend/processor.py",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "read.py",
+          "path": "backend/read.py",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "write.py",
+          "path": "backend/write.py",
+          "type": "file",
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "docs",
+      "path": "docs",
+      "type": "directory",
+      "children": [
+        {
+          "name": "meeting_generation_pipeline.md",
+          "path": "docs/meeting_generation_pipeline.md",
+          "type": "file",
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "frontend",
+      "path": "frontend",
+      "type": "directory",
+      "children": [
+        {
+          "name": "src",
+          "path": "frontend/src",
+          "type": "directory",
+          "children": [
+            {
+              "name": "main.jsx",
+              "path": "frontend/src/main.jsx",
+              "type": "file",
+              "children": []
+            },
+            {
+              "name": "styles.css",
+              "path": "frontend/src/styles.css",
+              "type": "file",
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": "index.html",
+          "path": "frontend/index.html",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "package-lock.json",
+          "path": "frontend/package-lock.json",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "package.json",
+          "path": "frontend/package.json",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "vite.config.js",
+          "path": "frontend/vite.config.js",
+          "type": "file",
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": ".env.example",
+      "path": ".env.example",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": ".gitignore",
+      "path": ".gitignore",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "download_models.sh",
+      "path": "download_models.sh",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "README.md",
+      "path": "README.md",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "requirements.txt",
+      "path": "requirements.txt",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "run.txt",
+      "path": "run.txt",
+      "type": "file",
+      "children": []
+    }
+  ]
+}

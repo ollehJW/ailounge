@@ -1,0 +1,118 @@
+You are generating one reusable Claude skill from a previously selected skill plan.
+
+Return ONLY valid JSON. Do not wrap it in Markdown fences.
+The JSON schema must be:
+{
+  "files": [
+    { "path": "skills/{{SKILL_SLUG}}/SKILL.md", "content": "..." },
+    { "path": "skills/{{SKILL_SLUG}}/scripts/<script_name>", "content": "..." }
+  ]
+}
+
+Skill generation principle:
+- Write all SKILL.md and script comments/user-facing messages in English.
+- Generate ONLY the selected skill below.
+- The skill must be reusable for diffusion to other business areas.
+- Use reusable_pattern as the core scope of the skill.
+- Use skill_type to decide the output shape:
+  - guide: focus on adaptation guidance, design-time decisions, validation approach, and lightweight helper scripts only when useful. Do not force a full automation skeleton.
+  - skeleton: provide the required adaptation guidance plus at least one practical, config-driven executable skeleton grounded in the selected repository excerpts. Keep prose concise and make scripts central.
+- Use required_inputs to define the Required inputs section.
+- Use reference_files and the selected repository excerpts to ground the adaptation guide and scripts.
+- Do not make the skill narrowly limited to the original asset name, original system name, original department, or original data columns.
+- Treat the original asset as background evidence only. Do not create a section named "Reference implementation notes" or "Reference implementation".
+- Aim for reusable pattern guidance. Mention original-asset specifics only when needed to clarify adaptation, and even then use a generic description instead of the original asset's proper name (company name, product name, department name).
+
+Mandatory Claude skill format:
+- The main skill file path MUST be exactly skills/{{SKILL_SLUG}}/SKILL.md.
+- SKILL.md MUST start with YAML frontmatter. The first bytes of the file must be "---".
+- The frontmatter MUST contain exactly these required metadata fields at minimum:
+  ---
+  name: {{SKILL_SLUG}}
+  description: <pushy trigger description>
+  ---
+- The name value MUST equal {{SKILL_SLUG}}.
+- The description is not decorative. It is the primary trigger metadata that Claude sees before loading the body.
+- Put all "when to use" / trigger criteria in the frontmatter description, not in the body.
+- Do not create a body heading named "When to use this skill", "When to use", "Use when", or similar.
+- Make the description intentionally trigger-friendly and slightly pushy. Example tone: "Use this whenever the user needs to adapt a reusable processing or integration workflow, even if they do not explicitly ask for this skill. Trigger when they mention changing inputs, environments, schemas, execution logic, validation rules, or output contracts."
+- The body should assume the skill has already been triggered and should focus on execution guidance.
+
+SKILL.md body requirements:
+- Write the entire body in English.
+- Include exactly these sections, in this order, and no others:
+  1. Purpose — one short paragraph: what workflow this automates and why the pattern is reusable across business areas.
+  2. Required inputs — what must be collected or confirmed before adapting the workflow. If the skill bundles executable scripts with non-obvious runtime dependencies, fold that as a short bullet here instead of a standalone section.
+  3. Adaptation guide — a single section covering both (a) what changes per target environment or workflow (access, configuration, input mapping, execution behavior, validation, and output rules) and (b) a concrete step-by-step checklist for making those decisions before writing code. Do not split this into two separate sections.
+  4. Procedure — the runtime execution sequence to follow WHEN running the adapted script: prepare inputs, configure the environment, run helper validation, execute the workflow, and verify outputs. End this section with how to validate the result; do not create a separate "Validation method" section.
+  5. Failure and exception handling — the failure modes specific to this workflow and how to handle each.
+  6. Security and privacy precautions — credentials, PII, access control, retention rules.
+- Do not repeat the same design decisions or execution steps in both "Adaptation guide" and "Procedure". Adaptation guide describes decisions made before execution; Procedure describes the order of operations during execution. Each must describe a different phase.
+- Do not pad any section with generic content just to fill it. Omitting detail is better than filler text — keep each section concise and specific to this workflow.
+- Do not create a heading named "Reference implementation notes" or "Reference implementation".
+- Do not duplicate trigger criteria in the body; the frontmatter description owns trigger routing.
+
+Bundled resource reference requirements:
+- If you generate any scripts under scripts/, reference each script clearly by file path from SKILL.md.
+- Explain when Claude should read or run each script.
+- Do not leave helper scripts implicit. For example, write "Use scripts/validate-input-list.mjs before adapting the workflow input mapping." rather than describing validation without naming the script.
+- Keep script references consistent: every generated script should be mentioned in SKILL.md at least once, and every script mentioned in SKILL.md must actually exist in the output files.
+
+Technical skeleton requirements:
+- When the selected skill represents a technical implementation and the repository excerpts contain working code, generate a practical, runnable skeleton grounded in that implementation.
+- Preserve reusable initialization, configuration, input normalization, core execution, output normalization, validation, state management, and failure-handling logic when present in the selected excerpts.
+- Do not replace available implementation with comments such as "implement this adapter", "plug in the actual implementation", or requirements for externally generated outputs when the referenced repository already implements that logic.
+- Do not start the generated skeleton from a downstream intermediate artifact when the selected reusable pattern includes upstream core execution and the repository excerpts implement that execution. The skeleton must accept the earliest practical input and execute those evidenced core stages itself.
+- Implement every core stage named in reusable_pattern that is supported by the selected repository excerpts. Before returning, compare the generated scripts against reusable_pattern and silently add any evidenced stage that was omitted.
+- Move environment-specific values, endpoints, paths, schemas, thresholds, credentials, and implementation choices into configuration or environment variables.
+- Retain necessary runtime dependencies when they are essential to the reusable capability; do not force every technical skeleton to be dependency-free.
+- Keep tightly coupled stages together when separating them would break their shared data contract, execution order, or state management.
+- If the selected excerpts do not contain enough evidence for runnable code, do not fabricate APIs or library calls. Generate a clearly bounded interface and a practical configuration or validation helper instead.
+
+scripts requirements:
+- Generate lightweight reusable helper scripts for the selected skill.
+- Scripts should help adaptation, validation, mapping, configuration, file naming, result checking, or config-driven skeleton execution when skill_type is skeleton.
+- Scripts must not contain secrets, tokens, passwords, or real credentials.
+- Scripts must not connect to or operate a real internal system using embedded credentials.
+- Use placeholders or environment variables for system URLs and credentials if needed.
+- Prefer the repository's existing runtime/language when obvious.
+- For skill_type=skeleton, generate at least one practical skeleton/template script when the selected references contain enough reusable logic.
+- For skill_type=guide, do not generate large skeleton code unless the selected skill explicitly needs it.
+- Keep scripts locally safe and dependency-light when doing so does not remove implementation that is essential to the selected technical capability.
+- Script comments and CLI/help messages must be in English.
+- CLI flag names used in SKILL.md command examples must exactly match the flags actually implemented in the corresponding script.
+
+Strict output constraints:
+- Output files must be under skills/{{SKILL_SLUG}}/** only.
+- Do not generate CLAUDE.md here.
+- Do not create files outside skills/{{SKILL_SLUG}}/**.
+- Do not generate skills/{{SKILL_SLUG}}/skill.md. The correct filename is SKILL.md uppercase.
+- Keep file contents concise, practical, and directly usable for adaptation.
+
+Before returning the JSON, review your own SKILL.md content and confirm all of the following, silently fixing any violation before returning:
+- No occurrence of the original asset's proper name, company name, product name, or department name anywhere in the body.
+- No heading literally named "Reference implementation notes", "Reference implementation", "When to use", "When to use this skill", or "Use when".
+- Exactly the six required sections are present, in order, with no extra top-level sections.
+- No step or instruction is repeated between "Adaptation guide" and "Procedure".
+- Every script referenced in SKILL.md exists in the files array, and every script in the files array is referenced in SKILL.md.
+- Every CLI flag shown in a SKILL.md command example matches a flag actually parsed by that script.
+
+Asset metadata:
+{{ASSET_META_JSON}}
+
+Repository tree:
+{{REPO_TREE}}
+
+Selected repository text file excerpts:
+{{REPO_FILES}}
+
+Only the reference files selected in the skill plan are included above. Do not assume that omitted repository files are available.
+
+Asset summary from skill planning:
+{{ASSET_SUMMARY}}
+
+Reusable patterns from skill planning:
+{{REUSABLE_PATTERNS_JSON}}
+
+Selected skill:
+{{SELECTED_SKILL_JSON}}

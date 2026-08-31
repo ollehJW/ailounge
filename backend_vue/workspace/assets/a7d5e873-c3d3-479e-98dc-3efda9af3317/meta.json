@@ -1,0 +1,144 @@
+{
+  "asset_id": "a7d5e873-c3d3-479e-98dc-3efda9af3317",
+  "user_id": "7f302a31-43ca-4004-8566-82e54513d9b3",
+  "user_email": "jongwook.lee@hyundai-wia.com",
+  "created_at": "2026-08-06T23:39:41.839064+00:00",
+  "updated_at": "2026-08-06T23:39:41.839064+00:00",
+  "payload": {
+    "asset_name": "주간 보고 관리 플랫폼",
+    "description": "팀의 과제, 마일스톤/Work 계획, 팀 캘린더를 한 곳에서 관리하는 주간보고 플랫폼입니다. 멤버별 참여 과제를 기준으로 주간 실적, 리스크/이슈, 차주 계획을 작성하고 부재나 업무 제외도 함께 처리할 수 있습니다. 완료된 주간보고는 멤버별/과제별 리포트로 확인할 수 있으며, 보고 라운지에서 과거 이력을 모아 볼 수 있습니다.",
+    "business_area": "IT·DX",
+    "maturity_level": "운영",
+    "task_types": [
+      "분석",
+      "요약",
+      "자동화"
+    ],
+    "implementation_types": [
+      "Agent"
+    ],
+    "tags": [
+      "주간보고 관리",
+      "업무 관리",
+      "프로젝트 관리",
+      "업무 자동화"
+    ],
+    "problem_definition": "지금까지 주간보고는 팀원 각자가 개인 문서나 메신저를 통해 개별적으로 작성하고, 팀장이나 관리자가 이를 취합해 정리하는 방식으로 진행되어 왔습니다. 과제나 마일스톤 정보가 별도로 관리되지 않아 실적과 계획을 연결해서 파악하기 어렵고, 부재나 업무 제외 같은 예외 상황도 매번 별도로 확인·반영해야 했습니다.",
+    "as_is_workflow": "팀원은 각자 진행한 업무 내용을 개인적으로 정리하여 담당 양식에 맞게 주간보고를 작성합니다. 팀장 또는 관리자는 팀원별로 취합된 보고 내용을 모아 확인하고, 필요 시 누락되거나 형식이 다른 항목을 개별적으로 조정합니다. 완료된 보고서는 별도 문서나 메일로 보관되어 이후 이력 조회 시 다시 찾아봐야 합니다.",
+    "to_be_workflow": "멤버는 플랫폼에 등록된 자신의 참여 과제를 기준으로 주간 실적, 리스크/이슈, 차주 계획을 플랫폼 내에서 작성하며, 부재나 업무 제외 사항도 함께 처리합니다. 작성된 주간보고는 자동으로 멤버별/과제별 리포트 형태로 정리되어 별도의 취합 작업 없이 바로 확인할 수 있습니다. 완료된 보고 이력은 보고 라운지에 누적되어 언제든 과거 기록을 조회할 수 있습니다.",
+    "ai_effect": "과제·일정 정보와 주간보고 작성이 하나의 플랫폼에서 연결되어, 팀원과 관리자 모두 별도 취합 작업 없이 실적과 계획을 빠르게 파악할 수 있습니다. 리포트가 멤버별/과제별로 자동 정리되면서 관리자의 확인 시간이 단축되고, 보고 라운지를 통해 과거 이력을 손쉽게 조회할 수 있어 업무 연속성과 투명성이 함께 향상됩니다.",
+    "has_data": false,
+    "has_train_validation_split": false,
+    "data_type": "",
+    "data_description": "",
+    "models": [
+      {
+        "model_name": "HTML 기반 보고서 생성",
+        "description": "주간 실적, 리스크/이슈, 차주 계획 데이터를 구조화된 HTML 템플릿에 자동으로 반영하여 리포트 형태로 렌더링하는 방식",
+        "reference_url": ""
+      }
+    ],
+    "tech_stacks": [
+      {
+        "stack_name": "Frontend - React",
+        "description": "회의 음성 업로드, 처리 진행 상황 확인, 생성된 회의록 확인 및 다운로드를 위한 사용자 인터페이스를 구현하는 프론트엔드 라이브러리",
+        "reference_url": "https://react.dev/"
+      }
+    ],
+    "before_after_metrics": [
+      {
+        "metric_name": "주간보고 취합 소요 시간",
+        "before_value": "팀원별 개별 취합, 반나절 이상",
+        "after_value": "플랫폼 내 자동 정리, 수 분 이내",
+        "improvement_rate": "90% 단축"
+      },
+      {
+        "metric_name": "보고 형식 일관성",
+        "before_value": "담당자별 상이",
+        "after_value": "표준 템플릿 통일",
+        "improvement_rate": "일관성 확보"
+      }
+    ],
+    "performance_metrics": [
+      {
+        "metric_name": "보고서 작성 소요 시간",
+        "value": "5분",
+        "description": "멤버가 참여 과제 기준으로 실적·이슈·계획을 작성하는 데 걸리는 평균 시간"
+      }
+    ],
+    "slides": [
+      {
+        "caption": "팀 캘린더 화면",
+        "description": "팀원들의 일정과 과제 진행 상황을 한눈에 확인할 수 있는 캘린더 화면으로, 부재나 업무 일정을 함께 파악할 수 있습니다.",
+        "sort_order": 1
+      },
+      {
+        "caption": "마일스톤 작성 화면",
+        "description": "과제별 마일스톤과 Work 계획을 등록·관리하는 화면으로, 팀의 전체 일정과 목표를 체계적으로 설정할 수 있습니다.",
+        "sort_order": 2
+      },
+      {
+        "caption": "주간보고 작성 화면",
+        "description": "멤버가 참여 과제를 기준으로 주간 실적, 리스크/이슈, 차주 계획을 작성하는 화면으로, 부재나 업무 제외 사항도 함께 입력할 수 있습니다.",
+        "sort_order": 3
+      },
+      {
+        "caption": "주간보고 리포트 화면",
+        "description": "작성된 주간보고가 멤버별/과제별로 정리되어 확인할 수 있는 리포트 화면입니다",
+        "sort_order": 4
+      }
+    ],
+    "repo_url": "https://github.com/ollehJW/weekly_report.git",
+    "repo_branch": "main",
+    "diffusion_prompt": "",
+    "owner_email": "jongwook.lee@hyundai-wia.com",
+    "owner_name": "이종욱",
+    "owner_job_title": "매니저",
+    "owner_org": "DX추진랩",
+    "asset_id": "a7d5e873-c3d3-479e-98dc-3efda9af3317"
+  },
+  "slides": [
+    {
+      "original_name": "팀캘린더.png",
+      "stored_name": "f063acded62745f8bf20a42f66b9e2d3.png",
+      "path": "staging/assets/a7d5e873-c3d3-479e-98dc-3efda9af3317/slides/f063acded62745f8bf20a42f66b9e2d3.png",
+      "caption": "팀 캘린더 화면",
+      "description": "팀원들의 일정과 과제 진행 상황을 한눈에 확인할 수 있는 캘린더 화면으로, 부재나 업무 일정을 함께 파악할 수 있습니다.",
+      "sort_order": 1,
+      "content_type": "image/png",
+      "size": 89705
+    },
+    {
+      "original_name": "마일스톤.png",
+      "stored_name": "684d9915e45f4a5e9794da648f04df6c.png",
+      "path": "staging/assets/a7d5e873-c3d3-479e-98dc-3efda9af3317/slides/684d9915e45f4a5e9794da648f04df6c.png",
+      "caption": "마일스톤 작성 화면",
+      "description": "과제별 마일스톤과 Work 계획을 등록·관리하는 화면으로, 팀의 전체 일정과 목표를 체계적으로 설정할 수 있습니다.",
+      "sort_order": 2,
+      "content_type": "image/png",
+      "size": 136112
+    },
+    {
+      "original_name": "주간보고 작성.png",
+      "stored_name": "c513f1970eff43b2a293b669b25990df.png",
+      "path": "staging/assets/a7d5e873-c3d3-479e-98dc-3efda9af3317/slides/c513f1970eff43b2a293b669b25990df.png",
+      "caption": "주간보고 작성 화면",
+      "description": "멤버가 참여 과제를 기준으로 주간 실적, 리스크/이슈, 차주 계획을 작성하는 화면으로, 부재나 업무 제외 사항도 함께 입력할 수 있습니다.",
+      "sort_order": 3,
+      "content_type": "image/png",
+      "size": 117081
+    },
+    {
+      "original_name": "주간보고 리포트.png",
+      "stored_name": "10af0e04231f4e0e88c3d5d388a16843.png",
+      "path": "staging/assets/a7d5e873-c3d3-479e-98dc-3efda9af3317/slides/10af0e04231f4e0e88c3d5d388a16843.png",
+      "caption": "주간보고 리포트 화면",
+      "description": "작성된 주간보고가 멤버별/과제별로 정리되어 확인할 수 있는 리포트 화면입니다",
+      "sort_order": 4,
+      "content_type": "image/png",
+      "size": 45180
+    }
+  ],
+  "data_files": [],
+  "submitted_at": "2026-08-06T23:48:18.417250+00:00"
+}

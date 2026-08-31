@@ -1,0 +1,72 @@
+{
+  "tree": [
+    {
+      "name": "scripts",
+      "path": "scripts",
+      "type": "directory",
+      "children": [
+        {
+          "name": "login-autoway.mjs",
+          "path": "scripts/login-autoway.mjs",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "manual-autoway-web.mjs",
+          "path": "scripts/manual-autoway-web.mjs",
+          "type": "file",
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "path": "web",
+      "type": "directory",
+      "children": [
+        {
+          "name": "app.js",
+          "path": "web/app.js",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "index.html",
+          "path": "web/index.html",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "styles.css",
+          "path": "web/styles.css",
+          "type": "file",
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": ".gitignore",
+      "path": ".gitignore",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "guide.md",
+      "path": "guide.md",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "package-lock.json",
+      "path": "package-lock.json",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "package.json",
+      "path": "package.json",
+      "type": "file",
+      "children": []
+    }
+  ]
+}

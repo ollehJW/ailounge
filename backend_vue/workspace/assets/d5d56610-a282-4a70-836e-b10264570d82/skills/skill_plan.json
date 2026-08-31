@@ -1,0 +1,121 @@
+{
+  "asset_summary": "PaddleOCR와 PyMuPDF를 활용해 스캔본·이미지 기반 PDF를 페이지별 이미지로 렌더링한 뒤 OCR 텍스트를 추출하고 TXT 파일로 저장하는 PoC 자산입니다.",
+  "reusable_patterns": [
+    "설정 파일 기반으로 PDF 입력 폴더 또는 파일 목록을 받아 일괄 OCR 처리하고 결과를 표준 텍스트 파일로 저장하는 문서 자동화 패턴",
+    "PDF 페이지를 이미지로 렌더링한 뒤 이미지 인식 모델을 호출하고 페이지 단위 결과를 후처리해 하나의 출력물로 결합하는 실행 파이프라인 패턴",
+    "CPU/GPU 런타임, OCR 언어, DPI, 검출·인식 임계값을 업무 환경에 맞게 조정하는 OCR 운영 설정 패턴",
+    "OCR 결과 품질을 샘플링, 원문 대조, 누락·오탈자 기준으로 검증하고 재처리 옵션을 결정하는 도입 검증 패턴"
+  ],
+  "candidates": [
+    {
+      "slug": "config-driven-pdf-ocr-pipeline",
+      "title": "설정 기반 PDF OCR 일괄 처리 파이프라인",
+      "skill_type": "skeleton",
+      "reusable_pattern": "YAML 설정에서 입력 폴더·파일 목록, 출력 경로, OCR 옵션을 읽고 PDF를 페이지 이미지로 변환한 뒤 OCR 결과를 페이지 구분 텍스트로 저장하는 범용 파이프라인 구조를 템플릿화합니다.",
+      "required_inputs": [
+        "처리할 PDF 폴더 또는 PDF 파일 목록",
+        "출력 디렉터리 및 파일명 규칙",
+        "OCR 언어, DPI, CPU/GPU 사용 여부",
+        "문서 품질에 따른 검출·인식 옵션"
+      ],
+      "reference_files": [
+        "README.md",
+        "config.example.yaml",
+        "main.py",
+        "ocr_package/__init__.py",
+        "ocr_package/pdf_ocr.py",
+        "requirements.txt"
+      ],
+      "diffusion_score": 92,
+      "recommended": true,
+      "reason": "핵심 실행 로직인 설정 로드, 입력 정규화, 옵션 타입 검증, PDF 렌더링, PaddleOCR 초기화·추론, 페이지별 후처리, 출력 파일 저장이 명확해 다른 부서의 스캔 문서·계약서·보고서 처리에 쉽게 재사용할 수 있습니다. 환경별 값만 교체하면 되며 민감 데이터는 로컬 입력으로 제한할 수 있어 확산 가치가 높습니다."
+    },
+    {
+      "slug": "pdf-ocr-runtime-configuration-guide",
+      "title": "PDF OCR 런타임 및 옵션 구성 가이드",
+      "skill_type": "guide",
+      "reusable_pattern": "OCR 도입 시 CPU/GPU 선택, PaddlePaddle 의존성, NVIDIA 라이브러리 경로, 언어·DPI·스레드·임계값 옵션을 업무 환경과 문서 품질에 맞게 결정하는 절차를 안내합니다.",
+      "required_inputs": [
+        "실행 환경의 CPU/GPU 및 운영체제 정보",
+        "대상 문서의 언어와 스캔 해상도",
+        "처리량, 처리 시간, 정확도 목표",
+        "사내 보안 정책과 모델 캐시 운영 방식"
+      ],
+      "reference_files": [
+        "README.md",
+        "config.example.yaml",
+        "main.py",
+        "ocr_package/pdf_ocr.py",
+        "requirements.txt"
+      ],
+      "diffusion_score": 84,
+      "recommended": true,
+      "reason": "여러 팀이 OCR을 도입할 때 반복적으로 겪는 설치, GPU/CPU 전환, 옵션 튜닝 의사결정을 표준화할 수 있습니다. 자동화 코드 자체보다는 환경별 선택 기준과 검증 체크리스트가 핵심 가치이며, 접근 권한이나 개인정보 리스크는 문서 취급 정책으로 관리 가능합니다."
+    },
+    {
+      "slug": "ocr-quality-validation-guide",
+      "title": "OCR 결과 품질 검증 및 재처리 기준 가이드",
+      "skill_type": "guide",
+      "reusable_pattern": "추출 텍스트의 정확도, 누락, 페이지 순서, 빈 페이지, 특수문자 인식 오류를 샘플링 방식으로 점검하고 DPI·언어·임계값 재조정 여부를 판단하는 검증 패턴입니다.",
+      "required_inputs": [
+        "검증 대상 PDF와 OCR 결과 텍스트",
+        "업무상 허용 가능한 오탈자·누락 기준",
+        "샘플링할 페이지 수 또는 문서 수",
+        "재처리 시 변경 가능한 OCR 옵션"
+      ],
+      "reference_files": [
+        "README.md",
+        "config.example.yaml",
+        "ocr_package/pdf_ocr.py"
+      ],
+      "diffusion_score": 76,
+      "recommended": false,
+      "reason": "OCR 확산 시 품질 기준을 맞추는 데 유용하지만 저장소에 자동 검증 구현은 없고 주로 운영 절차와 체크리스트 중심입니다. 다양한 문서에 적용 가능하나 기술 실행 파이프라인보다 직접적인 재사용 효과는 낮습니다."
+    },
+    {
+      "slug": "page-image-inference-transformer",
+      "title": "PDF 페이지 이미지 추론 변환 스캐폴드",
+      "skill_type": "skeleton",
+      "reusable_pattern": "PDF 각 페이지를 이미지 배열로 렌더링하고 이미지 기반 AI 모델을 호출한 뒤 페이지 단위 결과를 정렬·결합하는 구조를 OCR 외 이미지 추론 업무에도 적용할 수 있게 일반화합니다.",
+      "required_inputs": [
+        "PDF 입력 경로",
+        "페이지 렌더링 해상도",
+        "호출할 이미지 추론 모델 또는 어댑터",
+        "페이지별 결과를 결합하는 출력 포맷"
+      ],
+      "reference_files": [
+        "ocr_package/pdf_ocr.py",
+        "main.py",
+        "config.example.yaml",
+        "requirements.txt"
+      ],
+      "diffusion_score": 79,
+      "recommended": false,
+      "reason": "PDF 렌더링, 이미지 배열 변환, 모델 호출, 페이지별 결과 결합이라는 실행 로직은 재사용 가능하지만 현재 구현은 PaddleOCR의 반환 구조와 텍스트 추출에 맞춰져 있습니다. 범용 이미지 추론 스캐폴드로 확장하려면 모델 어댑터와 출력 스키마를 추가 설계해야 합니다."
+    },
+    {
+      "slug": "yaml-batch-processing-cli-skeleton",
+      "title": "YAML 기반 배치 처리 CLI 스캐폴드",
+      "skill_type": "skeleton",
+      "reusable_pattern": "YAML 설정 파일에서 입력 폴더 또는 파일 목록을 해석하고, 허용 옵션을 타입 검증한 뒤 출력 디렉터리에 결과를 반복 저장하는 배치 CLI 구조를 재사용합니다.",
+      "required_inputs": [
+        "입력 폴더 또는 파일 목록 설정",
+        "허용 옵션 목록과 타입 매핑",
+        "출력 디렉터리",
+        "파일별 처리 함수"
+      ],
+      "reference_files": [
+        "main.py",
+        "config.example.yaml",
+        "README.md"
+      ],
+      "diffusion_score": 73,
+      "recommended": false,
+      "reason": "입력 정규화와 옵션 검증, 반복 실행 구조는 여러 자동화 업무에 적용 가능하지만 구현 범위가 비교적 얇고 OCR 자체의 고부가 실행 로직은 포함하지 않습니다. 독립 스킬보다는 PDF OCR 파이프라인 스킬의 하위 구성요소로 활용하는 편이 적합합니다."
+    }
+  ],
+  "selected_skill_slugs": [
+    "config-driven-pdf-ocr-pipeline",
+    "pdf-ocr-runtime-configuration-guide"
+  ]
+}

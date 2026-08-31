@@ -1,0 +1,160 @@
+{
+  "asset_id": "c9cfb884-a7e5-4a1a-9370-e5d02a0c92ef",
+  "user_id": "7f302a31-43ca-4004-8566-82e54513d9b3",
+  "user_email": "jongwook.lee@hyundai-wia.com",
+  "updated_at": "2026-08-06T00:43:09.643746+00:00",
+  "payload": {
+    "asset_name": "Vaatz 발주 견적서 자동 수집 Agent",
+    "description": "현대·기아자동차 그룹의 구매 포털인 Vaatz에 매번 로그인하여 발주서·견적서를 수작업으로 확인·다운로드해야 하는 번거로움과 누락 위험을 해결하는 자동화 에이전트입니다.",
+    "business_area": "IT·DX",
+    "maturity_level": "운영",
+    "task_types": [
+      "검색",
+      "자동화"
+    ],
+    "implementation_types": [
+      "Agent"
+    ],
+    "tags": [
+      "웹 크롤링",
+      "자동화",
+      "브라우저 자동화",
+      "데이터 수집"
+    ],
+    "problem_definition": "Vaatz 포털에 등록되는 견적서 파일을 지금까지는 담당자가 직접 포털에 접속해 건별로 하나하나 확인하고 다운로드하는 방식으로 처리해왔습니다. 견적서를 하나씩 열어 파일을 내려받아야 했기 때문에, 건수가 많아질수록 소요 시간이 길어지고 반복적이고 번거로운 작업이 계속되었습니다. 이런 수작업 다운로드 방식은 담당자의 시간을 지속적으로 소모시키는 비효율적인 업무였습니다.",
+    "as_is_workflow": "담당자는 견적서 파일을 받기 위해 매번 Vaatz 포털에 직접 로그인한 뒤, 견적서 목록 화면으로 이동해 등록된 건들을 확인합니다. 이후 목록에서 필요한 견적서를 하나씩 클릭해 상세 화면에 들어가 첨부된 파일을 다운로드하고, 이를 담당자 PC나 공유 폴더에 별도로 저장·정리하는 과정을 거칩니다. 이 일련의 과정을 견적서 건수만큼 하나하나 반복해야 했기 때문에, 건수가 많아질수록 작업 시간이 그대로 늘어나고 담당자의 시간이 반복적이고 단순한 작업에 지속적으로 소모되었습니다.",
+    "to_be_workflow": "Agent는 설정된 주기 또는 담당자의 실행 요청에 따라 자동으로 동작을 시작해, 저장된 인증 정보로 Vaatz 포털에 자동 로그인합니다. 이후 견적서 목록을 자동으로 스캔해 이미 수집된 건과 비교함으로써 신규 또는 미다운로드된 견적서만 식별하고, 해당 파일들을 순차적으로 자동 다운로드하여 지정된 규칙에 따라 폴더와 파일명을 정리해 저장합니다. 마지막으로 수집이 완료되면 담당자에게 수집 건수와 저장 위치 등을 요약해 알림으로 전달하므로, 담당자는 더 이상 직접 클릭하고 다운로드하는 반복 작업 없이 결과만 확인하면 됩니다.",
+    "ai_effect": "본 Agent 도입을 통해 정량적으로는 견적서 1건당 평균 3~5분씩 소요되던 수작업 다운로드 시간을 수 초 이내로 단축하여, 월 100건 기준 약 5~8시간에 달하던 담당자의 반복 작업 시간을 대부분 절감할 수 있을 것으로 기대됩니다. 또한 수작업 과정에서 발생하던 파일 누락이나 확인 지연 건수를 최소화하여 견적서 수집 누락률을 0%에 가깝게 낮추고, 담당자 1인이 처리 가능한 견적 건수의 한계를 사실상 해소함으로써 거래량 증가에도 추가 인력 투입 없이 대응할 수 있는 확장성을 확보하게 됩니다.",
+    "has_data": true,
+    "has_train_validation_split": false,
+    "data_type": "테이블·정형데이터",
+    "data_description": "본 Agent를 실행하기 위해서는 **\"발주일\"**과 \"품의번호\" 컬럼을 포함한 CSV 또는 XLSX 형식의 파일이 필요합니다. \"발주일\"은 Vaatz 포털에서 대상 견적서를 조회하기 위한 기준 일자로 사용되며, \"품의번호\"는 개별 발주 건을 식별하는 고유 값으로 Agent가 포털 내 목록에서 해당 견적 건을 정확히 매칭하고 조회하는 데 사용됩니다. 두 컬럼만 갖추어져 있다면 파일 형식(CSV/XLSX)이나 나머지 컬럼 구성에는 제약이 없어, 담당자가 기존에 관리하던 발주 목록 파일을 별도 가공 없이 그대로 입력값으로 활용할 수 있습니다.",
+    "models": [
+      {
+        "model_name": "Playwright",
+        "description": "웹 브라우저를 자동으로 제어하여 Vaatz 포털 로그인 및 견적서 파일 다운로드를 수행하는 브라우저 자동화 프레임워크",
+        "reference_url": "https://playwright.dev/"
+      }
+    ],
+    "tech_stacks": [
+      {
+        "stack_name": "Python - FastAPI",
+        "description": "Playwright 기반 자동화 로직을 API 서버로 구성하여 데이터 업로드, 실행 요청, 결과 조회 등의 기능을 제공하는 백엔드 프레임워크",
+        "reference_url": "https://fastapi.tiangolo.com/"
+      },
+      {
+        "stack_name": "Frontend - React",
+        "description": "발주일·품의번호 파일 업로드, 수집 실행 및 진행 상황 확인 등을 위한 사용자 인터페이스를 구현하는 프론트엔드 라이브러리",
+        "reference_url": "https://react.dev/"
+      }
+    ],
+    "before_after_metrics": [
+      {
+        "metric_name": "견적서 1건당 처리 시간",
+        "before_value": "1분",
+        "after_value": "20초",
+        "improvement_rate": "66% 감소"
+      },
+      {
+        "metric_name": "담당자 1인당 처리 가능 건수",
+        "before_value": "100건",
+        "after_value": "1000건",
+        "improvement_rate": "1000% 증가"
+      }
+    ],
+    "performance_metrics": [
+      {
+        "metric_name": "견적서 수집 성공률",
+        "value": "100%",
+        "description": "입력된 발주일·품의번호 대비 정상적으로 견적서 파일을 수집한 비율"
+      }
+    ],
+    "slides": [
+      {
+        "caption": "로그인 정보 입력 화면",
+        "description": "Agent 실행 전, Vaatz 포털 접속에 필요한 계정 ID와 비밀번호를 입력하는 화면입니다. 담당자는 이 화면에서 인증 정보를 입력하여 이후 자동 로그인이 진행될 수 있도록 설정합니다.",
+        "sort_order": 1
+      },
+      {
+        "caption": "자동 로그인 완료 화면",
+        "description": "입력된 계정 정보를 바탕으로 Agent가 Vaatz 포털에 자동으로 로그인을 완료한 상태를 보여주는 화면입니다. 담당자의 별도 조작 없이 포털 접속이 정상적으로 이루어졌음을 확인할 수 있습니다.",
+        "sort_order": 2
+      },
+      {
+        "caption": "발주 품의 리스트 확인 화면",
+        "description": "업로드된 CSV 또는 XLSX 파일 내 \"발주일\", \"품의번호\" 데이터가 정상적으로 인식되어 리스트 형태로 화면에 표시된 상태입니다. 담당자는 이 화면에서 자동화 대상 건들이 올바르게 반영되었는지 확인할 수 있습니다.",
+        "sort_order": 3
+      },
+      {
+        "caption": "견적서 자동 다운로드 진행 화면",
+        "description": "입력된 품의 리스트를 기준으로 Agent가 Vaatz 포털 내 견적서를 하나씩 조회하여 실시간으로 자동 다운로드하는 과정을 보여주는 화면입니다. 처리 중인 건과 완료된 건의 진행 상황을 확인할 수 있습니다.",
+        "sort_order": 4
+      }
+    ],
+    "repo_url": "",
+    "repo_branch": "",
+    "asset_id": "c9cfb884-a7e5-4a1a-9370-e5d02a0c92ef",
+    "skill_files": [],
+    "diffusion_prompt": "",
+    "owner_email": "jongwook.lee@hyundai-wia.com",
+    "owner_name": "이종욱",
+    "owner_job_title": "매니저",
+    "owner_org": "DX추진랩",
+    "user_id": "7f302a31-43ca-4004-8566-82e54513d9b3",
+    "user_email": "jongwook.lee@hyundai-wia.com",
+    "staged_by": "7f302a31-43ca-4004-8566-82e54513d9b3",
+    "staged_at": "2026-08-06T00:43:09.643746+00:00"
+  },
+  "slides": [
+    {
+      "original_name": "자동로그인.png",
+      "stored_name": "cf8517ecbbfb4c4b801408292b461d9f.png",
+      "path": "staging/assets/c9cfb884-a7e5-4a1a-9370-e5d02a0c92ef/slides/cf8517ecbbfb4c4b801408292b461d9f.png",
+      "caption": "로그인 정보 입력 화면",
+      "description": "Agent 실행 전, Vaatz 포털 접속에 필요한 계정 ID와 비밀번호를 입력하는 화면입니다. 담당자는 이 화면에서 인증 정보를 입력하여 이후 자동 로그인이 진행될 수 있도록 설정합니다.",
+      "sort_order": 1,
+      "content_type": "image/png",
+      "size": 150021
+    },
+    {
+      "original_name": "자동로그인 완료.png",
+      "stored_name": "244b30846b8f4d3b9952dcf92ddf009b.png",
+      "path": "staging/assets/c9cfb884-a7e5-4a1a-9370-e5d02a0c92ef/slides/244b30846b8f4d3b9952dcf92ddf009b.png",
+      "caption": "자동 로그인 완료 화면",
+      "description": "입력된 계정 정보를 바탕으로 Agent가 Vaatz 포털에 자동으로 로그인을 완료한 상태를 보여주는 화면입니다. 담당자의 별도 조작 없이 포털 접속이 정상적으로 이루어졌음을 확인할 수 있습니다.",
+      "sort_order": 2,
+      "content_type": "image/png",
+      "size": 154900
+    },
+    {
+      "original_name": "자동 수집 리스트.png",
+      "stored_name": "255783dbb32f48f9854235849bcfdef1.png",
+      "path": "staging/assets/c9cfb884-a7e5-4a1a-9370-e5d02a0c92ef/slides/255783dbb32f48f9854235849bcfdef1.png",
+      "caption": "발주 품의 리스트 확인 화면",
+      "description": "업로드된 CSV 또는 XLSX 파일 내 \"발주일\", \"품의번호\" 데이터가 정상적으로 인식되어 리스트 형태로 화면에 표시된 상태입니다. 담당자는 이 화면에서 자동화 대상 건들이 올바르게 반영되었는지 확인할 수 있습니다.",
+      "sort_order": 3,
+      "content_type": "image/png",
+      "size": 148142
+    },
+    {
+      "original_name": "자동 수집.png",
+      "stored_name": "45380107e6344d9db728308ffa84c738.png",
+      "path": "staging/assets/c9cfb884-a7e5-4a1a-9370-e5d02a0c92ef/slides/45380107e6344d9db728308ffa84c738.png",
+      "caption": "견적서 자동 다운로드 진행 화면",
+      "description": "입력된 품의 리스트를 기준으로 Agent가 Vaatz 포털 내 견적서를 하나씩 조회하여 실시간으로 자동 다운로드하는 과정을 보여주는 화면입니다. 처리 중인 건과 완료된 건의 진행 상황을 확인할 수 있습니다.",
+      "sort_order": 4,
+      "content_type": "image/png",
+      "size": 230958
+    }
+  ],
+  "data_files": [
+    {
+      "role": "sample",
+      "original_name": "test.csv",
+      "stored_name": "3fb23f2f161b432aafae69a627e540b9.csv",
+      "path": "staging/assets/c9cfb884-a7e5-4a1a-9370-e5d02a0c92ef/data/sample/3fb23f2f161b432aafae69a627e540b9.csv",
+      "size": 3311,
+      "content_type": "text/csv"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "asset_id": "921054b6-2bc5-48dc-be59-023733998740",
+  "user_id": "33502",
+  "submitted_at": "2026-08-30T23:15:17.171984+00:00",
+  "payload": {
+    "asset_id": "921054b6-2bc5-48dc-be59-023733998740",
+    "owner_name": "이종욱",
+    "owner_job_title": "매니저",
+    "owner_org": "DX추진랩",
+    "owner_email": "jongwook.lee@hyundai-wia.com",
+    "asset_name": "PaddleOCR 기반 PDF 텍스트 추출",
+    "description": "PaddleOCR을 활용해 스캔본이나 이미지 형태로 저장된 PDF 문서에서 텍스트를 자동으로 인식·추출해주는 자산입니다. 텍스트 레이어가 없는 PDF는 직접 복사하거나 검색할 수 없어 담당자가 내용을 일일이 눈으로 확인하며 수기로 옮겨 적어야 했지만, 이 자산을 통해 해당 과정을 자동화하여 텍스트 데이터로 즉시 변환할 수 있습니다.",
+    "business_area": "IT·DX",
+    "maturity_level": "PoC",
+    "task_types": [
+      "추출",
+      "자동화"
+    ],
+    "implementation_types": [
+      "Computer Vision"
+    ],
+    "tags": [
+      "OCR",
+      "PDF 텍스트 추출",
+      "문서 자동화"
+    ],
+    "problem_definition": "지금까지 스캔본이나 이미지 형태로 저장된 PDF 문서는 텍스트 레이어가 없어 복사나 검색이 불가능해, 담당자가 문서 내용을 확인할 때마다 직접 눈으로 읽고 필요한 내용을 수기로 옮겨 적어야 했습니다. 문서 분량이 많거나 텍스트 추출이 필요한 문서가 반복적으로 발생할 경우 이러한 수작업이 누적되어 상당한 시간이 소요되었고, 옮겨 적는 과정에서 오탈자나 누락이 발생하기도 했습니다.",
+    "as_is_workflow": "담당자는 스캔본이나 이미지 형태로 저장된 PDF 문서를 열어 필요한 내용을 화면으로 직접 확인합니다. 확인한 내용 중 필요한 텍스트를 수기로 옮겨 적거나 별도 문서(엑셀, 워드 등)에 재입력하는 과정을 거칩니다. 문서 분량이 많을 경우 이 과정을 페이지별로 반복 수행합니다.",
+    "to_be_workflow": "담당자가 스캔본이나 이미지 형태의 PDF 문서를 업로드하면, PaddleOCR이 문서 내 이미지를 자동으로 인식하여 텍스트를 추출합니다. 추출된 텍스트는 구조화된 형태로 정리되어 복사·검색이 가능한 데이터로 즉시 활용할 수 있습니다. 담당자는 별도의 수기 입력 없이 결과를 바로 확인하고 필요한 곳에 활용하면 됩니다.",
+    "ai_effect": "본 자산 도입을 통해 PDF 문서 1건당 수 분에서 수십 분씩 소요되던 수기 텍스트 입력 시간을 수 초 이내로 단축하고, 옮겨 적는 과정에서 발생하던 오탈자와 누락을 크게 줄일 수 있습니다. 문서 분량이 많아져도 처리 시간이 거의 일정하게 유지되어 대량 문서 처리에도 안정적으로 대응할 수 있으며, 추출된 텍스트를 즉시 검색·활용 가능한 데이터로 확보함으로써 문서 관리와 활용 효율성도 함께 높아집니다.",
+    "has_data": false,
+    "has_train_validation_split": false,
+    "data_type": "",
+    "data_description": "",
+    "models": [
+      {
+        "model_name": "PaddleOCR",
+        "description": "이미지 및 스캔본 PDF에서 텍스트 영역을 인식하고 추출하는 OCR(광학 문자 인식) 모델",
+        "reference_url": "https://github.com/PaddlePaddle/PaddleOCR"
+      }
+    ],
+    "tech_stacks": [
+      {
+        "stack_name": "PaddlePaddle-GPU",
+        "description": "PaddleOCR 구동을 위한 GPU 기반 딥러닝 연산 프레임워크",
+        "reference_url": "https://www.paddlepaddle.org.cn/"
+      }
+    ],
+    "before_after_metrics": [
+      {
+        "metric_name": "PDF 1건당 텍스트 확인·입력 시간",
+        "before_value": "약 5~10분",
+        "after_value": "약 10초 이내",
+        "improvement_rate": "97% 단축"
+      },
+      {
+        "metric_name": "텍스트 오탈자·누락 발생률",
+        "before_value": "약 5~10%",
+        "after_value": "약 1% 이하",
+        "improvement_rate": "80% 개선"
+      }
+    ],
+    "performance_metrics": [
+      {
+        "metric_name": "텍스트 추출 정확도",
+        "value": "99%",
+        "description": "PaddleOCR을 통한 인식 텍스트와 원본 문서 간 일치도"
+      }
+    ],
+    "repo_url": "http://10.217.183.89:1234/ai_studio_assets/paddle_ocr.git",
+    "repo_branch": "main",
+    "slides": [
+      {
+        "caption": "PaddleOCR 모델 구조 이미지",
+        "description": "텍스트 영역을 검출하고 인식하는 PaddleOCR의 내부 신경망(CNN 기반) 구조를 도식화한 이미지입니다. 입력 이미지가 각 레이어를 거치며 특징을 추출하고 최종적으로 텍스트로 변환되는 과정을 세부적으로 확인할 수 있습니다"
+      },
+      {
+        "caption": "PaddleOCR 결과물 이미지",
+        "description": "실제 PDF 문서에 PaddleOCR을 적용해 텍스트 영역을 인식하고 추출한 결과를 보여주는 이미지입니다. 원본 문서와 인식된 텍스트가 함께 표시되어 추출 정확도를 직관적으로 확인할 수 있습니다."
+      }
+    ]
+  }
+}

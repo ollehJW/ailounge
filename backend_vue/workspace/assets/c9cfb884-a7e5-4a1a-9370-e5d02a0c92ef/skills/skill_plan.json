@@ -1,0 +1,101 @@
+{
+  "asset_summary": "구매 포털에 로그인한 뒤 입력 파일의 발주일·품의번호 목록을 기준으로 견적서를 조회하고, 첨부파일을 자동 다운로드하며, 처리 결과를 화면과 파일로 확인하는 Playwright 기반 브라우저 자동화 에이전트 사례입니다.",
+  "reusable_patterns": [
+    "포털별 URL·로그인 방식·화면 선택자만 바꾸면 다른 업무 포털의 문서 수집 자동화로 확산할 수 있는 설정 기반 브라우저 수집 패턴",
+    "CSV/XLSX 입력 목록을 표준화해 행 단위로 조회·처리·성공/실패 상태를 추적하는 입력 리스트 기반 자동화 패턴",
+    "다운로드 파일을 업무 식별자별 폴더로 저장하고 결과 CSV·압축 파일로 검증 가능한 산출물을 제공하는 다운로드 검증 패턴",
+    "사내 포털 인증, 세션 저장, 새 창/프레임 전환, 중단 요청 등 운영 자동화에 필요한 세션 관리 패턴"
+  ],
+  "candidates": [
+    {
+      "slug": "config-driven-browser-document-collector",
+      "title": "설정 기반 포털 문서 자동 수집 스킬",
+      "skill_type": "both",
+      "reusable_pattern": "포털 URL, 로그인 절차, 검색 조건, 결과 매칭 규칙, 다운로드 필터를 설정으로 분리해 다른 구매·품질·재무 포털의 문서 수집 자동화로 재사용하는 패턴입니다.",
+      "required_inputs": [
+        "대상 포털 접속 URL과 인증 방식",
+        "입력 파일의 필수 컬럼과 검색 조건 매핑",
+        "목록/상세/첨부 다운로드 화면 선택자",
+        "다운로드 파일명 필터와 저장 폴더 규칙"
+      ],
+      "reference_files": [
+        "package.json",
+        "guide.md",
+        "scripts/manual-autoway-web.mjs",
+        "scripts/login-autoway.mjs",
+        "web/app.js",
+        "web/index.html"
+      ],
+      "diffusion_score": 91,
+      "recommended": true,
+      "reason": "여러 부서의 포털 기반 문서 수집 업무에 적용 가능하고, Playwright 세션 생성, 다운로드 이벤트 처리, 입력 목록 반복, 상태 표시 등 골격 코드의 재사용성이 높습니다. guide 부분은 포털별 적응 절차와 검증 체크리스트를 제공하고, skeleton 부분은 설정만 교체하는 실행 구조를 제공해 점수가 높습니다."
+    },
+    {
+      "slug": "input-list-driven-automation-workflow",
+      "title": "입력 목록 기반 행 단위 자동화 워크플로 스킬",
+      "skill_type": "both",
+      "reusable_pattern": "CSV/XLSX 파일을 업로드해 필수 컬럼을 검증하고, 각 행을 업무 단위로 처리하면서 진행중·성공·실패 상태와 결과 파일을 남기는 패턴입니다.",
+      "required_inputs": [
+        "CSV/XLSX 입력 파일 형식",
+        "필수 컬럼 목록과 컬럼 정규화 규칙",
+        "행 단위 처리 함수 또는 포털 조회 동작",
+        "성공/실패 판정 기준과 결과 출력 컬럼"
+      ],
+      "reference_files": [
+        "package.json",
+        "scripts/manual-autoway-web.mjs",
+        "web/app.js",
+        "web/index.html",
+        "web/styles.css"
+      ],
+      "diffusion_score": 87,
+      "recommended": true,
+      "reason": "문서 다운로드뿐 아니라 대량 조회, 등록, 검증, 파일 생성 등 다양한 반복 업무에 확산할 수 있습니다. guide 부분은 입력 데이터 표준화와 검증 기준을 설명하고, skeleton 부분은 업로드·파싱·행별 상태 추적·결과 CSV 생성 UI 로직을 템플릿화할 수 있어 재사용 가치가 큽니다."
+    },
+    {
+      "slug": "secure-portal-session-scaffold",
+      "title": "사내 포털 로그인·세션 관리 스캐폴드",
+      "skill_type": "skeleton",
+      "reusable_pattern": "브라우저 컨텍스트 생성, 인증정보 입력, OTP 처리, 세션 저장, 새 페이지 감지, 다운로드 허용 등 사내 포털 자동화의 공통 세션 기반을 분리하는 패턴입니다.",
+      "required_inputs": [
+        "로그인 URL",
+        "계정/비밀번호/OTP 입력 방식",
+        "로그인 성공 판정 기준",
+        "세션 저장 경로와 재사용 정책"
+      ],
+      "reference_files": [
+        "package.json",
+        "guide.md",
+        "scripts/login-autoway.mjs",
+        "scripts/manual-autoway-web.mjs"
+      ],
+      "diffusion_score": 79,
+      "recommended": false,
+      "reason": "세션 처리 로직은 여러 자동화에 유용하지만, 원본 구현에 특정 그룹사 선택과 내부 엔드포인트 우회가 포함되어 있어 그대로 확산하기에는 접근권한·인증 리스크가 있습니다. 설정화하면 유용하나 단독 추천 우선순위는 낮습니다."
+    },
+    {
+      "slug": "download-result-validation",
+      "title": "다운로드 결과 검증·정리 가이드",
+      "skill_type": "guide",
+      "reusable_pattern": "다운로드된 파일을 업무 식별자별로 정리하고, 파일명·용량·건수 기준으로 정상 수집 여부를 확인하며, 결과 CSV와 압축본으로 전달하는 검증 패턴입니다.",
+      "required_inputs": [
+        "업무 식별자",
+        "정상 파일 판정 기준",
+        "저장 폴더 구조",
+        "결과 보고서 컬럼"
+      ],
+      "reference_files": [
+        "scripts/manual-autoway-web.mjs",
+        "web/app.js",
+        "web/index.html"
+      ],
+      "diffusion_score": 72,
+      "recommended": false,
+      "reason": "다운로드 누락 방지와 결과 전달 품질 개선에는 효과적이지만, 핵심 자동화보다는 후처리·검증 절차 중심입니다. 다른 스킬에 포함해 제공하는 편이 더 효율적입니다."
+    }
+  ],
+  "selected_skill_slugs": [
+    "config-driven-browser-document-collector",
+    "input-list-driven-automation-workflow"
+  ]
+}

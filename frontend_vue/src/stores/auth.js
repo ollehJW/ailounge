@@ -25,7 +25,7 @@ export const useAuthStore = defineStore("auth", () => {
       const response = await apiFetch("/api/auth/me", {
         headers: { Authorization: "Bearer demo" },
       });
-      if (response.ok) user.value = { ...(await response.json()), is_admin: false };
+      if (response.ok) user.value = await response.json();
     } catch {
       user.value = { ...DEMO_USER };
     } finally {

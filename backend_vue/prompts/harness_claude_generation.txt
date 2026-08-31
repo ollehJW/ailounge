@@ -1,0 +1,60 @@
+You are generating the root CLAUDE.md for a Claude harness package that spreads an internal AI asset pattern to other business areas.
+
+Return ONLY valid JSON. Do not wrap it in Markdown fences.
+The JSON schema must be:
+{
+  "files": [
+    { "path": "CLAUDE.md", "content": "..." }
+  ]
+}
+
+CLAUDE.md purpose:
+- CLAUDE.md is automatically read at the start of every Claude session.
+- Keep it as a compact session bootstrap and routing document, not a long guide.
+- Detailed adaptation workflow, checklists, validation steps, and examples must live in the individual skills/*/SKILL.md files.
+
+Length and style requirements:
+- Write the entire CLAUDE.md in English.
+- Keep it concise: target 80 lines or fewer.
+- Use short sections and copy-ready commands.
+- Do not include long explanations, full adaptation checklists, detailed workflow steps, or extensive examples.
+
+Required section order:
+1. Project Overview
+   - 1 to 2 short paragraphs.
+   - Explain that this harness helps adapt the original asset's reusable pattern to other work areas.
+   - Summarize the original asset only as a reference case.
+2. Runtime and Environment
+   - Place this near the top.
+   - Include inferable specifications from the repository, such as:
+     - Node.js version requirements or recommended minimum version.
+     - Python version requirements if present or inferable.
+     - Package manager and install commands, such as npm install or pip install.
+     - Important libraries/frameworks from package.json, requirements.txt, pyproject.toml, or source imports.
+     - Browser/runtime requirements such as Playwright browser installation when relevant.
+     - If an exact version is not available, state it as a recommended assumption rather than a fact.
+3. Common Commands
+   - Include only commands that are directly relevant and inferable from the repo.
+   - Keep commands copy-ready.
+4. Repository Layout
+   - Briefly describe the harness layout: CLAUDE.md and skills/<slug>/SKILL.md/scripts.
+   - Do not explain every source repo file.
+5. Skill Routing
+   - List selected reusable skills with one-line trigger guidance for each.
+   - Tell Claude to open the relevant SKILL.md for detailed adaptation guidance.
+6. Safety Rules
+   - Include compact constraints: no embedded credentials, no tokens, no private data, no unauthorized access, no production execution without approval.
+
+Do not include:
+- A full "Selected Reusable Skills" guide with long descriptions.
+- A detailed adaptation checklist.
+- Step-by-step implementation workflow.
+- Full validation plans.
+- Long reference implementation notes.
+These belong in skills/*/SKILL.md.
+
+Asset metadata:
+{{ASSET_META_JSON}}
+
+Skill plan:
+{{SKILL_PLAN_JSON}}

@@ -48,9 +48,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const demoUserId = env.VITE_DEMO_USER_ID || "33502";
   const demoJwtSecret = env.DEMO_PORTAL_JWT_SECRET || "";
+  const demoReadOnly = env.VITE_DEMO_READ_ONLY === "true";
   const apiProxy = {
     "/api": {
-      target: env.VITE_DEV_API_TARGET || "http://127.0.0.1:9002",
+      target: env.VITE_DEV_API_TARGET || "http://127.0.0.1:9004",
       changeOrigin: true,
       configure(proxy) {
         proxy.on("proxyReq", (proxyRequest) => {
@@ -67,7 +68,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: env.VITE_APP_BASE || env.VITE_ROUTER_BASE || "/",
-    plugins: [demoReadOnlyPlugin, vue()],
+    plugins: [...(demoReadOnly ? [demoReadOnlyPlugin] : []), vue()],
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),

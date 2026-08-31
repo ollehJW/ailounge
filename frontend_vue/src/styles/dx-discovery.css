@@ -69,3 +69,31 @@
 .dx-page .dx-chat-panel>form textarea.has-overflow {
   overflow-y: auto;
 }
+
+
+.dx-page .dx-simulation {
+  display: inline-flex;
+  min-width: 112px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 0 13px;
+  border: 1px solid #9bb2d9;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: #164f9d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.dx-page .dx-simulation:hover:not(:disabled) {
+  border-color: #164f9d;
+  background: #e1ebfc;
+}
+
+.dx-page .dx-simulation:disabled {
+  cursor: wait;
+  opacity: .7;
+}

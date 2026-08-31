@@ -1,0 +1,128 @@
+{
+  "asset_summary": "과제·멤버·마일스톤·팀 일정·주간보고 입력을 하나의 흐름으로 연결하고, 작성 결과를 멤버별/과제별 HTML 리포트와 누적 이력으로 조회하는 주간 보고 관리 플랫폼입니다.",
+  "reusable_patterns": [
+    "업무 단위와 참여자를 먼저 표준화한 뒤 주간 실적, 리스크, 차주 계획을 구조화 입력으로 수집하는 패턴",
+    "동일한 보고 데이터를 멤버 관점과 과제 관점으로 재조합해 HTML 리포트로 자동 렌더링하는 패턴",
+    "보고 주차 개설, 개인별 작성 상태, 부재·제외 처리, 완료 후 이력 보관까지 포함한 상태 기반 보고 운영 패턴",
+    "팀 일정과 마일스톤을 업무 보고 입력 맥락에 연결해 예외 상황과 실행 계획을 함께 관리하는 패턴"
+  ],
+  "candidates": [
+    {
+      "slug": "config-driven-work-reporting-platform",
+      "title": "설정 기반 업무 보고 워크스페이스 스켈레톤",
+      "skill_type": "skeleton",
+      "reusable_pattern": "조직, 구성원, 업무 단위, 일정, 보고 주차, 작성 상태를 공통 데이터 모델로 두고 FastAPI·SQLite·React 구조에서 다른 팀 운영 프로세스로 확장할 수 있는 실행 골격입니다.",
+      "required_inputs": [
+        "조직 또는 팀 단위 정의",
+        "구성원 역할 체계",
+        "업무 단위와 참여자 매핑",
+        "보고 주기와 작성 상태 규칙",
+        "부재·제외·완료 처리 기준"
+      ],
+      "reference_files": [
+        "backend/main.py",
+        "frontend/src/main.jsx",
+        "frontend/src/styles.css",
+        "requirements.txt",
+        "frontend/package.json",
+        "docs/wiareport_service_overview.md"
+      ],
+      "diffusion_score": 90,
+      "recommended": true,
+      "reason": "DB 초기화, 입력 검증 모델, 상태 전이, 프로젝트-멤버-보고 연결, 프론트엔드 상태 관리와 API 호출 흐름이 실제 구현되어 있어 다른 조직의 주간·월간·업무점검 플랫폼으로 템플릿화하기 쉽습니다. 조직별 명칭과 상태값만 바꾸면 확산 가능성이 높고 개인정보는 최소 계정·업무 데이터 중심이라 관리 가능합니다."
+    },
+    {
+      "slug": "structured-html-report-renderer",
+      "title": "구조화 데이터 HTML 리포트 렌더러",
+      "skill_type": "skeleton",
+      "reusable_pattern": "구조화된 진행 내역, 리스크, 다음 계획 데이터를 정렬·필터링·이스케이프한 뒤 멤버별 또는 업무 단위별 HTML 문서로 렌더링하는 재사용 가능한 리포트 생성 패턴입니다.",
+      "required_inputs": [
+        "리포트 메타데이터",
+        "업무 단위별 진행 내역 목록",
+        "리스크·이슈 목록과 중요도 기준",
+        "차기 계획 목록과 기한 기준",
+        "HTML 템플릿 플레이스홀더 매핑"
+      ],
+      "reference_files": [
+        "backend/main.py",
+        "backend/templates/weekly_report_static.html",
+        "backend/templates/project_report_static.html",
+        "requirements.txt",
+        "docs/wiareport_service_overview.md"
+      ],
+      "diffusion_score": 86,
+      "recommended": true,
+      "reason": "실제 백엔드의 보고 데이터 집계와 HTML 템플릿 치환 로직, 정적 리포트 템플릿이 있어 회의록, 점검표, 프로젝트 현황, 품질 리포트 등 여러 문서 유형으로 바꾸기 좋습니다. 핵심 실행 로직은 입력 스키마와 템플릿만 바꾸면 재사용 가능하고 보안 위험도는 출력 전 이스케이프와 접근 제어 체크리스트로 완화할 수 있습니다."
+    },
+    {
+      "slug": "stateful-review-workflow-guide",
+      "title": "상태 기반 보고 수집·검토 운영 가이드",
+      "skill_type": "guide",
+      "reusable_pattern": "보고 기간 개설, 대상자별 작성 상태 추적, 부재 처리, 누락 확인, 완료 승인, 과거 이력 조회까지 운영자가 결정해야 할 프로세스와 검증 기준을 정리하는 패턴입니다.",
+      "required_inputs": [
+        "보고 운영 주기",
+        "작성 대상자 선정 기준",
+        "상태값과 완료 조건",
+        "예외 처리 정책",
+        "검토자와 승인자 역할"
+      ],
+      "reference_files": [
+        "docs/wiareport_service_overview.md",
+        "backend/main.py",
+        "frontend/src/main.jsx",
+        "README.md"
+      ],
+      "diffusion_score": 78,
+      "recommended": false,
+      "reason": "여러 팀에 적용 가능한 운영 절차와 체크리스트 가치가 크지만, 이 후보의 핵심은 자동화 코드보다 운영 설계 판단입니다. 기술 스켈레톤 후보보다 직접적인 실행 재사용성은 낮아 우선 선택에서는 제외했습니다."
+    },
+    {
+      "slug": "timeline-and-absence-context-guide",
+      "title": "일정·부재 맥락 연계 업무관리 가이드",
+      "skill_type": "guide",
+      "reusable_pattern": "팀 캘린더, 개인 부재, 교육·출장, 마일스톤을 보고 작성 맥락에 연결해 업무 제외와 계획 지연을 설명 가능한 데이터로 관리하는 패턴입니다.",
+      "required_inputs": [
+        "일정 유형 분류",
+        "개인 일정과 팀 일정 구분 기준",
+        "업무 제외 처리 기준",
+        "마일스톤·세부 일정 구조",
+        "리포트에 반영할 일정 맥락"
+      ],
+      "reference_files": [
+        "docs/wiareport_service_overview.md",
+        "frontend/src/main.jsx",
+        "frontend/src/styles.css",
+        "backend/main.py"
+      ],
+      "diffusion_score": 72,
+      "recommended": false,
+      "reason": "부재와 일정 맥락을 보고 품질에 반영하는 방식은 유용하지만, 원 구현의 캘린더 UI와 이벤트 유형이 특정 팀 운영 방식에 일부 묶여 있습니다. 범용 확산에는 가이드로 재정의하는 편이 적절합니다."
+    },
+    {
+      "slug": "role-based-team-workspace-access",
+      "title": "역할 기반 팀 워크스페이스 접근 설계",
+      "skill_type": "guide",
+      "reusable_pattern": "팀 계정, 멤버 비밀번호, 관리자 전용 메뉴, 역할별 참여 권한을 분리해 소규모 내부 업무 플랫폼의 접근 흐름을 설계하는 패턴입니다.",
+      "required_inputs": [
+        "사용자 역할 목록",
+        "관리자와 일반 사용자 권한 경계",
+        "초기 비밀번호와 변경 정책",
+        "멤버별 작성 인증 기준",
+        "보안 감사와 개인정보 처리 기준"
+      ],
+      "reference_files": [
+        "backend/main.py",
+        "frontend/src/main.jsx",
+        ".env.example",
+        "README.md"
+      ],
+      "diffusion_score": 64,
+      "recommended": false,
+      "reason": "비밀번호 해시와 역할 분리 구현은 참고 가치가 있으나 인증·권한 영역은 조직 보안 정책 의존도가 높고 민감도가 큽니다. 그대로 스켈레톤화하기보다 보안 검토용 가이드 후보로 두는 것이 안전합니다."
+    }
+  ],
+  "selected_skill_slugs": [
+    "role-based-team-workspace-access",
+    "config-driven-work-reporting-platform"
+  ]
+}

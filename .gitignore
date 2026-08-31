@@ -11,4 +11,5 @@ backend/workspace
 backend/staging
 sample/
 .env
+backend/k8s/secret.yaml
 

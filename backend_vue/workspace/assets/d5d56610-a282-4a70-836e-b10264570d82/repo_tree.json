@@ -1,0 +1,53 @@
+{
+  "tree": [
+    {
+      "name": "ocr_package",
+      "path": "ocr_package",
+      "type": "directory",
+      "children": [
+        {
+          "name": "__init__.py",
+          "path": "ocr_package/__init__.py",
+          "type": "file",
+          "children": []
+        },
+        {
+          "name": "pdf_ocr.py",
+          "path": "ocr_package/pdf_ocr.py",
+          "type": "file",
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": ".gitignore",
+      "path": ".gitignore",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "config.example.yaml",
+      "path": "config.example.yaml",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "main.py",
+      "path": "main.py",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "README.md",
+      "path": "README.md",
+      "type": "file",
+      "children": []
+    },
+    {
+      "name": "requirements.txt",
+      "path": "requirements.txt",
+      "type": "file",
+      "children": []
+    }
+  ]
+}

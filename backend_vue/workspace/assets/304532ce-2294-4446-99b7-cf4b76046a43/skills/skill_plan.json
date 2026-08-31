@@ -1,0 +1,130 @@
+{
+  "asset_summary": "회의 녹음 파일을 업로드하면 화자 분리, STT, 문맥 기반 교정, 화자 매칭, 회의록 요약 생성을 거쳐 사용자가 검수·확정할 수 있는 회의록 자동 작성 Agent입니다.",
+  "reusable_patterns": [
+    "음성·녹음 파일을 입력으로 받아 전처리, STT, 후처리, 문서 생성을 단계적으로 수행하는 파이프라인 패턴",
+    "참석자 명단과 참고자료를 활용해 STT 오류를 보정하고 화자를 실제 인물과 매칭하는 맥락 보강 패턴",
+    "LLM 출력이 원문 근거를 벗어나지 않도록 교정, 화자 매칭, 회의록 생성을 각각 별도 프롬프트와 검증 규칙으로 분리하는 패턴",
+    "자동 처리 결과를 신뢰도·근거와 함께 사용자에게 보여주고 최종 수정·확정하게 하는 human-in-the-loop 검수 패턴",
+    "회의록뿐 아니라 인터뷰, 교육, 상담, 품질회의 등 음성 기반 업무 기록을 구조화 문서로 전환하는 패턴"
+  ],
+  "candidates": [
+    {
+      "slug": "config-driven-audio-minutes-pipeline",
+      "title": "설정 기반 음성 기록 문서화 파이프라인",
+      "skill_type": "both",
+      "reusable_pattern": "오디오 입력을 화자 구간으로 분리하고 STT, LLM 교정, 화자 매칭, 구조화 문서 생성을 순차 실행하는 파이프라인을 회의·인터뷰·상담·교육 기록 등으로 확산할 수 있게 설정 기반으로 일반화합니다.",
+      "required_inputs": [
+        "처리할 음성 또는 녹음 파일",
+        "문서 유형별 메타 정보와 참석자 또는 발화자 후보 목록",
+        "STT 모델, 화자 분리 모델, LLM 접속 설정",
+        "생성할 최종 문서 섹션과 검수 기준",
+        "선택 입력인 참고자료 또는 용어집"
+      ],
+      "reference_files": [
+        "docs/meeting_generation_pipeline.md",
+        "backend/processor.py",
+        "backend/write.py",
+        "backend/prompts/stt_correction.txt",
+        "backend/prompts/speaker_matching.txt",
+        "backend/prompts/report_generation.txt"
+      ],
+      "diffusion_score": 92,
+      "recommended": true,
+      "reason": "핵심 자동화 로직인 화자 구간 전처리, 배치 STT 교정, 화자 매칭, 보고서 생성 흐름이 다른 음성 기반 업무 기록에도 그대로 적용 가능합니다. 가이드는 단계별 의사결정과 검수 지점을 제공하고, 스켈레톤은 모델·프롬프트·문서 섹션만 바꿔 재사용할 수 있어 점수가 높습니다. 음성 개인정보와 접근권한 관리는 필요하지만 입력과 출력 경계가 명확해 확산 위험은 관리 가능합니다."
+    },
+    {
+      "slug": "grounded-meeting-minutes-prompt-pack",
+      "title": "근거 기반 회의록 생성 프롬프트 팩",
+      "skill_type": "guide",
+      "reusable_pattern": "STT 원문을 근거 자료로 삼아 원문에 없는 내용을 만들지 않고, 결정사항·액션 아이템·이슈·질의응답을 업무 문서 형식으로 정리하는 프롬프트 설계와 검증 체크리스트를 재사용합니다.",
+      "required_inputs": [
+        "화자와 시간이 포함된 전사 텍스트",
+        "회의 또는 업무 기록의 목적",
+        "최종 문서에 반드시 포함할 섹션",
+        "조직별 문서 톤과 제외해야 할 내용 기준",
+        "액션 아이템 판단 기준"
+      ],
+      "reference_files": [
+        "backend/prompts/report_generation.txt",
+        "backend/write.py",
+        "docs/meeting_generation_pipeline.md",
+        "README.md"
+      ],
+      "diffusion_score": 86,
+      "recommended": true,
+      "reason": "프롬프트의 재사용 가치가 매우 높고 회의록 외에도 워크숍, 고객 미팅, 프로젝트 리뷰 문서에 쉽게 적용할 수 있습니다. 다만 자동화 코드보다 작성 원칙, 포함·제외 기준, 검수 체크리스트가 확산 가치를 주도하므로 guide로 분류했습니다."
+    },
+    {
+      "slug": "context-aware-stt-correction",
+      "title": "맥락 기반 STT 교정 가이드",
+      "skill_type": "both",
+      "reusable_pattern": "참석자 명단, 회의 목적, 참고자료 텍스트를 보조 맥락으로 사용해 STT 결과의 명백한 오류만 교정하고 원문 의미를 보존하는 배치 교정 패턴입니다.",
+      "required_inputs": [
+        "문장 인덱스가 포함된 STT 결과",
+        "참석자 또는 관련 인명 목록",
+        "업무 목적 또는 대화 주제",
+        "전문 용어가 포함된 참고자료 텍스트",
+        "교정 신뢰도 기준"
+      ],
+      "reference_files": [
+        "backend/processor.py",
+        "backend/prompts/stt_correction.txt",
+        "backend/read.py",
+        "backend/llm_client.py",
+        "docs/meeting_generation_pipeline.md"
+      ],
+      "diffusion_score": 81,
+      "recommended": false,
+      "reason": "배치 처리, JSON 파싱, 교정 적용 로직은 다양한 STT 후처리에 재사용 가능합니다. 그러나 독립 스킬로 만들 경우 회의록 전체 파이프라인보다 적용 범위가 좁고, 잘못된 자동 교정이 원문 왜곡으로 이어질 수 있어 최상위 추천에서는 제외했습니다."
+    },
+    {
+      "slug": "human-in-the-loop-speaker-validation",
+      "title": "화자 매칭 검수 워크플로",
+      "skill_type": "both",
+      "reusable_pattern": "AI가 추정한 화자 매칭 결과를 confidence와 evidence로 제시하고, 사용자가 실제 발화자와 문장 내용을 확인·수정한 뒤 최종 반영하는 검수 워크플로입니다.",
+      "required_inputs": [
+        "화자 ID가 포함된 전사 결과",
+        "발화자 후보 목록",
+        "AI 매칭 결과와 신뢰도",
+        "사용자가 수정할 수 있는 매핑 저장 방식",
+        "검수 후 반영할 최종 전사 포맷"
+      ],
+      "reference_files": [
+        "backend/processor.py",
+        "backend/prompts/speaker_matching.txt",
+        "backend/main.py",
+        "frontend/src/main.jsx",
+        "docs/meeting_generation_pipeline.md"
+      ],
+      "diffusion_score": 78,
+      "recommended": false,
+      "reason": "AI 결과를 사람이 확정하는 패턴은 여러 업무에 확산 가능하고 UI·API 흐름도 참고할 수 있습니다. 다만 현재 구현은 회의 화자 매칭 화면에 강하게 결합되어 있어 범용 검수 스켈레톤으로 분리하려면 입력 스키마와 UI 컴포넌트 추상화가 추가로 필요합니다."
+    },
+    {
+      "slug": "reference-document-context-extractor",
+      "title": "참고자료 기반 용어 맥락 추출 스켈레톤",
+      "skill_type": "skeleton",
+      "reusable_pattern": "PDF, PPT, PPTX 같은 업무 참고자료에서 텍스트를 추출·정규화해 LLM 후처리의 용어집 또는 맥락 정보로 제공하는 경량 전처리 패턴입니다.",
+      "required_inputs": [
+        "참고자료 파일 경로",
+        "지원할 문서 확장자 목록",
+        "추출 텍스트 정규화 규칙",
+        "후속 LLM 단계에서 사용할 맥락 삽입 위치",
+        "민감정보 보관 또는 폐기 기준"
+      ],
+      "reference_files": [
+        "backend/read.py",
+        "backend/prompts/stt_correction.txt",
+        "docs/meeting_generation_pipeline.md",
+        "requirements.txt"
+      ],
+      "diffusion_score": 72,
+      "recommended": false,
+      "reason": "문서 텍스트 추출 로직은 단순하고 다른 LLM 업무에도 재사용하기 쉽지만, 단독으로는 업무 효과가 제한적입니다. 또한 PDF/PPT 처리 도구 의존성과 파일 내 민감정보 처리 기준을 별도로 정해야 하므로 우선 추천 대상은 아닙니다."
+    }
+  ],
+  "selected_skill_slugs": [
+    "config-driven-audio-minutes-pipeline",
+    "grounded-meeting-minutes-prompt-pack"
+  ]
+}

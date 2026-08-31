@@ -1,0 +1,161 @@
+{
+  "asset_id": "14f17fee-b7c4-4aa5-8b13-ea5a10bbdf2d",
+  "user_id": "7f302a31-43ca-4004-8566-82e54513d9b3",
+  "user_email": "jongwook.lee@hyundai-wia.com",
+  "created_at": "2026-08-10T02:13:04.561308+00:00",
+  "updated_at": "2026-08-10T02:13:04.561308+00:00",
+  "payload": {
+    "asset_name": "회의록 자동 작성 Agent",
+    "description": "회의 음성 또는 녹음 파일을 입력받아 자동으로 텍스트로 변환하고, 핵심 내용을 요약해 구조화된 회의록 형태로 생성해주는 Agent입니다. 담당자가 회의 중 직접 필기하거나 회의 후 녹음을 다시 들으며 정리하던 수작업을 대체하여, 회의록 작성에 소요되는 시간과 노력을 크게 줄여줍니다. 발언자 구분, 주요 논의사항, 결정사항, 액션 아이템 등을 자동으로 정리해 회의 직후 바로 공유 가능한 문서를 제공합니다.",
+    "business_area": "IT·DX",
+    "maturity_level": "운영",
+    "task_types": [
+      "자동화",
+      "요약",
+      "추출"
+    ],
+    "implementation_types": [
+      "Agent",
+      "LLM"
+    ],
+    "tags": [
+      "자동화",
+      "STT",
+      "화자 분리",
+      "음성 인식",
+      "문서 자동 생성"
+    ],
+    "problem_definition": "지금까지 회의록은 담당자가 직접 필기하거나 녹음을 다시 들으며 정리하는 방식으로 작성되어, 회의가 길어질수록 시간이 많이 소요되고 발언 누락이나 부정확한 기록이 발생했습니다. 정리와 공유가 지연되면서 결정사항과 액션 아이템의 후속 조치도 늦어지는 문제가 있었습니다.",
+    "as_is_workflow": "회의가 끝나면 담당자는 회의 중 작성한 메모나 녹음 파일을 바탕으로 발언 내용을 정리하여 회의록을 작성합니다. 필요한 경우 녹음을 다시 들으며 세부 내용을 확인하고, 논의 흐름과 결정사항, 액션 아이템 등을 문서 형태로 정리합니다. 정리가 완료되면 이를 참석자들에게 공유하는 순서로 진행됩니다.",
+    "to_be_workflow": "회의가 시작되면 Agent가 회의 음성을 실시간 또는 녹음 파일 형태로 입력받아 자동으로 텍스트로 변환합니다. 변환된 내용을 바탕으로 발언자 구분, 주요 논의사항, 결정사항, 액션 아이템 등을 자동으로 요약·구조화하여 회의록을 생성합니다. 완성된 회의록은 담당자의 검토 후 참석자들에게 바로 공유됩니다.",
+    "ai_effect": "본 Agent 도입을 통해 회의록 작성에 소요되던 시간을 대폭 단축하여, 담당자가 회의 후 반복적인 정리 작업 없이 핵심 업무에 더 집중할 수 있게 됩니다. 자동 텍스트 변환과 구조화된 요약을 통해 발언 누락이나 왜곡 없이 정확한 기록을 남길 수 있으며, 회의록 공유 시점도 앞당겨져 결정사항과 액션 아이템의 후속 조치 속도가 개선됩니다. 또한 회의록 형식이 표준화되어 과거 회의 이력 검색과 활용도가 높아지는 효과도 기대할 수 있습니다.",
+    "has_data": false,
+    "has_train_validation_split": false,
+    "data_type": "",
+    "data_description": "",
+    "models": [
+      {
+        "model_name": "Qwen3-ASR-1.7B",
+        "description": "회의 음성을 텍스트로 변환하는 STT(Speech-to-Text) 모델",
+        "reference_url": "https://huggingface.co/Qwen"
+      },
+      {
+        "model_name": "pyannote/speaker-diarization-community-1",
+        "description": "회의 음성에서 발언자를 구분해주는 화자 분리(Speaker Diarization) 모델",
+        "reference_url": "https://huggingface.co/pyannote/speaker-diarization-community-1"
+      },
+      {
+        "model_name": "Azure OpenAI (ChatGPT)",
+        "description": "변환된 회의 텍스트를 요약하고 구조화된 회의록으로 생성하는 LLM",
+        "reference_url": "https://azure.microsoft.com/products/ai-services/openai-service"
+      }
+    ],
+    "tech_stacks": [
+      {
+        "stack_name": "Python - FastAPI",
+        "description": "STT, 화자 분리, LLM 요약 등 회의록 생성 로직을 API 서버로 구성하여 음성 업로드, 처리 요청, 결과 조회 기능을 제공하는 백엔드 프레임워크",
+        "reference_url": "https://fastapi.tiangolo.com/"
+      },
+      {
+        "stack_name": "Frontend - React",
+        "description": "회의 음성 업로드, 처리 진행 상황 확인, 생성된 회의록 확인 및 다운로드를 위한 사용자 인터페이스를 구현하는 프론트엔드 라이브러리",
+        "reference_url": "https://react.dev/"
+      }
+    ],
+    "before_after_metrics": [
+      {
+        "metric_name": "회의록 작성 시간",
+        "before_value": "1시간",
+        "after_value": "10분",
+        "improvement_rate": "84% 단축"
+      },
+      {
+        "metric_name": "발언 누락·오기록 발생률",
+        "before_value": "약 10~15%",
+        "after_value": "약 5% 이하",
+        "improvement_rate": "60% 개선"
+      }
+    ],
+    "performance_metrics": [
+      {
+        "metric_name": "STT 변환 정확도",
+        "value": "90%",
+        "description": "Qwen3-ASR-1.7B를 통한 음성-텍스트 변환 정확도"
+      }
+    ],
+    "slides": [
+      {
+        "caption": "회의 녹음 화면",
+        "description": "회의 시작과 함께 음성을 녹음할 수 있는 화면으로, 담당자는 별도 장비 없이 해당 화면에서 바로 녹음을 시작하고 종료할 수 있습니다.",
+        "sort_order": 1
+      },
+      {
+        "caption": "회의록 생성 프로세스 Flow 화면",
+        "description": "음성 입력부터 STT 변환, 화자 분리, 요약을 거쳐 회의록이 생성되기까지의 처리 과정을 단계별 Flow로 시각화한 화면입니다.",
+        "sort_order": 2
+      },
+      {
+        "caption": "메타 정보 입력 화면",
+        "description": "회의록 생성에 앞서 회의 제목, 일시, 참석자 등 메타 정보를 입력하는 화면으로, 입력된 정보는 최종 회의록에 함께 반영됩니다.",
+        "sort_order": 3
+      },
+      {
+        "caption": "생성된 회의록 화면",
+        "description": "STT·화자 분리·요약 과정을 거쳐 최종적으로 생성된 구조화된 회의록을 확인할 수 있는 화면으로, 요약된 회의록과 함께 실제 회의 발언 원문도 함께 확인할 수 있습니다.",
+        "sort_order": 4
+      }
+    ],
+    "repo_url": "https://github.com/ollehJW/meeting_write_agent.git",
+    "repo_branch": "main",
+    "diffusion_prompt": "",
+    "owner_email": "jongwook.lee@hyundai-wia.com",
+    "owner_name": "이종욱",
+    "owner_job_title": "매니저",
+    "owner_org": "DX추진랩",
+    "asset_id": "14f17fee-b7c4-4aa5-8b13-ea5a10bbdf2d"
+  },
+  "slides": [
+    {
+      "original_name": "회의 녹음.png",
+      "stored_name": "6a41c568299446e3ae06be95f9a8b7e8.png",
+      "path": "staging/assets/14f17fee-b7c4-4aa5-8b13-ea5a10bbdf2d/slides/6a41c568299446e3ae06be95f9a8b7e8.png",
+      "caption": "회의 녹음 화면",
+      "description": "회의 시작과 함께 음성을 녹음할 수 있는 화면으로, 담당자는 별도 장비 없이 해당 화면에서 바로 녹음을 시작하고 종료할 수 있습니다.",
+      "sort_order": 1,
+      "content_type": "image/png",
+      "size": 222974
+    },
+    {
+      "original_name": "회의록 생성 프로세스.png",
+      "stored_name": "aa2d630618f940378cac5abe318bc9cb.png",
+      "path": "staging/assets/14f17fee-b7c4-4aa5-8b13-ea5a10bbdf2d/slides/aa2d630618f940378cac5abe318bc9cb.png",
+      "caption": "회의록 생성 프로세스 Flow 화면",
+      "description": "음성 입력부터 STT 변환, 화자 분리, 요약을 거쳐 회의록이 생성되기까지의 처리 과정을 단계별 Flow로 시각화한 화면입니다.",
+      "sort_order": 2,
+      "content_type": "image/png",
+      "size": 23139
+    },
+    {
+      "original_name": "회의록 생성 템플릿.png",
+      "stored_name": "e9a8732e51924cd184a40b19cc5899e5.png",
+      "path": "staging/assets/14f17fee-b7c4-4aa5-8b13-ea5a10bbdf2d/slides/e9a8732e51924cd184a40b19cc5899e5.png",
+      "caption": "메타 정보 입력 화면",
+      "description": "회의록 생성에 앞서 회의 제목, 일시, 참석자 등 메타 정보를 입력하는 화면으로, 입력된 정보는 최종 회의록에 함께 반영됩니다.",
+      "sort_order": 3,
+      "content_type": "image/png",
+      "size": 168190
+    },
+    {
+      "original_name": "회의록.png",
+      "stored_name": "7f86fb3b7ea947179c8026766ccfaa68.png",
+      "path": "staging/assets/14f17fee-b7c4-4aa5-8b13-ea5a10bbdf2d/slides/7f86fb3b7ea947179c8026766ccfaa68.png",
+      "caption": "생성된 회의록 화면",
+      "description": "STT·화자 분리·요약 과정을 거쳐 최종적으로 생성된 구조화된 회의록을 확인할 수 있는 화면으로, 요약된 회의록과 함께 실제 회의 발언 원문도 함께 확인할 수 있습니다.",
+      "sort_order": 4,
+      "content_type": "image/png",
+      "size": 200823
+    }
+  ],
+  "data_files": [],
+  "submitted_at": "2026-08-10T02:39:29.787383+00:00"
+}

@@ -1,0 +1,15 @@
+# 최초 1회: 백엔드 빌드
+cd future/data_catalog_portal/source
+mvn clean install -DskipTests
+
+# 터미널 1: 백엔드
+mvn spring-boot:run
+
+# 최초 1회: 프론트 의존성 설치
+cd future/data_catalog_portal/source/frontend/nuxt-project
+# 터미널 2: 프론트
+nvm use 24
+npm run dev
+
+http://localhost:3000/login
+admin/admin123

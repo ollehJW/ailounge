@@ -1,43 +1,133 @@
-# Backend
+# AI Lounge 로컬 실행 및 systemd 관리
+
+======================================================================
+1. 현재 서비스 구성
+======================================================================
+
+- ailounge-backend.service
+  경로: /home/wia/projects/ailounge/backend
+  포트: 9002
+
+- ailounge-backend-vue.service
+  경로: /home/wia/projects/ailounge/backend_vue
+  포트: 9004
+  DB: 127.0.0.1:5432/data_catalog, schema=ai_lounge
+
+- ailounge-frontend-vue.service
+  경로: /home/wia/projects/ailounge/frontend_vue
+  포트: 9003
+  API Proxy: http://127.0.0.1:9004
+  Node.js: /home/wia/.nvm/versions/node/v24.19.0/bin/node
+
+접속 주소: http://localhost:9003
+
+기존 ailounge-frontend.service(frontend, 9001)는 비활성화되어 있습니다.
+
+======================================================================
+2. systemd 서비스 관리
+======================================================================
+
+# 세 서비스를 한 번에 시작
+systemctl --user start ailounge-backend.service ailounge-backend-vue.service ailounge-frontend-vue.service
+
+# 세 서비스를 한 번에 중지
+systemctl --user stop ailounge-backend.service ailounge-backend-vue.service ailounge-frontend-vue.service
+
+# 코드나 설정 변경 후 세 서비스를 한 번에 재시작
+systemctl --user restart ailounge-backend.service ailounge-backend-vue.service ailounge-frontend-vue.service
+
+# 상태 확인
+systemctl --user status ailounge-backend.service ailounge-backend-vue.service ailounge-frontend-vue.service --no-pager
+
+# 활성 여부만 간단히 확인
+systemctl --user is-active ailounge-backend.service ailounge-backend-vue.service ailounge-frontend-vue.service
+
+# 포트 확인
+ss -lntp | grep -E ':9002|:9003|:9004'
+
+# 개별 로그 실시간 확인
+journalctl --user -u ailounge-backend.service -f
+journalctl --user -u ailounge-backend-vue.service -f
+journalctl --user -u ailounge-frontend-vue.service -f
+
+======================================================================
+3. systemd 최초 등록 또는 서비스 파일 변경 시
+======================================================================
+
+systemctl --user link /home/wia/projects/ailounge/deploy/systemd/ailounge-backend.service
+systemctl --user link /home/wia/projects/ailounge/deploy/systemd/ailounge-backend-vue.service
+systemctl --user link /home/wia/projects/ailounge/deploy/systemd/ailounge-frontend-vue.service
+systemctl --user daemon-reload
+systemctl --user enable --now ailounge-backend.service ailounge-backend-vue.service ailounge-frontend-vue.service
+
+# 기존 frontend(9001) 서비스가 남아 있으면 중지 및 자동 시작 해제
+systemctl --user disable --now ailounge-frontend.service
+
+# User lingering이 활성화되어 있어 OS 재부팅 후에도 자동 시작됩니다.
+
+======================================================================
+4. systemd 없이 수동 실행
+======================================================================
+
+# 터미널 1: 기존 backend, 포트 9002
 cd /home/wia/projects/ailounge/backend
 source .venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 9002 --reload
 
-# Frontend
-cd /home/wia/projects/ailounge/frontend
+# 터미널 2: frontend_vue용 backend_vue, 포트 9004
+cd /home/wia/projects/ailounge/backend_vue
+source ../backend/.venv/bin/activate
+python run_server.py
+
+# 터미널 3: frontend_vue, 포트 9003
+cd /home/wia/projects/ailounge/frontend_vue
+source /home/wia/.nvm/nvm.sh
+nvm use 24
 npm run dev
 
-# Always-on frontend/backend services
-# User lingering is enabled, so these services start automatically after an OS reboot.
-systemctl --user link /home/wia/projects/ailounge/deploy/systemd/ailounge-backend.service /home/wia/projects/ailounge/deploy/systemd/ailounge-frontend.service
-systemctl --user daemon-reload
-systemctl --user enable --now ailounge-backend.service ailounge-frontend.service
+# 수동 실행 전에 같은 포트의 systemd 서비스를 먼저 중지해야 합니다.
+# 예시
+systemctl --user stop ailounge-backend-vue.service ailounge-frontend-vue.service
 
-# Check service status.
-systemctl --user status ailounge-backend.service ailounge-frontend.service --no-pager
+======================================================================
+5. 연결 확인
+======================================================================
 
-# Restart after changing backend dependencies/configuration or when needed.
-systemctl --user restart ailounge-backend.service ailounge-frontend.service
+# 기존 backend
+curl http://127.0.0.1:9002/api/health
 
-# Follow service logs.
-journalctl --user -u ailounge-backend.service -f
-journalctl --user -u ailounge-frontend.service -f
+# backend_vue
+curl http://127.0.0.1:9004/api/health
 
-# Staging cleanup timer
-# Runs automatically every day at 05:00 KST.
-# One-time setup only (already completed on the current machine).
+# frontend_vue를 통한 backend_vue Proxy
+curl http://127.0.0.1:9003/api/health
+
+# frontend_vue 화면
+curl -I http://127.0.0.1:9003/
+
+======================================================================
+6. Staging 정리 타이머
+======================================================================
+
+# 기존 backend staging을 매일 05:00 KST에 정리합니다.
 systemctl --user link /home/wia/projects/ailounge/deploy/systemd/ailounge-staging-cleanup.service /home/wia/projects/ailounge/deploy/systemd/ailounge-staging-cleanup.timer
 systemctl --user daemon-reload
 systemctl --user enable --now ailounge-staging-cleanup.timer
 
-# Check the next scheduled run.
+# 다음 실행 시간 확인
 systemctl --user list-timers ailounge-staging-cleanup.timer --no-pager
 
-# Check cleanup logs.
+# 정리 로그 확인
 journalctl --user -u ailounge-staging-cleanup.service
 
-# Run cleanup manually when needed.
+# 기존 backend를 수동 정리
 /home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend/cleanup_staging.py --max-age-days 7
 
-# Preview cleanup targets without deleting them.
+# 삭제 없이 대상만 미리 확인
 /home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend/cleanup_staging.py --max-age-days 7 --dry-run
+
+# backend_vue를 수동 정리
+/home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend_vue/cleanup_staging.py --max-age-days 7
+
+# backend_vue 삭제 대상만 미리 확인
+/home/wia/projects/ailounge/backend/.venv/bin/python /home/wia/projects/ailounge/backend_vue/cleanup_staging.py --max-age-days 7 --dry-run
